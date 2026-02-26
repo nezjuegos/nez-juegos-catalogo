@@ -1,14 +1,33 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_redirect
 import threading
 import asyncio
 import os
 import json
 import zipfile
 import shutil
+from functools import wraps
 from scraper import NintendoScraper
 
 app = Flask(__name__)
+# Secret key for session encryption. Must be secure in production.
+app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24))
+# Master password loaded from environment variable (default for local dev)
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+
 scraper = NintendoScraper()
+
+# --- Auth Decorator ---
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_admin'):
+            # Return JSON error for API endpoints, redirect for HTML
+            if request.path.startswith('/api/'):
+                return jsonify({"error": "Unauthorized"}), 401
+            return redirect('/admin/login')
+        return f(*args, **kwargs)
+    return decorated_function
+# ----------------------
 
 # --- Auto-Extract Telegram Session from Zip (For Railway Deployment) ---
 # If sesion.zip is found, extract it to the persistent volume automatically
@@ -53,7 +72,37 @@ def run_on_scraper_thread(coro):
     return future.result()
 
 @app.route('/')
-def home():
+def root():
+    # Redirect base domain to the admin login or dashboard
+    if session.get('is_admin'):
+        return redirect('/admin')
+    return redirect('/admin/login')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # Handle login attempt from our custom form
+        data = request.json
+        password = data.get('password', '')
+        if password == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Invalid password"}), 401
+        
+    # GET request: serve the login page
+    if session.get('is_admin'):
+        return redirect('/admin')
+    return send_from_directory('ui', 'login.html')
+
+@app.route('/admin/logout', methods=['POST'])
+def logout():
+    session.pop('is_admin', None)
+    return jsonify({"status": "ok"})
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    # Protected Admin Dashboard
     return send_from_directory('ui', 'index.html')
 
 @app.route('/cliente')
@@ -66,6 +115,10 @@ def serve_cliente_static(path):
 
 @app.route('/<path:path>')
 def serve_static(path):
+    # Static files should still be served, but HTML pages might need checking
+    # We leave this open so JS/CSS loads properly, but the main index is handled by /admin
+    if path == 'index.html':
+        return redirect('/admin') # Don't allow bypassing via /index.html
     return send_from_directory('ui', path)
 
 @app.route('/api/search')
@@ -110,6 +163,7 @@ def status():
         return jsonify({"telegram_connected": False, "cached_packs": 0})
 
 @app.route('/api/refresh', methods=['POST'])
+@admin_required
 def refresh():
     """Force refresh the pack cache - triggered manually by user"""
     count = int(request.args.get('count', 1000))
@@ -122,6 +176,7 @@ def refresh():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/set-cover', methods=['POST'])
+@admin_required
 def set_cover():
     """Set a manual cover for a specific pack ID"""
     data = request.json
@@ -163,6 +218,7 @@ def set_cover():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/bulk-set-covers', methods=['POST'])
+@admin_required
 def bulk_set_covers():
     """Set multiple manual covers at once"""
     data = request.json
@@ -204,6 +260,7 @@ def bulk_set_covers():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/delete-pack', methods=['POST'])
+@admin_required
 def delete_pack():
     """Delete a pack by ID"""
     data = request.json
