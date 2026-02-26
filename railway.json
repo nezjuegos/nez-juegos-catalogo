@@ -1,11 +1,11 @@
 {
     "$schema": "https://railway.app/silent-deploy-config.json",
     "build": {
-        "builder": "NIXPACKS"
+        "builder": "NIXPACKS",
+        "installCommand": "pip install -r requirements.txt && playwright install --with-deps chromium"
     },
     "deploy": {
-        "startCommand": "python server.py",
-        "restartPolicyType": "ON_FAILURE",
-        "installCommand": "pip install -r requirements.txt && playwright install --with-deps chromium"
+        "startCommand": "playwright install --with-deps chromium && python server.py",
+        "restartPolicyType": "ON_FAILURE"
     }
 }
