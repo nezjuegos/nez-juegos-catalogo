@@ -260,8 +260,8 @@ class NintendoScraper:
         self.playwright = await async_playwright().start()
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             user_data_dir=USER_DATA_DIR,
-            headless=False,
-            args=["--disable-blink-features=AutomationControlled", "--disable-notifications"]
+            headless=bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH')),  # headless on Railway, headed locally
+            args=["--disable-blink-features=AutomationControlled", "--disable-notifications", "--no-sandbox"]
         )
         
         pages = self.browser_context.pages
