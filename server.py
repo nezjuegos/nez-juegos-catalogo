@@ -3,10 +3,35 @@ import threading
 import asyncio
 import os
 import json
+import zipfile
+import shutil
 from scraper import NintendoScraper
 
 app = Flask(__name__)
 scraper = NintendoScraper()
+
+# --- Auto-Extract Telegram Session from Zip (For Railway Deployment) ---
+# If sesion.zip is found, extract it to the persistent volume automatically
+RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
+ZIP_PATH = os.path.join(os.getcwd(), 'sesion.zip')
+EXTRACT_PATH = os.path.join(RAILWAY_VOLUME, "browser_data_clean")
+
+if os.path.exists(ZIP_PATH):
+    print(f"[DEPLOY] Found sesion.zip! Extracting to {EXTRACT_PATH}...")
+    try:
+        # Provide a clean slate if folder already exists
+        if os.path.exists(EXTRACT_PATH):
+            shutil.rmtree(EXTRACT_PATH)
+        os.makedirs(EXTRACT_PATH, exist_ok=True)
+        
+        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+            zip_ref.extractall(EXTRACT_PATH)
+            
+        print("[DEPLOY] Session extracted successfully! Deleting sesion.zip...")
+        os.remove(ZIP_PATH) # Remove to save space after extraction
+    except Exception as e:
+        print(f"[DEPLOY] Error extracting session: {e}")
+# ------------------------------------------------------------------------
 
 # --- Asyncio Bridge ---
 # Playwright must run on a single event loop.
