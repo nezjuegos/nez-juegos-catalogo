@@ -1,0 +1,16 @@
+# Entornos virtuales
+venv/
+__pycache__/
+*.pyc
+
+# Carpetas de datos de Playwright (Navegador)
+browser_data/
+browser_data_clean/
+
+# Archivos de entorno y temporales
+.env
+.DS_Store
+*.log
+
+# Archivos de configuración locales que no deben ir al repo
+.ngrok*

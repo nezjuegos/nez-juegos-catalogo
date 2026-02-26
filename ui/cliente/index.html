@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nintendo Switch Packs</title>
+    <!-- Use absolute path to ensure correct loading regardless of trailing slash -->
+    <link rel="stylesheet" href="/cliente/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-glob"></div>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-container">
+                <span class="logo-icon">🎮</span>
+                <h1 class="gradient-text">Nintendo Packs</h1>
+            </div>
+            <p class="subtitle">Catálogo actualizado al instante</p>
+        </header>
+
+        <!-- Search Section -->
+        <div class="glass-panel search-section">
+            <div class="search-input-wrapper">
+                <label>Buscador</label>
+                <div class="input-with-icon">
+                    <span class="icon">🔍</span>
+                    <input type="text" id="game-input" placeholder="Ej: Mario Wonder, Zelda...">
+                </div>
+            </div>
+
+            <details class="advanced-filters">
+                <summary>Filtros Avanzados</summary>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label>Excluir (No mostrar)</label>
+                        <input type="text" id="exclude-input" placeholder="Ej: dlc, pass">
+                    </div>
+                    <div class="filter-group row">
+                        <input type="number" id="price-min" placeholder="Min $">
+                        <input type="number" id="price-max" placeholder="Max $">
+                    </div>
+                </div>
+            </details>
+
+            <div class="action-buttons">
+                <button id="search-btn" class="btn-primary" onclick="performSearch()">Buscar Packs</button>
+                <button id="clear-btn" class="btn-ghost" onclick="clearSearch()">Limpiar</button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-header">
+            <h2 id="results-count">Cargando catálogo...</h2>
+        </div>
+
+        <main class="results-grid" id="results-grid">
+            <div class="loading-skeleton">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+        </main>
+
+        <!-- Toast -->
+        <div class="toast hidden" id="toast">
+            <span class="toast-icon">✅</span>
+            <span class="toast-message">Copiado al portapapeles</span>
+        </div>
+    </div>
+
+    <!-- Use absolute path -->
+    <script src="/cliente/app.js"></script>
+</body>
+
+</html>

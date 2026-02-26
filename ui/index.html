@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nintendo Reseller Bot</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">🍄 Nintendo Reseller</div>
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-dot"></span>
+                <span id="status-text">Conectando...</span>
+            </div>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <input type="text" id="game-input" placeholder="Buscar (ej: zelda breath)">
+            <input type="text" id="exclude-input" placeholder="Excluir (ej: dlc expansion)">
+            <input type="number" id="price-min" placeholder="Min $" min="0">
+            <input type="number" id="price-max" placeholder="Max $" min="0">
+            <button id="search-btn" class="btn-primary" onclick="performSearch()">
+                🔍 Buscar
+            </button>
+            <button id="clear-btn" class="btn-secondary" onclick="clearSearch()">
+                ✕ Limpiar
+            </button>
+            <button id="refresh-full-btn" class="btn-blue" onclick="refreshList(1000)">
+                🔄 Renovar 1000
+            </button>
+            <button id="refresh-quick-btn" class="btn-green" onclick="refreshList(100)">
+                ⚡ Renovar 100
+            </button>
+            <button id="bulk-edit-btn" class="btn-secondary" onclick="openBulkModal()">
+                📝 Bulk Portadas
+            </button>
+        </div>
+
+        <!-- Results Info -->
+        <div class="results-info" id="results-info">
+            <span id="results-count">0 packs cargados</span>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="results-grid" id="results-grid">
+            <div class="empty-state" id="empty-state">
+                Haz clic en "Renovar Lista" para cargar los packs disponibles
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Cover Modal -->
+    <div id="edit-cover-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Editar Portada Manual</h3>
+            <p id="edit-modal-pack-info">Pack ID: ...</p>
+            <input type="text" id="manual-cover-url" placeholder="Pegar URL de imagen aquí...">
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                <button class="btn-danger" onclick="deleteManualCover()">Borrar (Reset)</button>
+                <button class="btn-primary" onclick="saveManualCover()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Edit Modal -->
+    <div id="bulk-edit-modal" class="modal hidden">
+        <div class="modal-content large-modal">
+            <h3>Edición Masiva de Portadas</h3>
+            <p>Pega una lista con formato: <code>ID URL</code> (una por línea)</p>
+            <textarea id="bulk-cover-text" rows="10"
+                placeholder="123456 https://imagen.com/1.jpg&#10;789012 https://imagen.com/2.jpg"></textarea>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeBulkModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveBulkCovers()">Guardar Todo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">Copiado al portapapeles!</div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
