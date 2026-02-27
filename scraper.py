@@ -294,35 +294,30 @@ class NintendoScraper:
         if "web.telegram.org" not in self.page.url:
             await self.page.goto("https://web.telegram.org/a/")
 
+        qr_path = os.path.join(os.path.dirname(__file__), 'ui', 'qr_login.png')
+
         try:
-            # Espera a que aparezca la lista de chats o el canvas del QR
-            await self.page.wait_for_selector(".chat-list, canvas", timeout=15000)
+            # First, check if we're already logged in (chat-list visible)
+            try:
+                await self.page.wait_for_selector(".chat-list", timeout=5000)
+                # We're logged in! Remove any leftover QR image
+                if os.path.exists(qr_path):
+                    try: os.remove(qr_path)
+                    except: pass
+                print("[LOGIN] Telegram conectado exitosamente.")
+                return True
+            except:
+                pass  # .chat-list not found, we need to login
             
-            # Comprobar si Telegram está pidiendo login (mostrando el QR)
-            if await self.page.locator("canvas").is_visible():
-                print("[LOGIN] Sesión no detectada o expirada. Generando captura del QR...")
-                qr_path = os.path.join(os.path.dirname(__file__), 'ui', 'qr_login.png')
-
-                # Wait for Telegram to actually DRAW the QR inside the canvas
-                print("[LOGIN] Esperando 2.5s para que el QR se renderice...")
-                await self.page.wait_for_timeout(2500)
-
-                await self.page.screenshot(path=qr_path)
-                print(f"[LOGIN] QR guardado en {qr_path}. Revisa /admin para escanearlo.")
-                
-                # Return False IMMEDIATELY so the frontend can show the QR
-                # The next /api/status poll will check again and detect login
-                return False
-                
-            # If we see chat-list, we are logged in! Remove any leftover QR image
-            qr_path = os.path.join(os.path.dirname(__file__), 'ui', 'qr_login.png')
-            if os.path.exists(qr_path):
-                try: os.remove(qr_path)
-                except: pass
-
-            await self.page.wait_for_selector(".chat-list", timeout=5000)
-            print("[LOGIN] Telegram conectado exitosamente.")
-            return True
+            # Not logged in - capture QR screenshot for the admin to scan
+            print("[LOGIN] Sesión no detectada o expirada. Generando captura del QR...")
+            print("[LOGIN] Esperando 2.5s para que el QR se renderice...")
+            await self.page.wait_for_timeout(2500)
+            
+            await self.page.screenshot(path=qr_path)
+            print(f"[LOGIN] QR guardado en {qr_path}. Revisa /admin para escanearlo.")
+            return False
+            
         except Exception as e:
             print(f"[LOGIN] Timeout o error conectando a Telegram: {e}")
             return False
