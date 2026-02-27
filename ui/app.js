@@ -85,32 +85,64 @@ async function refreshList(messageCount = 1000) {
             return;
         }
 
-        // Try reading as text first in case it's an HTML error page from Cloudflare/Railway
         const text = await res.text();
-
         if (!res.ok) {
             console.error("Server returned full error HTML:", text);
-            // Try extracting a clean error message, or just show standard error
             throw new Error(`Server status ${res.status}. Check console for details.`);
         }
 
         const data = JSON.parse(text);
-
-        if (data.packs_found !== undefined) {
-            resultsCount.textContent = `✅ Lista renovada: ${data.packs_found} packs encontrados`;
-            await loadAllPacks();
+        if (data.status === "started") {
+            // Start polling for status
+            pollRefreshStatus(fullBtn, quickBtn);
         } else {
-            resultsGrid.innerHTML = `<div class="empty-state" style="color: #ef4444">Error: ${data.error}</div>`;
+            throw new Error(data.error || "Unknown error starting refresh");
         }
     } catch (e) {
         resultsGrid.innerHTML = `<div class="empty-state" style="color: #ef4444">Error: ${e.message}</div>`;
         console.error(e);
-    } finally {
-        fullBtn.disabled = false;
-        quickBtn.disabled = false;
-        fullBtn.textContent = '🔄 Renovar 1000';
-        quickBtn.textContent = '⚡ Renovar 100';
+        resetButtons(fullBtn, quickBtn);
     }
+}
+
+function resetButtons(fullBtn, quickBtn) {
+    fullBtn.disabled = false;
+    quickBtn.disabled = false;
+    fullBtn.textContent = '🔄 Renovar 1000';
+    quickBtn.textContent = '⚡ Renovar 100';
+}
+
+function pollRefreshStatus(fullBtn, quickBtn) {
+    let dotCount = 0;
+    const pollInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_URL}/refresh/status`);
+            if (res.status === 401) {
+                clearInterval(pollInterval);
+                window.location.href = '/admin/login';
+                return;
+            }
+
+            const data = await res.json();
+            if (data.status === "running") {
+                dotCount = (dotCount + 1) % 4;
+                const dots = ".".repeat(dotCount);
+                resultsCount.textContent = `Scrapeando mensajes en segundo plano${dots} (Esto puede tardar un par de minutos sin trabar tu web)`;
+            } else if (data.status === "finished") {
+                clearInterval(pollInterval);
+                const result = data.result;
+                resultsCount.textContent = `✅ Lista renovada: ${result.packs_found || 0} packs encontrados`;
+                await loadAllPacks();
+                resetButtons(fullBtn, quickBtn);
+            } else if (data.status === "error") {
+                throw new Error(data.error);
+            }
+        } catch (e) {
+            clearInterval(pollInterval);
+            resultsGrid.innerHTML = `<div class="empty-state" style="color: #ef4444">Error de Polling: ${e.message}</div>`;
+            resetButtons(fullBtn, quickBtn);
+        }
+    }, 5000); // Poll every 5 seconds
 }
 
 // --- Clear Search ---

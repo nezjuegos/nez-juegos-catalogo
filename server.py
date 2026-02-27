@@ -36,16 +36,13 @@ def admin_required(f):
 # If sesion.zip is found, extract it to the persistent volume automatically
 RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
 ZIP_PATH = os.path.join(os.getcwd(), 'sesion.zip')
-EXTRACT_PATH = os.path.join(RAILWAY_VOLUME, "browser_data_clean")
+EXTRACT_PATH = RAILWAY_VOLUME
 
 if os.path.exists(ZIP_PATH):
     print(f"[DEPLOY] Found sesion.zip! Extracting to {EXTRACT_PATH}...")
     try:
-        # Provide a clean slate if folder already exists
-        if os.path.exists(EXTRACT_PATH):
-            shutil.rmtree(EXTRACT_PATH)
-        os.makedirs(EXTRACT_PATH, exist_ok=True)
-        
+        # The zip already contains a top-level 'browser_data_clean' folder,
+        # so extracting to RAILWAY_VOLUME will place it perfectly at /data/browser_data_clean
         with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
             zip_ref.extractall(EXTRACT_PATH)
             
@@ -165,21 +162,64 @@ def status():
     except:
         return jsonify({"telegram_connected": False, "cached_packs": 0})
 
+refresh_status = {
+    "is_running": False,
+    "last_result": None,
+    "error": None
+}
+
+def background_refresh(count):
+    global refresh_status
+    try:
+        # We need to run the coroutine in the pre-existing scraper thread loop
+        future = asyncio.run_coroutine_threadsafe(scraper.manual_refresh(count), loop)
+        result = future.result() # Wait for it to finish in this background thread
+        refresh_status["last_result"] = result
+        print(f"[SERVER] Background refresh finished: {result.get('packs_found', 0)} packs found", flush=True)
+    except Exception as e:
+        refresh_status["error"] = str(e)
+        print(f"[SERVER] Background refresh error: {e}", flush=True)
+    finally:
+        refresh_status["is_running"] = False
+
 @app.route('/api/refresh', methods=['POST'])
 @admin_required
 def refresh():
-    """Force refresh the pack cache - triggered manually by user"""
+    """Start refreshing the pack cache in the background"""
+    global refresh_status
+    if refresh_status["is_running"]:
+        return jsonify({"error": "A refresh is already perfectly in progress."}), 409
+        
     count = int(request.args.get('count', 1000))
     print(f"[SERVER] Manual refresh triggered ({count} messages)...", flush=True)
-    try:
-        result = run_on_scraper_thread(scraper.manual_refresh(count))
-        print(f"[SERVER] Refresh finished: {result.get('packs_found', 0)} packs found", flush=True)
-        return jsonify(result)
-    except Exception as e:
-        print(f"[SERVER] Refresh error: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+    
+    refresh_status["is_running"] = True
+    refresh_status["error"] = None
+    refresh_status["last_result"] = None
+    
+    # Start the refresh task in a NEW standard python thread so Flask can respond immediately
+    import threading
+    t = threading.Thread(target=background_refresh, args=(count,))
+    t.start()
+    
+    return jsonify({"status": "started", "message": "Scraping started in background"})
+
+@app.route('/api/refresh/status', methods=['GET'])
+@admin_required
+def get_refresh_status():
+    """Poll for the background refresh status"""
+    global refresh_status
+    if refresh_status["is_running"]:
+        return jsonify({"status": "running"})
+    elif refresh_status["error"]:
+        return jsonify({"status": "error", "error": refresh_status["error"]}), 500
+    elif refresh_status["last_result"]:
+        # Return result and clear it so we don't send it twice on subsequent calls
+        res = refresh_status["last_result"]
+        refresh_status["last_result"] = None
+        return jsonify({"status": "finished", "result": res})
+    else:
+        return jsonify({"status": "idle"})
 
 @app.route('/api/admin/set-cover', methods=['POST'])
 @admin_required
