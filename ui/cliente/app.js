@@ -125,7 +125,7 @@ function renderResults(packs, query = '', exclude = '') {
         // If cover_url is missing or empty, use a transparent pixel and handle with CSS or JS fallback
         const coverUrl = pack.cover_url;
 
-        const whatsappUrl = buildWhatsAppUrl(pack.id);
+        const whatsappUrl = buildWhatsAppUrl(pack.formatted_text);
         const formattedText = pack.formatted_text.replace(/`/g, '\\`').replace(/\$/g, '$$');
 
         // Logic for handling missing images:
@@ -199,8 +199,8 @@ function showError(msg) {
 }
 
 // --- Build WhatsApp URL ---
-function buildWhatsAppUrl(packId) {
-    const message = `Hola! Quiero consultarte si el pack de ID ${packId} está disponible, gracias!`;
+function buildWhatsAppUrl(formattedText) {
+    const message = `Hola! Quiero consultarte si este pack está disponible, gracias!\n\n${formattedText}`;
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
