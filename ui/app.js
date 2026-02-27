@@ -29,17 +29,10 @@ async function checkStatus() {
         const res = await fetch(`${API_URL}/status`);
         const data = await res.json();
 
-        const qrContainer = document.getElementById('qr-container');
-        const resultsGrid = document.getElementById('results-grid');
-        const qrImage = document.getElementById('qr-image');
-
         if (data.telegram_connected) {
             statusDot.classList.add('active');
             const cacheInfo = data.cached_packs > 0 ? ` (${data.cached_packs} packs)` : '';
             statusText.textContent = `Conectado${cacheInfo}`;
-
-            if (qrContainer) qrContainer.style.display = 'none';
-            if (resultsGrid) resultsGrid.style.display = 'grid';
 
             // Auto-load packs if cache exists but we haven't loaded yet
             if (data.cached_packs > 0 && allPacks.length === 0) {
@@ -49,22 +42,17 @@ async function checkStatus() {
             statusDot.classList.remove('active');
             statusText.textContent = "Esperando Login...";
 
-            // Check for QR
-            try {
-                // append timestamp to bust cache
-                const qrRes = await fetch(`/qr_login.png?t=${new Date().getTime()}`, { method: 'HEAD' });
-                if (qrRes.ok) {
-                    qrImage.src = `/qr_login.png?t=${new Date().getTime()}`;
-                    if (qrContainer) qrContainer.style.display = 'block';
-                    if (resultsGrid) resultsGrid.style.display = 'none';
-                } else {
-                    if (qrContainer) qrContainer.style.display = 'none';
-                    if (resultsGrid) resultsGrid.style.display = 'grid';
-                }
-            } catch (e) {
-                if (qrContainer) qrContainer.style.display = 'none';
-                if (resultsGrid) resultsGrid.style.display = 'grid';
-            }
+            // Show QR code directly inside the results grid area  
+            const ts = new Date().getTime();
+            resultsGrid.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px;">
+                    <h2 style="margin-bottom: 10px;">🔐 Se requiere iniciar sesión en Telegram</h2>
+                    <p style="color: #aaa; margin-bottom: 20px;">Abre Telegram en tu celular → Ajustes → Dispositivos → Vincular dispositivo → Escanea este QR</p>
+                    <img src="/qr_login.png?t=${ts}" alt="Cargando QR..." 
+                         style="max-width: 350px; border: 2px solid #444; border-radius: 12px; padding: 10px; background: white;"
+                         onerror="this.alt='⏳ Esperando QR del servidor...'; this.style.display='none';">
+                    <p style="color: #666; margin-top: 15px; font-size: 0.85em;">El QR se actualiza automáticamente cada 5 segundos</p>
+                </div>`;
         }
     } catch (e) {
         statusDot.classList.remove('active');
