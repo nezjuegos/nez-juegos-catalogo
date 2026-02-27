@@ -29,10 +29,17 @@ async function checkStatus() {
         const res = await fetch(`${API_URL}/status`);
         const data = await res.json();
 
+        const qrContainer = document.getElementById('qr-container');
+        const resultsGrid = document.getElementById('results-grid');
+        const qrImage = document.getElementById('qr-image');
+
         if (data.telegram_connected) {
             statusDot.classList.add('active');
             const cacheInfo = data.cached_packs > 0 ? ` (${data.cached_packs} packs)` : '';
             statusText.textContent = `Conectado${cacheInfo}`;
+
+            if (qrContainer) qrContainer.style.display = 'none';
+            if (resultsGrid) resultsGrid.style.display = 'grid';
 
             // Auto-load packs if cache exists but we haven't loaded yet
             if (data.cached_packs > 0 && allPacks.length === 0) {
@@ -41,6 +48,23 @@ async function checkStatus() {
         } else {
             statusDot.classList.remove('active');
             statusText.textContent = "Esperando Login...";
+
+            // Check for QR
+            try {
+                // append timestamp to bust cache
+                const qrRes = await fetch(`/qr_login.png?t=${new Date().getTime()}`, { method: 'HEAD' });
+                if (qrRes.ok) {
+                    qrImage.src = `/qr_login.png?t=${new Date().getTime()}`;
+                    if (qrContainer) qrContainer.style.display = 'block';
+                    if (resultsGrid) resultsGrid.style.display = 'none';
+                } else {
+                    if (qrContainer) qrContainer.style.display = 'none';
+                    if (resultsGrid) resultsGrid.style.display = 'grid';
+                }
+            } catch (e) {
+                if (qrContainer) qrContainer.style.display = 'none';
+                if (resultsGrid) resultsGrid.style.display = 'grid';
+            }
         }
     } catch (e) {
         statusDot.classList.remove('active');

@@ -50,7 +50,18 @@
             <span id="results-count">0 packs cargados</span>
         </div>
 
+        <!-- Login / QR Container -->
+        <div id="qr-container"
+            style="display: none; text-align: center; background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3>🔐 Se requiere iniciar sesión en Telegram</h3>
+            <p>El robot está esperando. Usa la app de Telegram de tu teléfono para escanear este código QR (Ajustes ->
+                Dispositivos -> Vincular).</p>
+            <img id="qr-image" src="" alt="Buscando QR..."
+                style="max-width: 300px; border: 1px solid #ddd; border-radius: 8px; margin-top: 15px; padding: 10px;">
+        </div>
+
         <!-- Results Grid -->
+
         <div class="results-grid" id="results-grid">
             <div class="empty-state" id="empty-state">
                 Haz clic en "Renovar Lista" para cargar los packs disponibles

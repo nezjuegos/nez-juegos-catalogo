@@ -295,9 +295,38 @@ class NintendoScraper:
             await self.page.goto("https://web.telegram.org/a/")
 
         try:
+            # Espera a que aparezca la lista de chats o el canvas del QR
+            await self.page.wait_for_selector(".chat-list, canvas", timeout=15000)
+            
+            # Comprobar si Telegram está pidiendo login (mostrando el QR)
+            if await self.page.locator("canvas").is_visible(timeout=3000):
+                print("[LOGIN] Sesión no detectada o expirada. Generando captura del QR...")
+                qr_path = os.path.join(os.path.dirname(__file__), 'ui', 'qr_login.png')
+                
+                # Remove old QR if exists
+                if os.path.exists(qr_path):
+                    try: os.remove(qr_path)
+                    except: pass
+
+                await self.page.screenshot(path=qr_path)
+                print(f"[LOGIN] QR guardado en {qr_path}. Por favor revisa la imagen para loguearte.")
+                
+                # Esperar un tiempo prolongado a que el administrador lo escanee
+                print("[LOGIN] Esperando hasta 120 segundos para que se escanee el QR...")
+                await self.page.wait_for_selector(".chat-list", timeout=120000)
+                print("[LOGIN] Login exitoso, procediendo con el Scraping...")
+
+                # Remove the QR image as we are logged in
+                if os.path.exists(qr_path):
+                    try: os.remove(qr_path)
+                    except: pass
+                return True
+                
             await self.page.wait_for_selector(".chat-list", timeout=5000)
+            print("[LOGIN] Telegram conectado exitosamente.")
             return True
-        except:
+        except Exception as e:
+            print(f"[LOGIN] Timeout o error conectando a Telegram: {e}")
             return False
 
     async def scrape_messages(self, message_count=250):
