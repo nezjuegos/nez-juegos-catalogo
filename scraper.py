@@ -299,9 +299,13 @@ class NintendoScraper:
             await self.page.wait_for_selector(".chat-list, canvas", timeout=15000)
             
             # Comprobar si Telegram está pidiendo login (mostrando el QR)
-            if await self.page.locator("canvas").is_visible(timeout=3000):
+            if await self.page.locator("canvas").is_visible():
                 print("[LOGIN] Sesión no detectada o expirada. Generando captura del QR...")
                 qr_path = os.path.join(os.path.dirname(__file__), 'ui', 'qr_login.png')
+
+                # Wait for Telegram to actually DRAW the QR inside the canvas
+                print("[LOGIN] Esperando 2.5s para que el QR se renderice...")
+                await self.page.wait_for_timeout(2500)
 
                 await self.page.screenshot(path=qr_path)
                 print(f"[LOGIN] QR guardado en {qr_path}. Revisa /admin para escanearlo.")

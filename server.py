@@ -3,12 +3,10 @@ import threading
 import asyncio
 import os
 import json
-import zipfile
-import shutil
 from functools import wraps
 from scraper import NintendoScraper
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='ui', static_url_path='')
 # Secret key for session encryption. Use env var in production, fixed fallback for dev.
 # IMPORTANT: os.urandom would change on every restart, invalidating all sessions!
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-me-in-production')
