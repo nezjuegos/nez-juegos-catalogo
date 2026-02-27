@@ -170,12 +170,15 @@ def status():
 def refresh():
     """Force refresh the pack cache - triggered manually by user"""
     count = int(request.args.get('count', 1000))
-    print(f"[SERVER] Manual refresh triggered ({count} messages)...")
+    print(f"[SERVER] Manual refresh triggered ({count} messages)...", flush=True)
     try:
         result = run_on_scraper_thread(scraper.manual_refresh(count))
+        print(f"[SERVER] Refresh finished: {result.get('packs_found', 0)} packs found", flush=True)
         return jsonify(result)
     except Exception as e:
-        print(f"[SERVER] Refresh error: {e}")
+        print(f"[SERVER] Refresh error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/set-cover', methods=['POST'])

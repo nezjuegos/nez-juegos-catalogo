@@ -79,24 +79,32 @@ async function refreshList(messageCount = 1000) {
 
     try {
         const res = await fetch(`${API_URL}/refresh?count=${messageCount}`, { method: 'POST' });
+
         if (res.status === 401) {
             window.location.href = '/admin/login';
             return;
         }
+
+        // Try reading as text first in case it's an HTML error page from Cloudflare/Railway
+        const text = await res.text();
+
         if (!res.ok) {
-            throw new Error(`Server error: ${res.status}`);
+            console.error("Server returned full error HTML:", text);
+            // Try extracting a clean error message, or just show standard error
+            throw new Error(`Server status ${res.status}. Check console for details.`);
         }
-        const data = await res.json();
+
+        const data = JSON.parse(text);
 
         if (data.packs_found !== undefined) {
             resultsCount.textContent = `✅ Lista renovada: ${data.packs_found} packs encontrados`;
-            // Load all packs after refresh
             await loadAllPacks();
         } else {
             resultsGrid.innerHTML = `<div class="empty-state" style="color: #ef4444">Error: ${data.error}</div>`;
         }
     } catch (e) {
         resultsGrid.innerHTML = `<div class="empty-state" style="color: #ef4444">Error: ${e.message}</div>`;
+        console.error(e);
     } finally {
         fullBtn.disabled = false;
         quickBtn.disabled = false;
