@@ -32,26 +32,6 @@ def admin_required(f):
     return decorated_function
 # ----------------------
 
-# --- Auto-Extract Telegram Session from Zip (For Railway Deployment) ---
-# If sesion.zip is found, extract it to the persistent volume automatically
-RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
-ZIP_PATH = os.path.join(os.getcwd(), 'sesion.zip')
-EXTRACT_PATH = RAILWAY_VOLUME
-
-if os.path.exists(ZIP_PATH):
-    print(f"[DEPLOY] Found sesion.zip! Extracting to {EXTRACT_PATH}...")
-    try:
-        # The zip already contains a top-level 'browser_data_clean' folder,
-        # so extracting to RAILWAY_VOLUME will place it perfectly at /data/browser_data_clean
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-            zip_ref.extractall(EXTRACT_PATH)
-            
-        print("[DEPLOY] Session extracted successfully! Deleting sesion.zip...")
-        os.remove(ZIP_PATH) # Remove to save space after extraction
-    except Exception as e:
-        print(f"[DEPLOY] Error extracting session: {e}")
-# ------------------------------------------------------------------------
-
 # --- Asyncio Bridge ---
 # Playwright must run on a single event loop.
 # We create a dedicated thread for this loop.
