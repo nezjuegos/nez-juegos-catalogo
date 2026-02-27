@@ -258,10 +258,18 @@ class NintendoScraper:
         if self.is_running: return
         
         self.playwright = await async_playwright().start()
+        is_server = bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH'))
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             user_data_dir=USER_DATA_DIR,
-            headless=bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH')),  # headless on Railway, headed locally
-            args=["--disable-blink-features=AutomationControlled", "--disable-notifications", "--no-sandbox"]
+            headless=is_server,  # strictly enforce headless if on server
+            args=[
+                "--disable-blink-features=AutomationControlled", 
+                "--disable-notifications", 
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ] + (["--headless"] if is_server else [])
         )
         
         pages = self.browser_context.pages
