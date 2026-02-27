@@ -9,8 +9,11 @@ from functools import wraps
 from scraper import NintendoScraper
 
 app = Flask(__name__)
-# Secret key for session encryption. Must be secure in production.
-app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24))
+# Secret key for session encryption. Use env var in production, fixed fallback for dev.
+# IMPORTANT: os.urandom would change on every restart, invalidating all sessions!
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-me-in-production')
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH'))  # Secure cookies on HTTPS (Railway)
 # Master password loaded from environment variable (default for local dev)
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 

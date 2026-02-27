@@ -79,6 +79,13 @@ async function refreshList(messageCount = 1000) {
 
     try {
         const res = await fetch(`${API_URL}/refresh?count=${messageCount}`, { method: 'POST' });
+        if (res.status === 401) {
+            window.location.href = '/admin/login';
+            return;
+        }
+        if (!res.ok) {
+            throw new Error(`Server error: ${res.status}`);
+        }
         const data = await res.json();
 
         if (data.packs_found !== undefined) {
