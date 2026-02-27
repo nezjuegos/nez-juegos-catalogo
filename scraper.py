@@ -257,6 +257,18 @@ class NintendoScraper:
     async def start(self):
         if self.is_running: return
         
+        # Prevent "connect_over_cdp" crashes due to stale lock files
+        print("[SCRAPER] Checking for stale Chromium lock files...")
+        for lock_file in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+            lf_path = os.path.join(USER_DATA_DIR, lock_file)
+            if os.path.exists(lf_path):
+                try:
+                    # In some environments, it's a symlink, so we unlink/remove
+                    os.unlink(lf_path) if os.path.islink(lf_path) else os.remove(lf_path)
+                    print(f"[SCRAPER] Removed old lock file: {lock_file}")
+                except Exception as e:
+                    print(f"[SCRAPER] Warning, could not remove {lock_file}: {e}")
+
         self.playwright = await async_playwright().start()
         is_server = bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH'))
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
