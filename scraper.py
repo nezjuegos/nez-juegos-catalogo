@@ -289,6 +289,10 @@ class NintendoScraper:
         self.is_running = True
 
     async def ensure_telegram_login(self):
+        # FAST PATH: if we already verified we're logged in, just return True
+        if hasattr(self, 'telegram_connected') and self.telegram_connected:
+            return True
+
         if not self.is_running: await self.start()
         
         if "web.telegram.org" not in self.page.url:
@@ -305,6 +309,7 @@ class NintendoScraper:
                     try: os.remove(qr_path)
                     except: pass
                 print("[LOGIN] Telegram conectado exitosamente.")
+                self.telegram_connected = True
                 return True
             except:
                 pass  # .chat-list not found, we need to login
@@ -316,10 +321,12 @@ class NintendoScraper:
             
             await self.page.screenshot(path=qr_path)
             print(f"[LOGIN] QR guardado en {qr_path}. Revisa /admin para escanearlo.")
+            self.telegram_connected = False
             return False
             
         except Exception as e:
             print(f"[LOGIN] Timeout o error conectando a Telegram: {e}")
+            self.telegram_connected = False
             return False
 
     async def scrape_messages(self, message_count=250):

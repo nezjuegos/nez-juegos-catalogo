@@ -23,6 +23,8 @@ function init() {
     setInterval(checkStatus, 30000);
 }
 
+let qrPollInterval = null;
+
 // --- Status Check ---
 async function checkStatus() {
     try {
@@ -34,6 +36,12 @@ async function checkStatus() {
             const cacheInfo = data.cached_packs > 0 ? ` (${data.cached_packs} packs)` : '';
             statusText.textContent = `Conectado${cacheInfo}`;
 
+            // Stop polling for QR if we are connected
+            if (qrPollInterval) {
+                clearInterval(qrPollInterval);
+                qrPollInterval = null;
+            }
+
             // Auto-load packs if cache exists but we haven't loaded yet
             if (data.cached_packs > 0 && allPacks.length === 0) {
                 loadAllPacks();
@@ -41,6 +49,12 @@ async function checkStatus() {
         } else {
             statusDot.classList.remove('active');
             statusText.textContent = "Esperando Login...";
+
+            // Start active QR polling if not already running
+            if (!qrPollInterval) {
+                qrPollInterval = setInterval(pollQrStatus, 5000);
+                pollQrStatus(); // Trigger immediately the first time
+            }
 
             // Show QR code directly inside the results grid area  
             const ts = new Date().getTime();
@@ -51,12 +65,37 @@ async function checkStatus() {
                     <img src="/qr_login.png?t=${ts}" alt="Cargando QR..." 
                          style="max-width: 350px; border: 2px solid #444; border-radius: 12px; padding: 10px; background: white;"
                          onerror="this.alt='⏳ Esperando QR del servidor...'; this.style.display='none';">
-                    <p style="color: #666; margin-top: 15px; font-size: 0.85em;">El QR se actualiza automáticamente cada 5 segundos</p>
+                    <p style="color: #666; margin-top: 15px; font-size: 0.85em;">El QR y estado se actualizan automáticamente cada 5 segundos</p>
                 </div>`;
         }
     } catch (e) {
         statusDot.classList.remove('active');
         statusText.textContent = "Servidor Desconectado";
+    }
+}
+
+// --- Active QR Check ---
+async function pollQrStatus() {
+    try {
+        const res = await fetch(`${API_URL}/check_qr`);
+        const data = await res.json();
+
+        // If login succeeded, stop polling and refresh full status
+        if (data.telegram_connected) {
+            clearInterval(qrPollInterval);
+            qrPollInterval = null;
+            checkStatus(); // Resume normal view
+        } else {
+            // Update the QR image timestamp to bypass cache
+            const img = document.querySelector('img[src^="/qr_login.png"]');
+            if (img) {
+                const ts = new Date().getTime();
+                img.src = `/qr_login.png?t=${ts}`;
+                img.style.display = 'inline-block';
+            }
+        }
+    } catch (e) {
+        console.error("Error polling QR status", e);
     }
 }
 
