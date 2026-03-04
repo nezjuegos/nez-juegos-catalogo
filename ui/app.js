@@ -20,7 +20,7 @@ let allPacks = [];
 // --- Initialization ---
 function init() {
     checkStatus();
-    setInterval(checkStatus, 30000);
+    // Background polling removed to save API hits. Status updates on page refresh.
 }
 
 let qrPollInterval = null;
