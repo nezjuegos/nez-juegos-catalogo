@@ -395,10 +395,23 @@ class NintendoScraper:
         return packs
 
     async def search_game(self, query, limit=5, exclude=""):
+        # If we have valid cached data, filter and return WITHOUT touching Playwright at all
+        current_time = time.time()
+        cache_age = current_time - self.cache_timestamp
+        
+        if self.cached_packs and cache_age <= CACHE_DURATION_SECONDS:
+            print(f"[CACHE] Using cached data ({len(self.cached_packs)} packs)")
+            return self._filter_packs(query, exclude, limit)
+
+        # Cache is expired or empty - need to scrape
         if not self.is_running: await self.start()
 
         is_logged_in = await self.ensure_telegram_login()
         if not is_logged_in:
+            # If not logged in but we have stale cache, return it anyway
+            if self.cached_packs:
+                print(f"[CACHE] Not logged in, using stale cache ({len(self.cached_packs)} packs)")
+                return self._filter_packs(query, exclude, limit)
             try:
                 print("[LOGIN] Waiting for Telegram login...")
                 await self.page.wait_for_selector(".chat-list", timeout=300000)
@@ -411,30 +424,20 @@ class NintendoScraper:
         await chat.click(force=True)
         await asyncio.sleep(2)
 
-        # Check if we need to refresh the cache
-        current_time = time.time()
-        cache_age = current_time - self.cache_timestamp
-        
-        if not self.cached_packs or cache_age > CACHE_DURATION_SECONDS:
-            print(f"[CACHE] Cache expired or empty (age: {cache_age:.0f}s). Re-scraping...")
-            self.cached_packs = await self.scrape_messages(250)
-            self.cache_timestamp = current_time
-        else:
-            print(f"[CACHE] Using cached data ({len(self.cached_packs)} packs)")
+        print(f"[CACHE] Cache expired or empty (age: {cache_age:.0f}s). Re-scraping...")
+        self.cached_packs = await self.scrape_messages(250)
+        self.cache_timestamp = current_time
 
-        # If no query and no exclusion, return all packs
+        return self._filter_packs(query, exclude, limit)
+
+    def _filter_packs(self, query, exclude, limit):
+        """Filter cached packs without touching Playwright."""
         if not query.strip() and not exclude.strip():
             print(f"[SEARCH] No filters - returning all {len(self.cached_packs)} packs")
             return [p.to_dict(self.manual_covers) for p in self.cached_packs[:limit]]
 
-        # Filter cached packs by query (multi-keyword search)
         print(f"[SEARCH] Filtering for: '{query}' (Exclude: '{exclude}')")
-        matching_packs = []
-        
-        for pack in self.cached_packs:
-            if pack.matches_filters(query, exclude):
-                matching_packs.append(pack)
-
+        matching_packs = [p for p in self.cached_packs if p.matches_filters(query, exclude)]
         print(f"[RESULT] Found {len(matching_packs)} matching packs")
         return [p.to_dict(self.manual_covers) for p in matching_packs[:limit]]
 

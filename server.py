@@ -132,11 +132,15 @@ def search():
 
 @app.route('/api/status')
 def status():
-    # Check if we need login
     try:
-        logged_in = run_on_scraper_thread(scraper.ensure_telegram_login())
         cache_size = len(scraper.cached_packs)
-        return jsonify({"telegram_connected": logged_in, "cached_packs": cache_size})
+        # If we have cached packs, we know we're connected - no need to touch Playwright
+        if cache_size > 0:
+            return jsonify({"telegram_connected": True, "cached_packs": cache_size})
+        
+        # No cache yet - check login status via Playwright (first load / QR flow)
+        logged_in = run_on_scraper_thread(scraper.ensure_telegram_login())
+        return jsonify({"telegram_connected": logged_in, "cached_packs": 0})
     except:
         return jsonify({"telegram_connected": False, "cached_packs": 0})
 
