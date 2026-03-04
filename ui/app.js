@@ -20,7 +20,7 @@ let allPacks = [];
 // --- Initialization ---
 function init() {
     checkStatus();
-    setInterval(checkStatus, 5000);
+    setInterval(checkStatus, 30000);
 }
 
 // --- Status Check ---
