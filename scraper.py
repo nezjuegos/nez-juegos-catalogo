@@ -288,6 +288,28 @@ class NintendoScraper:
         self.page = pages[0] if pages else await self.browser_context.new_page()
         self.is_running = True
 
+    async def _restart_browser(self):
+        """Force-restart browser after a crash (Target crashed, OOM, etc.)"""
+        print("[SCRAPER] ⚠️ Browser crashed! Restarting Chromium...")
+        self.is_running = False
+        self.telegram_connected = False
+        try:
+            if self.browser_context:
+                await self.browser_context.close()
+        except:
+            pass
+        try:
+            if self.playwright:
+                await self.playwright.stop()
+        except:
+            pass
+        self.playwright = None
+        self.browser_context = None
+        self.page = None
+        await asyncio.sleep(2)  # Brief cooldown
+        await self.start()
+        print("[SCRAPER] ✅ Browser restarted successfully.")
+
     async def ensure_telegram_login(self):
         # FAST PATH: if we already verified we're logged in, just return True
         if hasattr(self, 'telegram_connected') and self.telegram_connected:
@@ -448,14 +470,8 @@ class NintendoScraper:
         print(f"[RESULT] Found {len(matching_packs)} matching packs")
         return [p.to_dict(self.manual_covers) for p in matching_packs[:limit]]
 
-    async def manual_refresh(self, message_count=1000):
-        """Force refresh of cached packs - called by user manually
-        
-        For small counts (<= 100): Incremental update - merge new packs without duplicates
-        For large counts (> 100): Full refresh - replace all cached packs
-        """
-        if not self.is_running: await self.start()
-
+    async def _open_chat_and_scrape(self, message_count):
+        """Navigate to the target chat and scrape messages. Separated for crash recovery."""
         is_logged_in = await self.ensure_telegram_login()
         if not is_logged_in:
             try:
@@ -472,7 +488,27 @@ class NintendoScraper:
 
         # Scrape messages
         print(f"[REFRESH] Scraping {message_count} messages...")
-        new_packs = await self.scrape_messages(message_count)
+        return await self.scrape_messages(message_count)
+
+    async def manual_refresh(self, message_count=1000):
+        """Force refresh of cached packs - called by user manually
+        
+        For small counts (<= 100): Incremental update - merge new packs without duplicates
+        For large counts (> 100): Full refresh - replace all cached packs
+        """
+        if not self.is_running: await self.start()
+
+        # Try scraping, with one automatic retry on crash
+        try:
+            new_packs = await self._open_chat_and_scrape(message_count)
+        except Exception as e:
+            error_msg = str(e).lower()
+            if 'crash' in error_msg or 'target closed' in error_msg or 'connection closed' in error_msg:
+                # Browser crashed - restart and retry once
+                await self._restart_browser()
+                new_packs = await self._open_chat_and_scrape(message_count)
+            else:
+                raise
         
         if message_count <= 100:
             # SYNC MODE: Sync cache with fresh 100 messages
