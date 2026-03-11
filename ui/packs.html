@@ -310,13 +310,12 @@
                 const isFeatured = pack.is_new === 1;
                 
                 let gamesHtml = '';
-                const dlcColorClass = allDlc ? 'dlc-solo' : (isPackMixed ? 'dlc-mixed' : '');
                 
                 pack.games.forEach(g => {
                     if (isLineStrictDlc(g)) {
-                        gamesHtml += `<div class="game-title ${dlcColorClass}">🧩 ${g.name}</div>`;
+                        gamesHtml += `<div class="game-title dlc-solo">🧩 ${g.name}</div>`;
                     } else if (isLineMixed(g)) {
-                        gamesHtml += `<div class="game-title ${dlcColorClass}">🎮 ${g.name}</div>`;
+                        gamesHtml += `<div class="game-title dlc-mixed">🎮 ${g.name}</div>`;
                     } else {
                         gamesHtml += `<div class="game-title">🎮 ${g.name}</div>`;
                     }

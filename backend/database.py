@@ -240,7 +240,7 @@ class Database:
                 sql += " AND price_local <= ?"
                 params.append(price_max)
                 
-            cursor.execute(sql + " ORDER BY id DESC", params)
+            cursor.execute(sql + " ORDER BY CAST(id AS INTEGER) DESC", params)
             all_packs = cursor.fetchall()
             
             results = []
