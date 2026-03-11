@@ -29,6 +29,21 @@ BEST_SELLERS = set([
 # DLC Keywords for classification
 DLC_KEYWORDS = ["only dlc", "expansion pass", "dlc", "upgrade pack", "season pass"]
 
+# Known Nintendo first-party DLC titles that don't contain standard DLC keywords
+# These get detected as full games otherwise
+KNOWN_DLC_TITLES = [
+    "happy home paradise",
+    "octo expansion",
+    "torna the golden country",
+    "the ancient gods",
+    "piranha plant standalone fighter",
+    "fighters pass",
+    "challenger pack",
+    "mii fighter costume",
+    "pase de expansión",
+    "pase de expansion",
+]
+
 # Load game covers from JSON file
 GAME_COVERS = {}
 try:
@@ -81,7 +96,7 @@ class GenericPack:
                 
                 # Check if it's a DLC line
                 lower_line = clean_line.lower()
-                is_dlc = any(kw in lower_line for kw in DLC_KEYWORDS)
+                is_dlc = any(kw in lower_line for kw in DLC_KEYWORDS) or any(title in lower_line for title in KNOWN_DLC_TITLES)
                 
                 # Translations for the UI
                 translated_name = clean_line
