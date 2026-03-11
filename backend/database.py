@@ -66,7 +66,9 @@ class Database:
                     ('titulo_principal', 'Tu próxima aventura en Nintendo Switch empieza aquí'),
                     ('subtitulo', 'Descubre el catálogo más amplio de juegos digitales. Cuentas primarias, secundarias, códigos canjeables y alquileres con entrega inmediata.'),
                     ('enlace_whatsapp', 'https://chat.whatsapp.com/GzWbL0aR9SjDkMnvR3O1wZ'),
-                    ('hero_image_url', '')
+                    ('hero_img_1', '/assets/images/smash.png'),
+                    ('hero_img_2', '/assets/images/zelda.png'),
+                    ('hero_img_3', '/assets/images/mario.png')
                 ]
                 cursor.executemany('INSERT INTO config (key, value) VALUES (?, ?)', default_config)
                 

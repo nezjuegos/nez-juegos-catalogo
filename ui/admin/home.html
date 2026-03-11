@@ -76,9 +76,16 @@
             </div>
 
             <div class="form-group" style="margin-top: 3rem;">
-                <label>Imagen Destacada (Hero Banner)</label>
-                <input type="url" id="inputHeroImg" value="https://assets.nintendo.com/image/upload/..." placeholder="Pega una URL de imagen aquí">
-                <span class="help-text">Puedes usar links directos de imágenes de Nintendo.com</span>
+                <label>Juego Destacado 1 (Derecha Atrás)</label>
+                <input type="url" id="inputHeroImg1" placeholder="Ej: /assets/images/smash.png o URL externa">
+                
+                <label style="margin-top: 1rem;">Juego Destacado 2 (Izquierda Atrás)</label>
+                <input type="url" id="inputHeroImg2" placeholder="Ej: /assets/images/zelda.png o URL externa">
+
+                <label style="margin-top: 1rem;">Juego Destacado 3 (Centro Frente)</label>
+                <input type="url" id="inputHeroImg3" placeholder="Ej: /assets/images/mario.png o URL externa">
+                
+                <span class="help-text" style="margin-top: 10px;">Puedes usar imágenes locales usando sus rutas (ej: /assets/images/tu-imagen.png) o enlaces web directos de Nintendo.com. Para subir imágenes nuevas, ponlas en la carpeta correspondiente.</span>
             </div>
 
             <div style="margin-top: 3rem; text-align: right;">
@@ -88,10 +95,77 @@
     </div>
 
     <script>
-        function updatePreview() {
-            document.getElementById('preview-title').innerText = document.getElementById('input-title').value || "Título Principal";
-            document.getElementById('preview-subtitle').innerText = document.getElementById('input-subtitle').value || "Descripción...";
+        // Load existing config on page load
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+                
+                if (config.titulo_principal) document.getElementById('inputTitle').value = config.titulo_principal;
+                if (config.subtitulo) document.getElementById('inputSubtitle').value = config.subtitulo;
+                if (config.enlace_whatsapp) document.getElementById('inputWa').value = config.enlace_whatsapp;
+                
+                if (config.hero_img_1) document.getElementById('inputHeroImg1').value = config.hero_img_1;
+                if (config.hero_img_2) document.getElementById('inputHeroImg2').value = config.hero_img_2;
+                if (config.hero_img_3) document.getElementById('inputHeroImg3').value = config.hero_img_3;
+                
+                updatePreview();
+            } catch (err) {
+                console.error('Error loading config', err);
+            }
         }
+
+        function updatePreview() {
+            document.getElementById('prevTitle').innerText = document.getElementById('inputTitle').value || "Título Principal";
+            document.getElementById('prevSubtitle').innerText = document.getElementById('inputSubtitle').value || "Descripción...";
+            document.getElementById('prevWa').href = document.getElementById('inputWa').value || "#";
+        }
+
+        // Add event listeners for live preview updates
+        document.getElementById('inputTitle').addEventListener('input', updatePreview);
+        document.getElementById('inputSubtitle').addEventListener('input', updatePreview);
+
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSave');
+            btn.innerText = 'Guardando...';
+            
+            const payload = {
+                titulo_principal: document.getElementById('inputTitle').value,
+                subtitulo: document.getElementById('inputSubtitle').value,
+                enlace_whatsapp: document.getElementById('inputWa').value,
+                hero_img_1: document.getElementById('inputHeroImg1').value,
+                hero_img_2: document.getElementById('inputHeroImg2').value,
+                hero_img_3: document.getElementById('inputHeroImg3').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    btn.innerText = '¡Guardado con éxito!';
+                    btn.style.background = '#10b981'; // green
+                    setTimeout(() => {
+                        btn.innerText = 'Guardar Cambios de la Home';
+                        btn.style.background = '';
+                    }, 2000);
+                } else {
+                    if (res.status === 401) window.location.href = '/admin/login';
+                    else alert('Error guardando la configuración');
+                    btn.innerText = 'Guardar Cambios de la Home';
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error de red');
+                btn.innerText = 'Guardar Cambios de la Home';
+            }
+        });
+
+        // Initialize
+        loadConfig();
     </script>
 </body>
 </html>

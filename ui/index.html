@@ -145,9 +145,9 @@
             </div>
         </div>
             <div class="hero-visual" style="position: relative; perspective: 1000px; display: flex; align-items: center; justify-content: center;">
-                <img src="/assets/images/smash.png" style="position: absolute; width: 60%; right: 0; bottom: 10%; transform: rotateY(-15deg) translateZ(-100px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1;" alt="Super Smash Bros">
-                <img src="/assets/images/zelda.png" style="position: absolute; width: 60%; left: 0; top: 10%; transform: rotateY(15deg) translateZ(-50px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2;" alt="Zelda Tears of the Kingdom">
-                <img src="/assets/images/mario.png" style="position: relative; width: 75%; transform: translateZ(50px); border-radius: 12px; box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4); z-index: 3;" alt="Super Mario Odyssey">
+                <img id="hero-img-1" src="/assets/images/smash.png" style="position: absolute; width: 60%; right: 0; bottom: 10%; transform: rotateY(-15deg) translateZ(-100px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1;" alt="Super Smash Bros">
+                <img id="hero-img-2" src="/assets/images/zelda.png" style="position: absolute; width: 60%; left: 0; top: 10%; transform: rotateY(15deg) translateZ(-50px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2;" alt="Zelda Tears of the Kingdom">
+                <img id="hero-img-3" src="/assets/images/mario.png" style="position: relative; width: 75%; transform: translateZ(50px); border-radius: 12px; box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4); z-index: 3;" alt="Super Mario Odyssey">
                 
                 <div class="glass-card" style="position: absolute; bottom: -20px; left: -20px; z-index: 4; display: flex; align-items: center; gap: 15px; padding: 15px 25px;">
                     <span style="font-size: 2rem;">🍄</span>
@@ -190,12 +190,11 @@
                 if(config.titulo_principal) document.getElementById('hero-title').innerText = config.titulo_principal;
                 if(config.subtitulo) document.getElementById('hero-subtitle').innerText = config.subtitulo;
                 if(config.enlace_whatsapp) {
-                    document.querySelector('.btn-wa').href = config.enlace_whatsapp;
-                    document.getElementById('btn-wa-hero').href = config.enlace_whatsapp;
+                    document.querySelectorAll('.btn-wa').forEach(btn => btn.href = config.enlace_whatsapp);
                 }
-                if(config.hero_image_url) {
-                    document.getElementById('hero-banner').style.backgroundImage = `url('${config.hero_image_url}')`;
-                }
+                if(config.hero_img_1) document.getElementById('hero-img-1').src = config.hero_img_1;
+                if(config.hero_img_2) document.getElementById('hero-img-2').src = config.hero_img_2;
+                if(config.hero_img_3) document.getElementById('hero-img-3').src = config.hero_img_3;
             })
             .catch(err => console.error("Error loading config:", err));
     </script>
