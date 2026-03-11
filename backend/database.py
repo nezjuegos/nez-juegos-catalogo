@@ -100,7 +100,17 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM juegos ORDER BY titulo COLLATE NOCASE ASC')
-            return [dict(row) for row in cursor.fetchall()]
+            results = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                d['precios'] = {
+                    'codigo_digital': d.get('precio_codigo'),
+                    'primaria': d.get('precio_primaria'),
+                    'secundaria': d.get('precio_secundaria'),
+                    'alquiler': d.get('precio_alquiler'),
+                }
+                results.append(d)
+            return results
 
     def get_juego(self, juego_id):
         with self.get_connection() as conn:
