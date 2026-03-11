@@ -173,14 +173,29 @@
                 const tr = document.createElement('tr');
                 tr.className = 'pack-row';
                 
-                const hasDlc = pack.games.some(g => g.is_dlc);
-                const dlcBadge = hasDlc ? ' <span class="badge">DLC</span>' : '';
-                const newBadge = pack.is_new ? '<span class="badge" style="background:#ef4444; color:white;">NUEVO</span> ' : '';
+                const isLineMixed = g => g.is_mixed === true || (g.name.includes('+') && g.is_dlc === true);
+                const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
+                const isLineStrictGame = g => !g.is_dlc && !isLineMixed(g);
+
+                const allDlc = pack.games.length > 0 && pack.games.every(isLineStrictDlc);
+                const hasDlc = pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
+                const hasGame = pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
+                const isPackMixed = hasDlc && hasGame;
+                
+                let dlcBadge = '';
+                if (allDlc) {
+                    dlcBadge = '<span style="background:var(--secondary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; margin-right:8px;">Solo DLC</span>';
+                } else if (isPackMixed) {
+                    dlcBadge = '<span style="background:#3b82f6; color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; margin-right:8px;">Juego + DLC</span>';
+                }
+
+                const newBadge = pack.is_new ? '<span class="badge" style="background:#ef4444; color:white; margin-right:8px;">NUEVO</span> ' : '';
 
                 // Build inline games list
                 let gamesHtml = '';
                 pack.games.forEach(g => {
-                    gamesHtml += `<span style="color:var(--text-muted); font-size:0.85rem;">• ${g.name}${g.is_dlc ? ' (DLC)' : ''}</span><br>`;
+                    const suffix = isLineStrictDlc(g) ? ' (DLC)' : (isLineMixed(g) ? ' (Juego+DLC)' : '');
+                    gamesHtml += `<span style="color:var(--text-muted); font-size:0.85rem;">• ${g.name}${suffix}</span><br>`;
                 });
                 if (!gamesHtml) gamesHtml = '<span style="color:#52525b; font-size:0.85rem;">Sin juegos detectados</span>';
 

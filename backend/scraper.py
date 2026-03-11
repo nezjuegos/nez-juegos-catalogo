@@ -96,7 +96,10 @@ class GenericPack:
                 
                 # Check if it's a DLC line
                 lower_line = clean_line.lower()
-                is_dlc = any(kw in lower_line for kw in DLC_KEYWORDS) or any(title in lower_line for title in KNOWN_DLC_TITLES)
+                is_dlc_trigger = any(kw in lower_line for kw in DLC_KEYWORDS) or any(title in lower_line for title in KNOWN_DLC_TITLES)
+                is_mixed = "+" in lower_line and is_dlc_trigger
+                
+                is_dlc = is_dlc_trigger and not is_mixed
                 
                 # Translations for the UI
                 translated_name = clean_line
@@ -110,7 +113,8 @@ class GenericPack:
                 self.games.append(clean_line) # raw original
                 self.games_json.append({
                     "name": translated_name,
-                    "is_dlc": is_dlc
+                    "is_dlc": is_dlc,
+                    "is_mixed": is_mixed
                 })
 
         self.is_valid = id_found and price_found and len(self.games) > 0

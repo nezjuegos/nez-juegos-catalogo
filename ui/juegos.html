@@ -145,18 +145,14 @@
         let waNumber = '';
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('/api/juegos')
-                .then(res => res.json())
-                .then(data => {
-                    allJuegos = data.results || [];
-                    renderGames(allJuegos);
-                })
-                .catch(err => console.error("Error loading games:", err));
-
-            // Load WhatsApp number from config
-            fetch('/api/config').then(r => r.json()).then(cfg => {
-                waNumber = cfg.numero_whatsapp || '';
-            }).catch(() => {});
+            Promise.all([
+                fetch('/api/juegos').then(r => r.json()),
+                fetch('/api/config').then(r => r.json()).catch(() => ({}))
+            ]).then(([juegosData, configData]) => {
+                waNumber = configData.numero_whatsapp || '';
+                allJuegos = juegosData.results || [];
+                renderGames(allJuegos);
+            }).catch(err => console.error("Error loading data:", err));
 
             // Wire up search
             const searchInput = document.getElementById('searchInput');
