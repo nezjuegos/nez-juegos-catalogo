@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Packs | Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --secondary: #d946ef;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --whatsapp: #25d366;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            background-image: radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            background-attachment: fixed; min-height: 100vh;
+        }
+
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+        a { text-decoration: none; color: inherit; }
+
+        /* Navbar */
+        header {
+            position: sticky; top: 0; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border); z-index: 1000; padding: 1.5rem 4rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .logo span { background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; color: transparent; }
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { font-weight: 500; color: var(--text-muted); transition: 0.3s; }
+        .nav-links a:hover, a.active { color: white; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 3rem 4rem; }
+
+        /* Search & Filters */
+        .filters-section {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 2rem; margin-bottom: 3rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+        }
+        
+        .search-box { flex: 1; min-width: 300px; position: relative; }
+        .search-box input {
+            width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white;
+            padding: 1rem 1rem 1rem 3rem; border-radius: var(--radius-sm); font-size: 1rem;
+        }
+        .search-box input:focus { outline: none; border-color: var(--primary); }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+
+        .price-filter input { width: 120px; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); }
+        
+        .dlc-toggle {
+            display: flex; align-items: center; gap: 0.5rem; background: #0a0a0c; border: 1px solid var(--border);
+            padding: 0 1rem; height: 50px; border-radius: var(--radius-sm); cursor: pointer; user-select: none;
+        }
+        .dlc-toggle input { width: 18px; height: 18px; accent-color: var(--secondary); cursor: pointer; }
+
+        /* Grid */
+        .packs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2rem; }
+
+        /* Pack Card */
+        .pack-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+            overflow: hidden; display: flex; flex-direction: column; transition: 0.3s;
+        }
+        .pack-card:hover { transform: translateY(-5px); border-color: rgba(139, 92, 246, 0.4); box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.2); }
+        
+        .pack-cover { height: 160px; background: #27272a; position: relative; overflow: hidden; }
+        .pack-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .dlc-badge {
+            position: absolute; top: 1rem; right: 1rem; background: var(--secondary); color: white;
+            padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        }
+
+        .pack-content { padding: 1.5rem; flex: 1; display: flex; flex-direction: column; }
+        .pack-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .pack-id { color: var(--text-muted); font-size: 0.85rem; font-family: monospace; }
+        .pack-price { font-size: 1.5rem; font-family: 'Outfit'; font-weight: 800; color: white; }
+        
+        .pack-games { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; flex: 1; }
+        .game-title { color: white; display: flex; align-items: center; gap: 0.5rem; }
+        .game-title.dlc { color: var(--secondary); }
+
+        .pack-actions { display: flex; gap: 0.5rem; }
+        .btn { flex: 1; padding: 0.8rem; border-radius: var(--radius-sm); font-weight: 600; text-align: center; cursor: pointer; transition: 0.2s; border: none; font-size: 0.9rem; }
+        .btn-wa { background: var(--whatsapp); color: white; }
+        .btn-wa:hover { background: var(--whatsapp-hover); }
+        .btn-copy { background: #27272a; color: white; }
+        .btn-copy:hover { background: #3f3f46; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <a href="index.html">🎮 <span>Nez</span> Juegos</a>
+        </div>
+        <nav class="nav-links">
+            <a href="juegos.html">Juegos Individuales</a>
+            <a href="packs.html" class="active">Packs en Oferta</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Catálogo de Packs</h1>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Los mejores combos de juegos armados a precios insuperables.</p>
+
+        <div class="filters-section">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Buscar juego en un pack... (ej: Zelda)">
+            </div>
+            <div class="price-filter">
+                <input type="number" id="maxPrice" placeholder="Precio Max ($)">
+            </div>
+            <label class="dlc-toggle">
+                <input type="checkbox" id="dlcOnly">
+                <span>Mostrar solo DLCs</span>
+            </label>
+            <button class="btn" style="background: var(--primary); color: white; padding: 0 2rem; height: 50px;">Buscar</button>
+        </div>
+
+        <div class="packs-grid" id="packsGrid">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+
+    <script>
+        const packsGrid = document.getElementById('packsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const maxPriceInput = document.getElementById('maxPrice');
+        const dlcToggle = document.getElementById('dlcOnly');
+        const searchBtn = document.querySelector('.filters-section .btn');
+
+        // Create autocomplete suggestions container
+        const suggestionsBox = document.createElement('div');
+        suggestionsBox.className = 'suggestions-box';
+        suggestionsBox.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); z-index: 100; display: none; max-height: 200px; overflow-y: auto;';
+        searchInput.parentNode.appendChild(suggestionsBox);
+
+        // Fetch Packs API
+        async function fetchPacks() {
+            packsGrid.innerHTML = '<p style="color: var(--text-muted); text-align: center; width: 100%; padding: 3rem;">Cargando catálogo...</p>';
+            
+            const q = searchInput.value.trim();
+            const priceMax = maxPriceInput.value;
+            const dlcOnly = dlcToggle.checked;
+            
+            let url = `/api/packs?q=${encodeURIComponent(q)}`;
+            if (priceMax) url += `&price_max=${priceMax}`;
+            if (dlcOnly) url += `&dlc_only=true`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                renderPacks(data.results || []);
+            } catch (err) {
+                console.error(err);
+                packsGrid.innerHTML = '<p style="color: red; text-align: center; width: 100%;">Error cargando los packs.</p>';
+            }
+        }
+
+        // Fetch Suggestions API
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const val = e.target.value.trim();
+            if (val.length < 3) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+            
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/packs/suggestions?q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        suggestionsBox.innerHTML = '';
+                        data.suggestions.forEach(sugg => {
+                            const div = document.createElement('div');
+                            div.textContent = sugg;
+                            div.style.cssText = 'padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: 0.2s;';
+                            div.onmouseover = () => div.style.background = '#27272a';
+                            div.onmouseout = () => div.style.background = 'transparent';
+                            div.onclick = () => {
+                                searchInput.value = sugg;
+                                suggestionsBox.style.display = 'none';
+                                fetchPacks();
+                            };
+                            suggestionsBox.appendChild(div);
+                        });
+                        suggestionsBox.style.display = 'block';
+                    } else {
+                        suggestionsBox.style.display = 'none';
+                    }
+                } catch (err) { console.error(err); }
+            }, 300);
+        });
+
+        // Hide suggestions on click outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+
+        // Event Listeners for Filters
+        searchBtn.addEventListener('click', fetchPacks);
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { suggestionsBox.style.display = 'none'; fetchPacks(); } });
+        dlcToggle.addEventListener('change', fetchPacks);
+
+        function formatPrice(val) {
+            return '$' + val.toLocaleString('es-AR');
+        }
+
+        function wappLink(pack) {
+            const num = "5491112345678"; // Hardcoded for preview, real would be from config
+            const msg = `Hola, quiero comprar el pack ID: ${pack.id} por ${formatPrice(pack.price_local)}`;
+            return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+        }
+
+        function copyToClip(pack) {
+            const text = pack.raw_text + `\n💰 PRECIO: ${formatPrice(pack.price_local)}`;
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Pack copiado al portapapeles");
+            });
+        }
+
+        function renderPacks(packs) {
+            packsGrid.innerHTML = '';
+            
+            if (packs.length === 0) {
+                packsGrid.innerHTML = '<p style="color: var(--text-muted); text-align: center; width: 100%; padding: 3rem;">No se encontraron packs con esos filtros.</p>';
+                return;
+            }
+            
+            packs.forEach(pack => {
+                const isDlcOnly = pack.games.every(g => g.is_dlc);
+                const isFeatured = pack.is_new === 1;
+                
+                let gamesHtml = '';
+                pack.games.forEach(g => {
+                    gamesHtml += `<div class="game-title ${g.is_dlc ? 'dlc' : ''}">
+                        ${g.is_dlc ? '🕹️ [Solo DLC]' : '🎮'} ${g.name}
+                    </div>`;
+                });
+
+                const badgeHtml = isDlcOnly 
+                    ? '<span class="dlc-badge" style="background:var(--secondary);">Solo DLCs</span>' 
+                    : (pack.games.some(g => g.is_dlc) ? '<span class="dlc-badge">Contiene DLC</span>' : '');
+
+                const newBadge = isFeatured ? '<span class="dlc-badge" style="left:1rem; right:auto; background:#ef4444;">🔥 Nuevo</span>' : '';
+
+                const fallbackCover = "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_656/b_white/f_auto/q_auto/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574";
+                const cover = pack.cover_url || fallbackCover;
+
+                const cardStyle = isFeatured ? 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 5px 20px rgba(239, 68, 68, 0.1);' : '';
+
+                const card = document.createElement('div');
+                card.className = 'pack-card';
+                card.style.cssText = cardStyle;
+                
+                card.innerHTML = `
+                    <div class="pack-cover">
+                        <img src="${cover}" alt="Cover">
+                        ${badgeHtml}
+                        ${newBadge}
+                    </div>
+                    <div class="pack-content">
+                        <div class="pack-header">
+                            <span class="pack-id">#ID: ${pack.id}</span>
+                            <span class="pack-price">${formatPrice(pack.price_local)}</span>
+                        </div>
+                        <div class="pack-games">
+                            ${gamesHtml}
+                        </div>
+                        <div class="pack-actions">
+                            <button class="btn btn-copy" onclick="copyToClip(${JSON.stringify(pack).replace(/"/g, '&quot;')})">Copiar</button>
+                            <a href="${wappLink(pack)}" target="_blank" class="btn btn-wa">Pedir 💬</a>
+                        </div>
+                    </div>
+                `;
+                packsGrid.appendChild(card);
+            });
+        }
+
+        // Initial Load
+        fetchPacks();
+    </script>
+</body>
+</html>

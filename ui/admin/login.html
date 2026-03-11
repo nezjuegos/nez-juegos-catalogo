@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09090b; 
+            --bg-card: #18181b; 
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --text-main: #f8fafc; 
+            --text-muted: #a1a1aa; 
+            --border: #27272a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                              radial-gradient(circle at 0% 100%, rgba(217, 70, 239, 0.1) 0%, transparent 50%);
+        }
+        
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Top decorative bar */
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), #d946ef);
+        }
+
+        .logo { 
+            font-family: 'Outfit'; 
+            font-weight: 800; 
+            font-size: 2rem; 
+            margin-bottom: 0.5rem;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            gap: 8px; 
+        }
+        .logo span { 
+            background: linear-gradient(to right, var(--primary), #d946ef); 
+            -webkit-background-clip: text; 
+            color: transparent; 
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            display: block;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo">🎮 <span>Nez</span> Juegos</div>
+        <p class="subtitle">Acceso seguro al Panel de Administración</p>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="password">Contraseña Maestra</label>
+                <input type="password" id="password" required autofocus placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn" id="loginBtn">Ingresar al Sistema</button>
+            <span class="error-message" id="errorMsg"></span>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const loginBtn = document.getElementById('loginBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.innerText = '';
+            
+            const password = document.getElementById('password').value;
+            if (!password) return;
+
+            loginBtn.innerText = 'Verificando...';
+            loginBtn.disabled = true;
+
+            try {
+                const res = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.status === 'ok') {
+                    loginBtn.innerText = 'Acceso Correcto';
+                    loginBtn.style.background = '#22c55e'; // Green success
+                    setTimeout(() => {
+                        window.location.href = '/admin'; // Redirect to dashboard
+                    }, 500);
+                } else {
+                    errorMsg.innerText = data.error || 'Contraseña incorrecta';
+                    document.getElementById('password').value = '';
+                    loginBtn.innerText = 'Ingresar al Sistema';
+                    loginBtn.disabled = false;
+                }
+            } catch (err) {
+                errorMsg.innerText = 'Error de conexión con el servidor.';
+                loginBtn.innerText = 'Ingresar al Sistema';
+                loginBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

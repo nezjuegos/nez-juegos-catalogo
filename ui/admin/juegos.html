@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Juegos | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09090b; --bg-card: #18181b; --primary: #8b5cf6;
+            --text-main: #f8fafc; --text-muted: #a1a1aa; --border: #27272a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        .header h1 { font-family: 'Outfit'; font-size: 2rem; }
+        
+        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #7c3aed; }
+        .btn-back { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-back:hover { background: #27272a; color: white; }
+
+        .layout { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; }
+
+        .form-section { background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
+        input, select { width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem; border-radius: 6px; }
+        input:focus { outline: none; border-color: var(--primary); }
+        
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        /* File Upload */
+        .file-upload { border: 2px dashed var(--border); padding: 2rem; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.3s; margin-bottom: 1rem; }
+        .file-upload:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.05); }
+
+        /* Table */
+        .table-section { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #09090b; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        
+        .game-cell { display: flex; align-items: center; gap: 1rem; }
+        .game-cell img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+        
+        .action-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; margin-right: 0.5rem; }
+        .action-btn:hover { opacity: 1; transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🎮 Gestión de Juegos Individuales</h1>
+        <a href="index.html" class="btn btn-back">Volver al Dashboard</a>
+    </div>
+
+    <div class="layout">
+        <!-- Formulario (CRUD) -->
+        <div class="form-section">
+            <h2 style="margin-bottom: 1.5rem; font-family: 'Outfit';">Agregar Nuevo Juego</h2>
+            
+            <div class="form-group">
+                <label>Título del Juego</label>
+                <input type="text" placeholder="Ej: Mario Kart 8 Deluxe">
+            </div>
+
+            <div class="form-group">
+                <label>Plataforma</label>
+                <select>
+                    <option>Nintendo Switch</option>
+                    <option>Nintendo Switch 2</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Precios (ARS)</label>
+                <div class="price-grid">
+                    <input type="number" placeholder="Código (Ej: 115000)">
+                    <input type="number" placeholder="Primaria (Ej: 85000)">
+                    <input type="number" placeholder="Secundaria (Ej: 45000)">
+                    <input type="number" placeholder="Alquiler (Ej: 18000)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Portada (Horizontal 16:9)</label>
+                <div class="file-upload">
+                    <span>📁 Haz clic para subir imagen</span>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en el servidor</p>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;">Guardar Juego en Base de Datos</button>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Juego</th>
+                        <th>Plataforma</th>
+                        <th>Precios Registrados</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="game-cell">
+                                <img src="https://assets.nintendo.com/image/upload/b_white,c_scale,f_auto,q_auto,w_656/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574" alt="Mario">
+                                <strong>Pokemon Pokopia</strong>
+                            </div>
+                        </td>
+                        <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Switch 2</span></td>
+                        <td><span style="color: var(--text-muted); font-size: 0.9rem;">Cód, Prim, Sec, Alq</span></td>
+                        <td>
+                            <button class="action-btn" title="Editar">✏️</button>
+                            <button class="action-btn" title="Eliminar">🗑️</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juegos Individuales | Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #8b5cf6;
+            --secondary: #d946ef;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --whatsapp: #25d366;
+            --whatsapp-hover: #22c55e;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            background-image: radial-gradient(circle at 0% 100%, rgba(217, 70, 239, 0.05) 0%, transparent 40%);
+            background-attachment: fixed; min-height: 100vh;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+        a { text-decoration: none; color: inherit; }
+
+        /* Navbar */
+        header {
+            position: sticky; top: 0; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border); z-index: 1000; padding: 1.5rem 4rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .logo span { background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; color: transparent; }
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { font-weight: 500; color: var(--text-muted); transition: 0.3s; }
+        .nav-links a:hover, a.active { color: white; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 3rem 4rem; }
+
+        .search-box {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 1rem; margin-bottom: 3rem; display: flex; align-items: center;
+        }
+        .search-box input {
+            width: 100%; background: transparent; border: none; color: white;
+            padding: 0.5rem 1rem; font-size: 1.2rem; outline: none;
+        }
+
+        /* Grid */
+        .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2.5rem; }
+
+        /* Game Card */
+        .game-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+            overflow: hidden; display: flex; flex-direction: column; transition: 0.3s;
+        }
+        .game-card:hover { transform: translateY(-5px); border-color: rgba(217, 70, 239, 0.4); box-shadow: 0 10px 30px -10px rgba(217, 70, 239, 0.2); }
+        
+        .game-cover { height: 180px; position: relative; }
+        .game-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .platform-badge {
+            position: absolute; top: 1rem; right: 1rem; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(4px); border: 1px solid var(--border);
+            color: white; padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700;
+        }
+
+        .game-info { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .game-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.2; }
+
+        /* Pricing Table */
+        .pricing-list { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .price-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.02); padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+            transition: 0.2s;
+        }
+        .price-row:hover { background: rgba(255,255,255,0.05); }
+        
+        .price-details { display: flex; flex-direction: column; }
+        .price-type { font-weight: 700; font-size: 0.9rem; color: var(--primary); }
+        .price-amount { font-family: 'Outfit'; font-size: 1.2rem; font-weight: 800; color: white; }
+        .price-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+        .btn-wa-small {
+            background: var(--whatsapp); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem; border: none; cursor: pointer; transition: 0.2s;
+        }
+        .btn-wa-small:hover { background: var(--whatsapp-hover); transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <a href="index.html">🎮 <span>Nez</span> Juegos</a>
+        </div>
+        <nav class="nav-links">
+            <a href="juegos.html" class="active">Juegos Individuales</a>
+            <a href="packs.html">Packs en Oferta</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Juegos Individuales</h1>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Elige la modalidad que mejor se adapte a ti.</p>
+
+        <div class="search-box">
+            <span style="font-size: 1.5rem; color: var(--text-muted)">🔍</span>
+            <input type="text" placeholder="Buscar por el nombre de un juego específico...">
+            <input type="text" id="searchInput" placeholder="Buscar por el nombre de un juego específico...">
+            <button class="btn-wa-small" id="searchBtn" style="background: var(--primary); padding: 0.8rem 1.5rem; font-size: 1rem;">Buscar</button>
+        </div>
+
+        <div class="games-grid" id="gamesGrid">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+
+    <script>
+        let allJuegos = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/juegos')
+                .then(res => res.json())
+                .then(data => {
+                    allJuegos = data.results || [];
+                    renderGames(allJuegos);
+                })
+                .catch(err => console.error("Error loading games:", err));
+
+            // Wire up search
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+
+            const performSearch = () => {
+                const term = searchInput.value.toLowerCase();
+                const filtered = allJuegos.filter(j => j.titulo.toLowerCase().includes(term));
+                renderGames(filtered);
+            };
+
+            searchInput.addEventListener('input', performSearch);
+            searchBtn.addEventListener('click', performSearch);
+        });
+
+        function formatPrice(val) {
+            if (!val) return 'Consultar';
+            return '$' + val.toLocaleString('es-AR');
+        }
+
+        function createOrderLink(gameTitle, type, price) {
+            const base = "https://wa.me/5491112345678?text=";
+            const text = encodeURIComponent(`Hola, quiero comprar ${gameTitle} en modalidad ${type} por ${formatPrice(price)}.`);
+            return base + text;
+        }
+
+        function createPriceOption(game, typeName, priceKey, desc, isPrimary = false) {
+            const price = game.precios[priceKey];
+            if (!price) return ''; // If price is missing or null, don't show the option
+            
+            return `
+                <div class="price-row">
+                    <div class="price-details">
+                        <span class="price-type">${typeName}</span>
+                        <span class="price-amount">${formatPrice(price)}</span>
+                        <span class="price-desc">${desc}</span>
+                    </div>
+                    <a href="${createOrderLink(game.titulo, typeName, price)}" target="_blank" class="btn-wa-small" style="text-decoration: none;">
+                        Pedir 💬
+                    </a>
+                </div>
+            `;
+        }
+
+        function renderGames(gamesArray) {
+            const container = document.getElementById('gamesGrid');
+            container.innerHTML = '';
+
+            if (gamesArray.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; width: 100%; padding: 3rem;">No se encontraron juegos con ese nombre.</p>';
+                return;
+            }
+
+            gamesArray.forEach(game => {
+                const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_656/b_white/f_auto/q_auto/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574';
+                
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.innerHTML = `
+                    <div class="game-cover" style="background-image: url('${cover}')">
+                        <span class="platform-badge">${game.plataforma}</span>
+                    </div>
+                    <div class="game-info">
+                        <h2 class="game-title">${game.titulo}</h2>
+                    </div>
+                    <div class="pricing-list">
+                        ${createPriceOption(game, 'CÓDIGO DIGITAL', 'codigo_digital', 'Canjeable en tu cuenta', true)}
+                        ${createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Juegas con tu usuario (Permanente)')}
+                        ${createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Juegas con perfil alterno (Permanente)')}
+                        ${createPriceOption(game, 'ALQUILER 30 DÍAS', 'alquiler', 'Cuenta prestada por 1 mes')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>

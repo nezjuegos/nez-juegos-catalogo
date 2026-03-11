@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nez Juegos | Catálogo Digital</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #8b5cf6; /* Vibrant Purple */
+            --primary-hover: #7c3aed;
+            --secondary: #d946ef; /* Fuchsia */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --whatsapp: #25D366;
+            --whatsapp-hover: #22c55e;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(217, 70, 239, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+        a { text-decoration: none; color: inherit; }
+
+        /* Navbar */
+        header {
+            position: fixed; top: 0; width: 100%; height: 80px;
+            background: rgba(10, 10, 12, 0.7); backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            z-index: 1000; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 4rem;
+        }
+
+        .logo { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .logo span { background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; color: transparent; }
+
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { font-weight: 500; color: var(--text-muted); transition: color 0.3s; }
+        .nav-links a:hover { color: white; }
+
+        /* Hero */
+        .hero {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
+            min-height: 100vh; padding: 120px 4rem 4rem 4rem; max-width: 1400px; margin: 0 auto;
+            align-items: center;
+        }
+
+        .hero-text h1 {
+            font-size: clamp(3rem, 5vw, 4.5rem); font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%); -webkit-background-clip: text; color: transparent;
+        }
+
+        .hero-text p { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 500px; line-height: 1.6; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 1rem 2rem; border-radius: 50px; font-weight: 600; font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem; display: inline-block; transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.5);
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 40px -10px rgba(139, 92, 246, 0.7); }
+
+        .hero-visual { position: relative; width: 100%; height: 600px; }
+        .hero-img {
+            width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px -20px rgba(139, 92, 246, 0.3);
+            /* Placeholder image for Nintendo aesthetic but purple tint */
+            background: url('https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_1200/b_white/f_auto/q_auto/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574') center/cover;
+            filter: hue-rotate(45deg) saturate(1.2) brightness(0.8);
+        }
+
+        .floating-card {
+            position: absolute; bottom: -20px; left: -40px; background: rgba(19, 19, 24, 0.8);
+            backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem; border-radius: var(--radius-md); display: flex; gap: 1rem; align-items: center;
+        }
+        .floating-card img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+
+        /* Sections */
+        .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; }
+        
+        .features { padding: 4rem; max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .feature-card {
+            background: var(--bg-card); padding: 3rem; border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .feature-card:hover { border-color: rgba(139, 92, 246, 0.5); transform: translateY(-5px); }
+        .feature-card h3 { font-size: 1.8rem; margin-bottom: 1rem; display: flex; justify-content: space-between; }
+        .feature-card p { color: var(--text-muted); margin-bottom: 2rem; }
+        .feature-img { width: 100%; height: 200px; border-radius: var(--radius-md); object-fit: cover; margin-bottom: 1.5rem; background: #27272a; }
+
+        /* Community Banner */
+        .community {
+            margin: 6rem 4rem; padding: 4rem; border-radius: var(--radius-lg); text-align: center;
+            background: linear-gradient(45deg, rgba(37, 211, 102, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(37, 211, 102, 0.2); position: relative; overflow: hidden;
+        }
+        .community h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+        .community p { color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem auto; font-size: 1.1rem; }
+        .btn-wa {
+            background-color: var(--whatsapp); color: white; padding: 1.2rem 3rem; border-radius: 50px;
+            font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 1.2rem; display: inline-flex; align-items: center; gap: 10px;
+            box-shadow: 0 10px 25px -5px rgba(37, 211, 102, 0.4); border: none; cursor: pointer;
+        }
+        .btn-wa:hover { background-color: var(--whatsapp-hover); transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">🎮 <span>Nez</span> Juegos</div>
+        <nav class="nav-links">
+            <a href="juegos.html">Catálogo Juegos</a>
+            <a href="packs.html">Catálogo Packs</a>
+            <!-- Admin link hidden, accessed via direct URL -->
+        </nav>
+    </header>
+
+    <main class="hero">
+        <div class="hero-text">
+            <h1 id="hero-title">Tu próxima aventura en Nintendo Switch empieza aquí</h1>
+            <p id="hero-subtitle">Descubre el catálogo más amplio de juegos digitales. Cuentas primarias, secundarias, códigos canjeables y alquileres con entrega inmediata.</p>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <a href="juegos.html" class="btn-primary">Ver Catálogo Completo</a>
+                <a href="#" class="btn-wa" id="btn-wa-hero" style="padding: 1rem 1.5rem; font-size: 1.1rem;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                    Comunidad
+                </a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-img" id="hero-banner"></div>
+            <div class="floating-card">
+                <img src="https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_656/b_white/f_auto/q_auto/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574" alt="Mario">
+                <div>
+                    <h4 style="color: white; font-size: 1rem;">Super Mario Odyssey</h4>
+                    <span style="color: var(--whatsapp); font-size: 0.8rem; font-weight: bold;">Desde $18.000</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <section class="features">
+        <a href="juegos.html" class="feature-card">
+            <div class="feature-img" style="background: url('https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch') center/cover;"></div>
+            <h3>Juegos Individuales <span>↗</span></h3>
+            <p>Busca juegos específicos. Elige entre código propio, cuenta primaria para jugar desde tu perfil, secundaria o alquiler de 30 días.</p>
+        </a>
+
+        <a href="packs.html" class="feature-card" style="border-color: rgba(217, 70, 239, 0.2);">
+            <div class="feature-img" style="background: url('https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/c_scale,w_1200/ncom/en_US/articles/2021/celebrate-mar10-day-with-savings-on-select-games/mar10-sale_1920x1080_article') center/cover;"></div>
+            <h3>Packs en Oferta <span>↗</span></h3>
+            <p>Combos armados de varios juegos a precios irrisorios. Si buscas llevarte una biblioteca completa de golpe, este es tu lugar.</p>
+        </a>
+    </section>
+
+    <section class="community">
+        <h2>Únete a nuestra Comunidad</h2>
+        <p>No te pierdas de los últimos lanzamientos, sorteos exclusivos y chatea con cientos de nintenderos. ¡No necesitas comprar para ser parte!</p>
+        <a href="#" class="btn-wa">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            Únete Ahora
+        </a>
+    </section>
+
+    <!-- Dev Mock JS -->
+    <script>
+        // Fetch CMS data from real backend
+        fetch('/api/config')
+            .then(response => response.json())
+            .then(config => {
+                if(config.titulo_principal) document.getElementById('hero-title').innerText = config.titulo_principal;
+                if(config.subtitulo) document.getElementById('hero-subtitle').innerText = config.subtitulo;
+                if(config.enlace_whatsapp) {
+                    document.querySelector('.btn-wa').href = config.enlace_whatsapp;
+                    document.getElementById('btn-wa-hero').href = config.enlace_whatsapp;
+                }
+                if(config.hero_image_url) {
+                    document.getElementById('hero-banner').style.backgroundImage = `url('${config.hero_image_url}')`;
+                }
+            })
+            .catch(err => console.error("Error loading config:", err));
+    </script>
+</body>
+</html>

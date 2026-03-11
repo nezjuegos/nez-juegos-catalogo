@@ -1,0 +1,422 @@
+import asyncio
+import re
+import os
+import time
+import json
+import threading
+from playwright.async_api import async_playwright
+
+# --- CONFIGURATION ---
+SOURCE_CHAT = "evAn Accounts"
+PRICE_MULTIPLIER = 3000
+RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
+USER_DATA_DIR = os.path.join(RAILWAY_VOLUME, "browser_data_clean")
+
+# Best-seller keywords for highlighting
+BEST_SELLERS = set([
+    "mario kart", "mario odyssey", "mario bros", "mario party", "mario maker", "mario",
+    "zelda", "breath of the wild", "tears of the kingdom", "link's awakening",
+    "pokemon", "pokémon",
+    "animal crossing",
+    "smash bros", "super smash",
+    "splatoon",
+    "kirby",
+    "metroid",
+    "fire emblem",
+    "luigi's mansion", "pikmin", "xenoblade", "bayonetta",
+])
+
+# DLC Keywords for classification
+DLC_KEYWORDS = ["only dlc", "expansion pass", "dlc", "upgrade pack", "season pass"]
+
+# Load game covers from JSON file
+GAME_COVERS = {}
+try:
+    covers_path = os.path.join(os.path.dirname(__file__), 'game_covers.json')
+    if os.path.exists(covers_path):
+        with open(covers_path, 'r', encoding='utf-8') as f:
+            covers_data = json.load(f)
+            GAME_COVERS = covers_data.get('covers', {})
+except:
+    pass
+
+class GenericPack:
+    def __init__(self, raw_text):
+        self.raw_text = raw_text
+        self.id = None
+        self.games = []
+        self.games_json = []  # List of dicts {name: str, is_dlc: bool}
+        self.original_price = 0
+        self.final_price = 0
+        self.is_valid = False
+        self._parse()
+
+    def _parse(self):
+        lines = self.raw_text.split('\n')
+        id_found = False
+        price_found = False
+        
+        for line in lines:
+            clean_line = line.strip()
+            if not clean_line:
+                continue
+            
+            id_match = re.search(r"ID\s*:\s*(\d+)", clean_line, re.IGNORECASE)
+            if id_match:
+                self.id = id_match.group(1)
+                id_found = True
+                continue
+            
+            price_match = re.search(r"(\d+(?:\.\d+)?)\s*\$|\$\s*(\d+(?:\.\d+)?)", clean_line)
+            if price_match:
+                price_str = price_match.group(1) or price_match.group(2)
+                self.original_price = int(float(price_str))
+                self.final_price = self.original_price * PRICE_MULTIPLIER
+                price_found = True
+                continue
+
+            if id_found and not price_found:
+                if "NINTENDO SWITCH ACCOUNT" in clean_line: continue
+                if "For buy:" in clean_line: continue
+                
+                # Check if it's a DLC line
+                lower_line = clean_line.lower()
+                is_dlc = any(kw in lower_line for kw in DLC_KEYWORDS)
+                
+                # Translations for the UI
+                translated_name = clean_line
+                if "only dlc" in lower_line:
+                    translated_name = re.sub(r"(?i)only dlc", "Solo DLC", translated_name)
+                elif "upgrade pack" in lower_line:
+                    translated_name = re.sub(r"(?i)upgrade pack", "- Mejora", translated_name)
+                elif "expansion pass" in lower_line:
+                    translated_name = re.sub(r"(?i)expansion pass", "Pase de Expansión", translated_name)
+                
+                self.games.append(clean_line) # raw original
+                self.games_json.append({
+                    "name": translated_name,
+                    "is_dlc": is_dlc
+                })
+
+        self.is_valid = id_found and price_found and len(self.games) > 0
+
+    @property
+    def content_hash(self):
+        """Generate a hash based on games to detect duplicates"""
+        sorted_games = sorted([g.lower().strip() for g in self.games])
+        content_string = "|".join(sorted_games)
+        return hash(content_string)
+
+    def get_cover_url(self):
+        """Get cover URL for the first matching best-seller game in the pack"""
+        games_text = " ".join(self.games).lower()
+        sorted_keys = sorted(GAME_COVERS.keys(), key=len, reverse=True)
+        for keyword in sorted_keys:
+            if keyword in games_text:
+                return GAME_COVERS[keyword]
+        return None
+
+    def to_dict(self):
+        """Convert to dict structure matching the SQLite DB schema parameters"""
+        return {
+            "id": self.id,
+            "raw_text": self.raw_text,
+            "games_json": self.games_json,
+            "price_usd": self.original_price,
+            "price_local": self.final_price,
+            "cover_url": self.get_cover_url()
+        }
+
+
+class NintendoScraper:
+    def __init__(self, db_instance):
+        self.playwright = None
+        self.browser_context = None
+        self.page = None
+        self.is_running = False
+        self.telegram_connected = False
+        self.db = db_instance
+        
+        self.monitor_task = None
+        self.monitor_active = False
+
+    async def start(self):
+        if self.is_running: return
+        
+        print("[SCRAPER] Checking for stale Chromium lock files...")
+        for lock_file in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+            lf_path = os.path.join(USER_DATA_DIR, lock_file)
+            if os.path.exists(lf_path):
+                try:
+                    os.unlink(lf_path) if os.path.islink(lf_path) else os.remove(lf_path)
+                    print(f"[SCRAPER] Removed old lock file: {lock_file}")
+                except Exception as e:
+                    pass
+
+        self.playwright = await async_playwright().start()
+        is_server = bool(os.getenv('RAILWAY_VOLUME_MOUNT_PATH'))
+        
+        self.browser_context = await self.playwright.chromium.launch_persistent_context(
+            user_data_dir=USER_DATA_DIR,
+            headless=is_server,
+            args=[
+                "--disable-blink-features=AutomationControlled", 
+                "--disable-notifications", 
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ] + (["--headless"] if is_server else [])
+        )
+        
+        pages = self.browser_context.pages
+        self.page = pages[0] if pages else await self.browser_context.new_page()
+        self.is_running = True
+
+    async def _restart_browser(self):
+        print("[SCRAPER] ⚠️ Browser crashed! Restarting Chromium...")
+        self.is_running = False
+        self.telegram_connected = False
+        try:
+            if self.browser_context: await self.browser_context.close()
+        except: pass
+        try:
+            if self.playwright: await self.playwright.stop()
+        except: pass
+        self.playwright = None
+        self.browser_context = None
+        self.page = None
+        await asyncio.sleep(2)
+        await self.start()
+        print("[SCRAPER] ✅ Browser restarted successfully.")
+
+    async def ensure_telegram_login(self):
+        if hasattr(self, 'telegram_connected') and self.telegram_connected:
+            return True
+
+        if not self.is_running: await self.start()
+        
+        if "web.telegram.org" not in self.page.url:
+            await self.page.goto("https://web.telegram.org/a/")
+
+        qr_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'qr_login.png')
+
+        try:
+            try:
+                await self.page.wait_for_selector(".chat-list", timeout=5000)
+                if os.path.exists(qr_path):
+                    try: os.remove(qr_path)
+                    except: pass
+                print("[LOGIN] Telegram conectado exitosamente.")
+                self.telegram_connected = True
+                return True
+            except:
+                pass
+            
+            print("[LOGIN] Sesión no detectada. Generando captura del QR...")
+            await self.page.wait_for_timeout(2500)
+            await self.page.screenshot(path=qr_path)
+            print(f"[LOGIN] QR guardado en {qr_path}.")
+            self.telegram_connected = False
+            return False
+            
+        except Exception as e:
+            print(f"[LOGIN] Timeout o error conectando a Telegram: {e}")
+            self.telegram_connected = False
+            return False
+
+    async def _open_chat(self):
+        is_logged_in = await self.ensure_telegram_login()
+        if not is_logged_in:
+            try:
+                await self.page.wait_for_selector(".chat-list", timeout=300000)
+            except:
+                raise Exception("Login Timeout")
+
+        chat = self.page.get_by_text(SOURCE_CHAT, exact=False).first
+        await chat.click(force=True)
+        await asyncio.sleep(2)
+        await self.page.bring_to_front()
+        
+        try:
+            chat_area = self.page.locator('.messages-container, .MessageList, .chat-content, .bubbles').first
+            await chat_area.click(force=True)
+            await asyncio.sleep(0.3)
+        except:
+            await self.page.mouse.click(500, 400)
+
+    # --- MODE 1: Scrape Today Only ---
+    async def scrape_today(self, max_scrolls=150):
+        """Scroll upward until a date separator bubble NOT matching 'Hoy' (or similar) is reached"""
+        print("[SCRAPE] Starting 'Escanear Hoy' mode...")
+        await self._open_chat()
+        
+        all_texts = set()
+        packs = []
+        scrolls = 0
+        hit_yesterday = False
+        
+        while scrolls < max_scrolls and not hit_yesterday:
+            # 1. Check for old date separators in view
+            # Note: Web.telegram.org/a/ handles dates using sticky headers like .bubble-date
+            date_bubbles = await self.page.locator(".bubble .date, .bubble-date, .media-date").all_text_contents()
+            for date_text in date_bubbles:
+                dt = date_text.lower()
+                # If we see a date that is clearly NOT today (Ayer, specific dates like "marzo 1", etc.)
+                if "ayer" in dt or (" de " in dt and "hoy" not in dt):
+                    print(f"[SCRAPE] Hit date boundary '{dt}'. Stopping scroll.")
+                    hit_yesterday = True
+                    break
+
+            if hit_yesterday and scrolls > 0:
+                break # Ensure we parse the messages on screen first before fully stopping
+                
+            # 2. Parse messages
+            elements = await self.page.locator("div.text-content").all()
+            for el in elements:
+                try:
+                    text = await el.inner_text()
+                    if text and text not in all_texts:
+                        all_texts.add(text)
+                        pack = GenericPack(text)
+                        if pack.is_valid:
+                            # Avoid duplicates by content
+                            if any(p.content_hash == pack.content_hash for p in packs):
+                                continue
+                            packs.append(pack)
+                except: continue
+                
+            # 3. Scroll up
+            await self.page.keyboard.press("Home")
+            await asyncio.sleep(1)
+            scrolls += 1
+            
+        packs.reverse() # Newest first
+        self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=True)
+        print(f"[SCRAPE] Finished Today. Guardados {len(packs)} packs nuevos.")
+        return len(packs)
+
+    # --- MODE 2: Full Scrape ---
+    async def scrape_full(self, message_count=1000):
+        print(f"[SCRAPE] Full Scrape mode: {message_count} messages...")
+        await self._open_chat()
+        
+        all_texts = set()
+        packs = []
+        max_scrolls = max(50, message_count // 15)
+        
+        for _ in range(max_scrolls):
+            if len(all_texts) >= message_count: break
+            
+            elements = await self.page.locator("div.text-content").all()
+            for el in elements:
+                try:
+                    text = await el.inner_text()
+                    if text and text not in all_texts:
+                        all_texts.add(text)
+                        pack = GenericPack(text)
+                        if pack.is_valid:
+                            if any(p.content_hash == pack.content_hash for p in packs):
+                                continue
+                            packs.append(pack)
+                except: continue
+                
+            await self.page.keyboard.press("Home")
+            await asyncio.sleep(0.5)
+            
+        packs.reverse()
+        # In a full scrape, we do NOT flag packs as "is_new". We just build the catalog.
+        self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=False)
+        print(f"[SCRAPE] Full Scrape Done. Guardados {len(packs)} packs en la base de datos.")
+        return len(packs)
+
+    # --- MODE 3: Verify Deleted (Sync IDs) ---
+    async def verify_deleted(self):
+        """Reads visible messages on screen. Checks existing DB IDs. If an ID is NOT found, marks it deleted.
+        WARNING: This requires scrolling enough to see all DB IDs. It's safer to just check if the ID exists via Telegram Search."""
+        print("[SCRAPE] Starting 'Verify Deleted' mode by rapid ID checking...")
+        await self._open_chat()
+        
+        db_ids = self.db.get_all_active_pack_ids()
+        if not db_ids:
+            return 0
+            
+        print(f"[VERIFY] Auditing {len(db_ids)} active packs stored in database...")
+        deleted_count = 0
+        
+        # To avoid scrolling forever, a fast way to verify is searching the Telegram chat for the ID.
+        # But Telegram search is slow. The standard approach you wanted was to just scan visible messages
+        # assuming the catalog isn't massive.
+        # Let's do a reliable scroll of the entire recent history (e.g., last 50 scrolls ~ 500 messages)
+        # and gather ALL valid IDs currently in the channel. Then diff them.
+        
+        visible_ids = set()
+        for _ in range(50): # Scroll back reasonably
+            elements = await self.page.locator("div.text-content").all()
+            for el in elements:
+                try:
+                    text = await el.inner_text()
+                    id_match = re.search(r"ID\s*:\s*(\d+)", text, re.IGNORECASE)
+                    if id_match:
+                        visible_ids.add(id_match.group(1))
+                except: continue
+            
+            # If we've seen all our DB IDs, we can stop early!
+            missing = set(db_ids) - visible_ids
+            if not missing:
+                break
+                
+            await self.page.keyboard.press("Home")
+            await asyncio.sleep(0.5)
+            
+        # Any DB ID that we STILL didn't see after scrolling is considered deleted by the channel owner
+        missing_ids = set(db_ids) - visible_ids
+        for missing_id in missing_ids:
+            self.db.mark_pack_deleted(missing_id, manual=False)
+            deleted_count += 1
+            print(f"[VERIFY] Pack #{missing_id} deleted from Telegram. Removing from DB.")
+            
+        return deleted_count
+
+    # --- MODE 4: Live Monitor (1 Hour Loop) ---
+    async def _live_monitor_loop(self):
+        print("[MONITOR] Started 60-minute live monitoring on Telegram.")
+        self.monitor_active = True
+        end_time = time.time() + 3600 # 1 hour
+        
+        try:
+            while time.time() < end_time and self.monitor_active:
+                # 1. Do a single silent 'scrape_today' pass under the hood
+                await self.scrape_today(max_scrolls=10)
+                
+                # 2. Look for deletions specifically among the 'is_new' items
+                # (This prevents having to scroll back 50 pages just to check if today's packs died)
+                await asyncio.sleep(60) # Wait 60 seconds before next heartbeat
+                
+        except Exception as e:
+            print(f"[MONITOR] Error monitoring: {e}")
+        finally:
+            self.monitor_active = False
+            print("[MONITOR] Live tracking finished or stopped.")
+
+    def start_live_monitor(self):
+        """Starts the 60 min loop in the asyncio background thread without blocking"""
+        if self.monitor_active:
+            return False
+            
+        self.monitor_task = asyncio.create_task(self._live_monitor_loop())
+        return True
+        
+    def stop_live_monitor(self):
+        self.monitor_active = False
+        if self.monitor_task:
+            self.monitor_task.cancel()
+        return True
+
+    async def close(self):
+        self.stop_live_monitor()
+        if self.browser_context:
+            await self.browser_context.close()
+        if self.playwright:
+            await self.playwright.stop()
+        self.is_running = False
