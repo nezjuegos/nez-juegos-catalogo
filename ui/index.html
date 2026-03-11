@@ -93,14 +93,14 @@
         /* Sections */
         .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; }
         
-        .features { padding: 4rem; max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .features { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
         .feature-card {
             background: var(--bg-card); padding: 3rem; border-radius: var(--radius-lg);
             border: 1px solid rgba(255,255,255,0.05); transition: 0.3s;
             position: relative; overflow: hidden;
         }
         .feature-card:hover { border-color: rgba(139, 92, 246, 0.5); transform: translateY(-5px); }
-        .feature-card h3 { font-size: 1.8rem; margin-bottom: 1rem; display: flex; justify-content: space-between; }
+        .feature-card h3 { font-size: 1.8rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
         .feature-card p { color: var(--text-muted); margin-bottom: 2rem; }
         .feature-img { width: 100%; height: 200px; border-radius: var(--radius-md); object-fit: cover; margin-bottom: 1.5rem; background: #27272a; }
 
@@ -120,17 +120,25 @@
         .btn-wa:hover { background-color: var(--whatsapp-hover); transform: scale(1.05); }
 
         /* Responsive */
+        @media (max-width: 1024px) {
+            .hero { grid-template-columns: 1fr; padding: 120px 2rem 3rem 2rem; text-align: center; gap: 3rem; min-height: auto; }
+            .hero-text p { margin: 0 auto 2rem auto; }
+            .hero-btns { justify-content: center; }
+            .hero-visual { height: 450px; }
+            .glass-card { display: none !important; }
+            .floating-card { display: none !important; }
+            .community { margin: 4rem 2rem; padding: 3rem; }
+        }
         @media (max-width: 768px) {
             header { padding: 0 1.5rem; height: 60px; }
-            .hero { grid-template-columns: 1fr; gap: 2rem; padding: 100px 1.5rem 2rem 1.5rem; min-height: auto; }
+            .hero { padding: 100px 1.5rem 2rem 1.5rem; }
             .hero-text h1 { font-size: 2.2rem; }
-            .hero-visual { height: 350px; }
-            .features { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
+            .hero-visual { height: 300px; }
+            .features { padding: 2rem 1.5rem; grid-template-columns: 1fr; }
             .feature-card { padding: 2rem; }
             .community { margin: 3rem 1.5rem; padding: 2rem; }
             .community h2 { font-size: 1.8rem; }
             .nav-links { gap: 1rem; font-size: 0.85rem; }
-            .glass-card { display: none !important; }
         }
 
     </style>

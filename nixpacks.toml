@@ -1,0 +1,4 @@
+providers = ["python"]
+
+[phases.install]
+cmds = ["...", "python -m playwright install --with-deps chromium"]
