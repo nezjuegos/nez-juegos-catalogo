@@ -134,6 +134,13 @@
             <button class="btn" style="background: var(--primary); color: white; padding: 0 2rem; height: 50px;">Buscar</button>
         </div>
 
+        <div class="packs-legend" style="display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted);">
+            <span>🎮 Juego completo</span>
+            <span style="color: var(--secondary);">🧩 DLC / Expansión</span>
+            <span><span style="background: var(--secondary); color: white; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: 700;">SOLO DLC</span> = Pack 100% DLC</span>
+            <span><span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: 700;">JUEGO + DLC</span> = Mezcla de juegos y DLCs</span>
+        </div>
+
         <div class="packs-grid" id="packsGrid">
             <!-- Rendered via JS -->
         </div>
@@ -249,24 +256,29 @@
             }
             
             packs.forEach(pack => {
-                const isDlcOnly = pack.games.every(g => g.is_dlc);
+                const allDlc = pack.games.length > 0 && pack.games.every(g => g.is_dlc);
+                const hasDlc = pack.games.some(g => g.is_dlc);
+                const hasGame = pack.games.some(g => !g.is_dlc);
+                const isMixed = hasDlc && hasGame;
                 const isFeatured = pack.is_new === 1;
                 
                 let gamesHtml = '';
                 pack.games.forEach(g => {
-                    gamesHtml += `<div class="game-title ${g.is_dlc ? 'dlc' : ''}">
-                        ${g.is_dlc ? '🕹️ [Solo DLC]' : '🎮'} ${g.name}
-                    </div>`;
+                    if (g.is_dlc) {
+                        gamesHtml += `<div class="game-title dlc">🧩 ${g.name}</div>`;
+                    } else {
+                        gamesHtml += `<div class="game-title">🎮 ${g.name}</div>`;
+                    }
                 });
 
-                const badgeHtml = isDlcOnly 
-                    ? '<span class="dlc-badge" style="background:var(--secondary);">Solo DLCs</span>' 
-                    : (pack.games.some(g => g.is_dlc) ? '<span class="dlc-badge">Contiene DLC</span>' : '');
+                let badgeHtml = '';
+                if (allDlc) {
+                    badgeHtml = '<span class="dlc-badge" style="background:var(--secondary);">Solo DLC</span>';
+                } else if (isMixed) {
+                    badgeHtml = '<span class="dlc-badge" style="background:#3b82f6;">Juego + DLC</span>';
+                }
 
                 const newBadge = isFeatured ? '<span class="dlc-badge" style="left:1rem; right:auto; background:#ef4444;">🔥 Nuevo</span>' : '';
-
-                const fallbackCover = "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_656/b_white/f_auto/q_auto/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574";
-                const cover = pack.cover_url || fallbackCover;
 
                 const cardStyle = isFeatured ? 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 5px 20px rgba(239, 68, 68, 0.1);' : '';
 
@@ -275,14 +287,14 @@
                 card.style.cssText = cardStyle;
                 
                 card.innerHTML = `
-                    <div class="pack-cover">
-                        <img src="${cover}" alt="Cover">
+                    <div class="pack-cover" style="background: linear-gradient(135deg, #1e1b4b, #312e81); display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+                        📦
                         ${badgeHtml}
                         ${newBadge}
                     </div>
                     <div class="pack-content">
                         <div class="pack-header">
-                            <span class="pack-id">#ID: ${pack.id}</span>
+                            <span class="pack-id">ID: ${pack.id}</span>
                             <span class="pack-price">${formatPrice(pack.price_local)}</span>
                         </div>
                         <div class="pack-games">

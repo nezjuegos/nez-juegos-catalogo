@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import json
+import unicodedata
 from datetime import datetime
 
 class Database:
@@ -257,12 +258,12 @@ class Database:
                         continue
                         
                 # 3. Keyword Match Logic
-                games_text_all = " ".join([g.get('name', '') for g in games]).lower()
+                games_text_all = self._strip_accents(" ".join([g.get('name', '') for g in games]).lower())
                 
                 # Require ALL query parts
                 matches_query = True
                 for kw in query_parts:
-                    if kw not in games_text_all:
+                    if self._strip_accents(kw) not in games_text_all:
                         matches_query = False
                         break
                 
@@ -297,9 +298,10 @@ class Database:
             return []
             
         partial_lower = partial_name.lower()
+        partial_norm = self._strip_accents(partial_lower)
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT games_json FROM packs WHERE games_json LIKE ?', (f'%{partial_lower}%',))
+            cursor.execute('SELECT games_json FROM packs WHERE is_manually_deleted = 0')
             rows = cursor.fetchall()
             
             matches = set()
@@ -307,8 +309,14 @@ class Database:
                 games = json.loads(row['games_json']) if row['games_json'] else []
                 for game in games:
                     name = game.get('name', '')
-                    if partial_lower in name.lower():
+                    if partial_norm in self._strip_accents(name.lower()):
                         matches.add(name)
                         
             # Return alphabetical sorted list
             return sorted(list(matches))[:limit]
+
+    @staticmethod
+    def _strip_accents(text):
+        """Remove diacritics/accents from a string for accent-insensitive comparison."""
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ''.join(c for c in nfkd if not unicodedata.combining(c))
