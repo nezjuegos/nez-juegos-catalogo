@@ -34,8 +34,8 @@
 
         /* Navbar */
         header {
-            position: sticky; top: 0; background: rgba(10, 10, 12, 0.8); backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--border); z-index: 1000; padding: 1.5rem 4rem;
+            position: sticky; top: 0; background: rgba(10, 10, 12, 0.95); backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border); z-index: 1000; padding: 1rem 2rem;
             display: flex; justify-content: space-between; align-items: center;
         }
         .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; display: flex; align-items: center; gap: 8px; }
@@ -44,7 +44,7 @@
         .nav-links a { font-weight: 500; color: var(--text-muted); transition: 0.3s; }
         .nav-links a:hover, a.active { color: white; }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 3rem 4rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
         /* Search & Filters */
         .filters-section {
@@ -52,7 +52,7 @@
             padding: 2rem; margin-bottom: 3rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
         }
         
-        .search-box { flex: 1; min-width: 300px; position: relative; }
+        .search-box { flex: 1; min-width: 200px; position: relative; }
         .search-box input {
             width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white;
             padding: 1rem 1rem 1rem 3rem; border-radius: var(--radius-sm); font-size: 1rem;
@@ -69,7 +69,7 @@
         .dlc-toggle input { width: 18px; height: 18px; accent-color: var(--secondary); cursor: pointer; }
 
         /* Grid */
-        .packs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2rem; }
+        .packs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
 
         /* Pack Card */
         .pack-card {
@@ -78,8 +78,7 @@
         }
         .pack-card:hover { transform: translateY(-5px); border-color: rgba(139, 92, 246, 0.4); box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.2); }
         
-        .pack-cover { height: 160px; background: #27272a; position: relative; overflow: hidden; }
-        .pack-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .pack-cover { height: 120px; background: #27272a; position: relative; overflow: hidden; }
         .dlc-badge {
             position: absolute; top: 1rem; right: 1rem; background: var(--secondary); color: white;
             padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
@@ -100,6 +99,30 @@
         .btn-wa:hover { background: var(--whatsapp-hover); }
         .btn-copy { background: #27272a; color: white; }
         .btn-copy:hover { background: #3f3f46; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { padding: 0.8rem 1rem; }
+            .logo { font-size: 1.2rem; }
+            .nav-links { gap: 1rem; font-size: 0.85rem; }
+            .container { padding: 1.5rem 1rem; }
+            .container > h1 { font-size: 1.6rem; }
+            .filters-section { padding: 1rem; gap: 0.75rem; flex-direction: column; border-radius: var(--radius-md); margin-bottom: 1.5rem; }
+            .search-box { min-width: 100%; }
+            .search-box input { padding: 0.8rem 0.8rem 0.8rem 2.5rem; font-size: 0.9rem; }
+            .search-icon { left: 0.8rem; }
+            .price-filter input { width: 100%; }
+            .dlc-toggle { width: 100%; justify-content: center; }
+            .filters-section .btn { width: 100%; }
+            .packs-legend { font-size: 0.75rem; gap: 0.75rem !important; }
+            .packs-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .pack-cover { height: 80px; }
+            .pack-content { padding: 1rem; }
+            .pack-price { font-size: 1.3rem; }
+            .pack-games { font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem; }
+            .game-title { font-size: 0.85rem; }
+            .pack-actions .btn { padding: 0.7rem; font-size: 0.85rem; }
+        }
 
     </style>
 </head>
