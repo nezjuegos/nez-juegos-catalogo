@@ -120,7 +120,19 @@ def uploaded_file(filename):
 @app.route('/api/admin/config', methods=['POST'])
 @admin_required
 def save_config():
-    data = request.json
+    if request.content_type and request.content_type.startswith('multipart/form-data'):
+        data = dict(request.form)
+        for key in ['file_img_juegos', 'file_img_packs']:
+            file = request.files.get(key)
+            if file and file.filename:
+                filename = f"config_{key}_{int(time.time())}_{file.filename}"
+                file.save(os.path.join(UPLOAD_FOLDER, filename))
+                # Map the file upload to the corresponding config key
+                db_key = 'img_juegos' if key == 'file_img_juegos' else 'img_packs'
+                data[db_key] = filename
+    else:
+        data = request.json
+        
     for key, value in data.items():
         db.update_config(key, value)
     return jsonify({"status": "ok"})

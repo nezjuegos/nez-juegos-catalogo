@@ -85,7 +85,22 @@
                 <label style="margin-top: 1rem;">Juego Destacado 3 (Centro Frente)</label>
                 <input type="url" id="inputHeroImg3" placeholder="Ej: /assets/images/mario.png o URL externa">
                 
-                <span class="help-text" style="margin-top: 10px;">Puedes usar imágenes locales usando sus rutas (ej: /assets/images/tu-imagen.png) o enlaces web directos de Nintendo.com. Para subir imágenes nuevas, ponlas en la carpeta correspondiente.</span>
+                <span class="help-text" style="margin-top: 10px;">Puedes usar imágenes locales usando sus rutas (ej: /assets/images/tu-imagen.png) o enlaces web directos de Nintendo.com.</span>
+            </div>
+
+            <div class="form-group" style="margin-top: 3rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Imágenes de Tarjetas de Catálogo</h3>
+                <label>Imagen para Tarjeta: Juegos Individuales</label>
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 1rem;">
+                    <input type="file" id="inputFileJuegos" accept="image/*">
+                    <span id="labelJuegos" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                </div>
+
+                <label>Imagen para Tarjeta: Packs en Oferta</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="inputFilePacks" accept="image/*">
+                    <span id="labelPacks" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                </div>
             </div>
 
             <div style="margin-top: 3rem; text-align: right;">
@@ -109,6 +124,9 @@
                 if (config.hero_img_2) document.getElementById('inputHeroImg2').value = config.hero_img_2;
                 if (config.hero_img_3) document.getElementById('inputHeroImg3').value = config.hero_img_3;
                 
+                if (config.img_juegos) document.getElementById('labelJuegos').innerText = "Actual: " + config.img_juegos;
+                if (config.img_packs) document.getElementById('labelPacks').innerText = "Actual: " + config.img_packs;
+                
                 updatePreview();
             } catch (err) {
                 console.error('Error loading config', err);
@@ -129,20 +147,24 @@
             const btn = document.getElementById('btnSave');
             btn.innerText = 'Guardando...';
             
-            const payload = {
-                titulo_principal: document.getElementById('inputTitle').value,
-                subtitulo: document.getElementById('inputSubtitle').value,
-                enlace_whatsapp: document.getElementById('inputWa').value,
-                hero_img_1: document.getElementById('inputHeroImg1').value,
-                hero_img_2: document.getElementById('inputHeroImg2').value,
-                hero_img_3: document.getElementById('inputHeroImg3').value
-            };
+            const formData = new FormData();
+            formData.append('titulo_principal', document.getElementById('inputTitle').value);
+            formData.append('subtitulo', document.getElementById('inputSubtitle').value);
+            formData.append('enlace_whatsapp', document.getElementById('inputWa').value);
+            formData.append('hero_img_1', document.getElementById('inputHeroImg1').value);
+            formData.append('hero_img_2', document.getElementById('inputHeroImg2').value);
+            formData.append('hero_img_3', document.getElementById('inputHeroImg3').value);
+
+            const fileJuegos = document.getElementById('inputFileJuegos').files[0];
+            if (fileJuegos) formData.append('file_img_juegos', fileJuegos);
+            
+            const filePacks = document.getElementById('inputFilePacks').files[0];
+            if (filePacks) formData.append('file_img_packs', filePacks);
 
             try {
                 const res = await fetch('/api/admin/config', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
                 
                 if (res.ok) {
@@ -152,6 +174,8 @@
                         btn.innerText = 'Guardar Cambios de la Home';
                         btn.style.background = '';
                     }, 2000);
+                    // Reload to update current file names
+                    loadConfig();
                 } else {
                     if (res.status === 401) window.location.href = '/admin/login';
                     else alert('Error guardando la configuración');
