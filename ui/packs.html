@@ -268,14 +268,23 @@
             return '$' + val.toLocaleString('es-AR');
         }
 
+        function formatPackText(pack, includeGreeting = false) {
+            const gamesList = pack.games.map(g => g.name).join('\n');
+            let text = `ID : ${pack.id}\n\n---Lista de contenidos---\n${gamesList}\n\nPrecio: ${formatPrice(pack.price_local)}`;
+            if (includeGreeting) {
+                text = `Hola! Quiero consultarte si este pack está disponible, gracias!\n\n${text}`;
+            }
+            return text;
+        }
+
         function wappLink(pack) {
             if (!waNumber) return '#';
-            const msg = `Hola! Quiero consultarte si este pack está disponible, gracias!\n\n${pack.raw_text}\n💰 PRECIO: ${formatPrice(pack.price_local)}`;
+            const msg = formatPackText(pack, true);
             return `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
         }
 
         function copyToClip(pack) {
-            const text = pack.raw_text + `\n💰 PRECIO: ${formatPrice(pack.price_local)}`;
+            const text = formatPackText(pack, false);
             navigator.clipboard.writeText(text).then(() => {
                 alert("Pack copiado al portapapeles");
             });

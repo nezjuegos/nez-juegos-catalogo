@@ -132,6 +132,19 @@
 
         function formatPrice(val) { return '$' + val.toLocaleString('es-AR'); }
 
+        function formatPackText(pack) {
+            const gamesList = pack.games.map(g => g.name).join('\n');
+            return `ID : ${pack.id}\n\n---Lista de contenidos---\n${gamesList}\n\nPrecio: ${formatPrice(pack.price_local)}`;
+        }
+
+        window.copyToClip = function(packStr) {
+            const pack = JSON.parse(decodeURIComponent(packStr));
+            const text = formatPackText(pack);
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Pack copiado al portapapeles");
+            });
+        };
+
         async function loadPacks() {
             packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Cargando catálogo...</td></tr>';
             const q = searchInput.value;
@@ -175,8 +188,9 @@
                     <td style="font-family: monospace; vertical-align: top; padding-top: 1.2rem; white-space: nowrap;">${pack.id}</td>
                     <td>${newBadge}${dlcBadge}<div class="games-list">${gamesHtml}</div></td>
                     <td style="font-weight: bold; vertical-align: top; padding-top: 1.2rem;">${formatPrice(pack.price_local)}</td>
-                    <td style="vertical-align: top; padding-top: 1.2rem;">
-                        <button class="action-btn" title="Eliminar Manualmente" onclick="deletePack('${pack.id}', this)">🗑️</button>
+                    <td style="vertical-align: top; padding-top: 1.2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="action-btn" title="Copiar Pack" onclick="copyToClip('${encodeURIComponent(JSON.stringify(pack))}')">📋</button>
+                        <button class="action-btn" title="Eliminar Manualmente" onclick="deletePack('${pack.id}', this)" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);">🗑️</button>
                     </td>
                 `;
                 packsTableBody.appendChild(tr);
