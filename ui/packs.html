@@ -91,7 +91,8 @@
         
         .pack-games { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; flex: 1; }
         .game-title { color: white; display: flex; align-items: center; gap: 0.5rem; }
-        .game-title.dlc { color: #60a5fa; }
+        .game-title.dlc-solo { color: var(--secondary); }
+        .game-title.dlc-mixed { color: #60a5fa; }
 
         .pack-actions { display: flex; gap: 0.5rem; }
         .btn { flex: 1; padding: 0.8rem; border-radius: var(--radius-sm); font-weight: 600; text-align: center; cursor: pointer; transition: 0.2s; border: none; font-size: 0.9rem; }
@@ -160,7 +161,6 @@
 
         <div class="packs-legend" style="display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted);">
             <span>🎮 Juego completo</span>
-            <span style="color: #60a5fa;">🧩 DLC / Expansión</span>
             <span><span style="background: var(--secondary); color: white; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: 700;">SOLO DLC</span> = Contenido descargable sin juego</span>
             <span><span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: 700;">JUEGO + DLC</span> = Juego completo + DLC</span>
         </div>
@@ -270,7 +270,7 @@
 
         function wappLink(pack) {
             if (!waNumber) return '#';
-            const msg = `Hola! Me interesa el pack #${pack.id} por ${formatPrice(pack.price_local)}. ¿Está disponible?`;
+            const msg = `Hola! Quiero consultarte si este pack está disponible, gracias!\n\n${pack.raw_text}\n💰 PRECIO: ${formatPrice(pack.price_local)}`;
             return `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
         }
 
@@ -297,9 +297,11 @@
                 const isFeatured = pack.is_new === 1;
                 
                 let gamesHtml = '';
+                const dlcColorClass = allDlc ? 'dlc-solo' : (isMixed ? 'dlc-mixed' : '');
+                
                 pack.games.forEach(g => {
                     if (g.is_dlc) {
-                        gamesHtml += `<div class="game-title dlc">🧩 ${g.name}</div>`;
+                        gamesHtml += `<div class="game-title ${dlcColorClass}">🧩 ${g.name}</div>`;
                     } else {
                         gamesHtml += `<div class="game-title">🎮 ${g.name}</div>`;
                     }
