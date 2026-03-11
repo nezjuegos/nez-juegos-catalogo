@@ -35,15 +35,13 @@
         th { background: #09090b; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
         
         .pack-row:hover { background: rgba(255,255,255,0.02); }
-        .details-row { display: none; background: rgba(0,0,0,0.2); }
-        .details-row.active { display: table-row; }
-        .games-list { padding: 1rem 2.5rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+        .games-list { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-top: 4px; }
 
         .badge { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-top: 5px; }
         .action-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; margin-right: 0.5rem; }
         .action-btn:hover { opacity: 1; transform: scale(1.1); }
-        .toggle-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); transition: transform 0.3s; }
-        .toggle-btn.active { transform: rotate(180deg); }
+        .btn-clear { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-clear:hover { background: #27272a; color: white; }
 
         /* Search & Filters */
         .filters-container { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); }
@@ -98,8 +96,9 @@
             <label>Excluir (No Mostrar)</label>
             <input type="text" id="excludeInput" placeholder="Ej: FIFA, NBA..." style="border-left: 2px solid #ef4444;">
         </div>
-        <div style="display: flex; align-items: flex-end;">
+        <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
             <button id="btnFilter" class="btn btn-primary" style="height: 45px; padding: 0 2rem;">Filtrar / Recargar</button>
+            <button id="btnClear" class="btn btn-clear" style="height: 45px; padding: 0 1.5rem;">Limpiar</button>
         </div>
     </div>
 
@@ -108,11 +107,9 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50px;"></th>
-                    <th>ID Pack</th>
-                    <th>Juegos Destacados</th>
+                    <th>ID</th>
+                    <th>Contenido del Pack</th>
                     <th>Precio</th>
-                    <th>Status</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -127,6 +124,7 @@
         const searchInput = document.getElementById('searchInput');
         const excludeInput = document.getElementById('excludeInput');
         const btnFilter = document.getElementById('btnFilter');
+        const btnClear = document.getElementById('btnClear');
 
         const btnScrapeToday = document.getElementById('btnScrapeToday');
         const btnVerifyDeleted = document.getElementById('btnVerifyDeleted');
@@ -134,16 +132,8 @@
 
         function formatPrice(val) { return '$' + val.toLocaleString('es-AR'); }
 
-        function toggleDetails(rowId, btn) {
-            const row = document.getElementById(rowId);
-            if(row) {
-                row.classList.toggle('active');
-                btn.classList.toggle('active');
-            }
-        }
-
         async function loadPacks() {
-            packsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">Cargando catálogo...</td></tr>';
+            packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Cargando catálogo...</td></tr>';
             const q = searchInput.value;
             const exc = excludeInput.value;
             
@@ -154,7 +144,7 @@
                 renderTable(data.results || []);
             } catch (err) {
                 console.error(err);
-                packsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#ef4444;">Error de red</td></tr>';
+                packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#ef4444;">Error de red</td></tr>';
             }
         }
 
@@ -162,7 +152,7 @@
             packsTableBody.innerHTML = '';
             
             if(packs.length === 0) {
-                packsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color:var(--text-muted)">No hay resultados</td></tr>';
+                packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color:var(--text-muted)">No hay resultados</td></tr>';
                 return;
             }
 
@@ -170,46 +160,36 @@
                 const tr = document.createElement('tr');
                 tr.className = 'pack-row';
                 
-                // Highlight primary game logic
-                const primaryGame = pack.games.length > 0 ? pack.games[0].name : 'Desconocido';
                 const hasDlc = pack.games.some(g => g.is_dlc);
-                const dlcBadge = hasDlc ? '<br><span class="badge">DLC Incluido</span>' : '';
+                const dlcBadge = hasDlc ? ' <span class="badge">DLC</span>' : '';
                 const newBadge = pack.is_new ? '<span class="badge" style="background:#ef4444; color:white;">NUEVO</span> ' : '';
 
+                // Build inline games list
+                let gamesHtml = '';
+                pack.games.forEach(g => {
+                    gamesHtml += `<span style="color:var(--text-muted); font-size:0.85rem;">• ${g.name}${g.is_dlc ? ' (DLC)' : ''}</span><br>`;
+                });
+                if (!gamesHtml) gamesHtml = '<span style="color:#52525b; font-size:0.85rem;">Sin juegos detectados</span>';
+
                 tr.innerHTML = `
-                    <td><button class="toggle-btn" onclick="toggleDetails('details-${pack.id}', this)">▼</button></td>
-                    <td style="font-family: monospace;">#${pack.id}</td>
-                    <td>${newBadge}${primaryGame} ${dlcBadge}</td>
-                    <td style="font-weight: bold;">${formatPrice(pack.price_local)}</td>
-                    <td><span style="font-size:0.8rem; color:var(--text-muted)">Activo</span></td>
-                    <td>
+                    <td style="font-family: monospace; vertical-align: top; padding-top: 1.2rem; white-space: nowrap;">${pack.id}</td>
+                    <td>${newBadge}${dlcBadge}<div class="games-list">${gamesHtml}</div></td>
+                    <td style="font-weight: bold; vertical-align: top; padding-top: 1.2rem;">${formatPrice(pack.price_local)}</td>
+                    <td style="vertical-align: top; padding-top: 1.2rem;">
                         <button class="action-btn" title="Eliminar Manualmente" onclick="deletePack('${pack.id}', this)">🗑️</button>
                     </td>
                 `;
                 packsTableBody.appendChild(tr);
-
-                // Hidden details row
-                const detailsTr = document.createElement('tr');
-                detailsTr.id = `details-${pack.id}`;
-                detailsTr.className = 'details-row';
-                
-                let gamesListHtml = '<strong>Contenido completo del Pack:</strong><br>';
-                pack.games.forEach(g => {
-                    gamesListHtml += `• ${g.name} ${g.is_dlc ? '(DLC)' : ''}<br>`;
-                });
-
-                detailsTr.innerHTML = `<td colspan="6">
-                    <div class="games-list">
-                        <pre style="font-family: monospace; font-size: 0.8rem; color: #52525b; margin-bottom: 10px;">TEXTO ORIGINAL:\n${pack.raw_text}</pre>
-                        ${gamesListHtml}
-                    </div>
-                </td>`;
-                packsTableBody.appendChild(detailsTr);
             });
         }
 
         // --- ACTIONS ---
         btnFilter.addEventListener('click', loadPacks);
+        btnClear.addEventListener('click', () => {
+            searchInput.value = '';
+            excludeInput.value = '';
+            loadPacks();
+        });
 
         async function triggerScrape(endpoint, btn, loadingText) {
             const originalText = btn.innerText;
@@ -245,9 +225,7 @@
             if(confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {
                 // Optimistic UI hide
                 const row1 = btnElement.closest('tr');
-                const row2 = row1.nextElementSibling;
                 row1.style.display = 'none';
-                if(row2 && row2.classList.contains('details-row')) row2.style.display = 'none';
 
                 fetch(`/api/admin/packs/${id}`, { method: 'DELETE' })
                 .then(res => res.json())
