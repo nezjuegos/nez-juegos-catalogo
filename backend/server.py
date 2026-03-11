@@ -115,11 +115,6 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# --- Public API Routes (Config) ---
-@app.route('/api/config')
-def get_config():
-    return jsonify(db.get_all_config())
-
 # --- Admin API Routes (CMS config) ---
 @app.route('/api/admin/config', methods=['POST'])
 @admin_required
