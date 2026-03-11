@@ -61,16 +61,18 @@
     <div class="layout">
         <!-- Formulario (CRUD) -->
         <div class="form-section">
-            <h2 style="margin-bottom: 1.5rem; font-family: 'Outfit';">Agregar Nuevo Juego</h2>
+            <h2 id="formTitle" style="margin-bottom: 1.5rem; font-family: 'Outfit';">Agregar Nuevo Juego</h2>
             
+            <input type="hidden" id="juegoId">
+
             <div class="form-group">
                 <label>Título del Juego</label>
-                <input type="text" placeholder="Ej: Mario Kart 8 Deluxe">
+                <input type="text" id="titulo" placeholder="Ej: Mario Kart 8 Deluxe">
             </div>
 
             <div class="form-group">
                 <label>Plataforma</label>
-                <select>
+                <select id="plataforma">
                     <option>Nintendo Switch</option>
                     <option>Nintendo Switch 2</option>
                 </select>
@@ -79,27 +81,32 @@
             <div class="form-group">
                 <label>Precios (ARS)</label>
                 <div class="price-grid">
-                    <input type="number" placeholder="Código (Ej: 115000)">
-                    <input type="number" placeholder="Primaria (Ej: 85000)">
-                    <input type="number" placeholder="Secundaria (Ej: 45000)">
-                    <input type="number" placeholder="Alquiler (Ej: 18000)">
+                    <input type="number" id="precio_codigo" placeholder="Código (Ej: 115000)">
+                    <input type="number" id="precio_primaria" placeholder="Primaria (Ej: 85000)">
+                    <input type="number" id="precio_secundaria" placeholder="Secundaria (Ej: 45000)">
+                    <input type="number" id="precio_alquiler" placeholder="Alquiler (Ej: 18000)">
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Portada (Horizontal 16:9)</label>
-                <div class="file-upload">
-                    <span>📁 Haz clic para subir imagen</span>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                <div class="file-upload" id="dropZone">
+                    <div id="previewContainer" style="display: none; margin-bottom: 1rem;">
+                        <img id="imagePreview" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);">
+                    </div>
+                    <span id="uploadText">📁 Haz clic para subir imagen</span>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en el servidor</p>
                 </div>
             </div>
 
-            <button class="btn btn-primary" style="width: 100%;">Guardar Juego en Base de Datos</button>
+            <button class="btn btn-primary" id="btnSave" style="width: 100%;">Guardar Juego en Base de Datos</button>
+            <button class="btn btn-back" id="btnCancel" style="width: 100%; margin-top: 0.5rem; display: none;">Cancelar Edición</button>
         </div>
 
         <!-- Tabla -->
         <div class="table-section">
-            <table>
+            <table id="gamesTable">
                 <thead>
                     <tr>
                         <th>Juego</th>
@@ -109,24 +116,180 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>
-                            <div class="game-cell">
-                                <img src="https://assets.nintendo.com/image/upload/b_white,c_scale,f_auto,q_auto,w_656/ncom/software/switch/70010000001130/c42553b4fd0312c31e70ec7468c6c9cb19a5f192256dfd00d741cb3a0058e574" alt="Mario">
-                                <strong>Pokemon Pokopia</strong>
-                            </div>
-                        </td>
-                        <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Switch 2</span></td>
-                        <td><span style="color: var(--text-muted); font-size: 0.9rem;">Cód, Prim, Sec, Alq</span></td>
-                        <td>
-                            <button class="action-btn" title="Editar">✏️</button>
-                            <button class="action-btn" title="Eliminar">🗑️</button>
-                        </td>
-                    </tr>
+                    <!-- Dinamico -->
                 </tbody>
             </table>
         </div>
     </div>
 
+    <script>
+        const tableBody = document.querySelector('#gamesTable tbody');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const previewImg = document.getElementById('imagePreview');
+        const previewContainer = document.getElementById('previewContainer');
+        const uploadText = document.getElementById('uploadText');
+        
+        const btnSave = document.getElementById('btnSave');
+        const btnCancel = document.getElementById('btnCancel');
+        const formTitle = document.getElementById('formTitle');
+        const juegoIdInput = document.getElementById('juegoId');
+
+        // Form Fields
+        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler'];
+
+        let allGames = [];
+
+        // --- Fetch & Render ---
+        async function loadGames() {
+            try {
+                const res = await fetch('/api/juegos');
+                const data = await res.json();
+                allGames = data.results || [];
+                renderTable();
+            } catch (err) { console.error(err); }
+        }
+
+        function formatPrice(val) {
+            return val ? '$' + val.toLocaleString('es-AR') : '-';
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+            allGames.forEach(game => {
+                const tr = document.createElement('tr');
+                const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://via.placeholder.com/160x90?text=S/I';
+                
+                tr.innerHTML = `
+                    <td>
+                        <div class="game-cell">
+                            <img src="${cover}" alt="${game.titulo}">
+                            <strong>${game.titulo}</strong>
+                        </div>
+                    </td>
+                    <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${game.plataforma}</span></td>
+                    <td>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">
+                            Cód: ${formatPrice(game.precio_codigo)} | Pri: ${formatPrice(game.precio_primaria)}<br>
+                            Sec: ${formatPrice(game.precio_secundaria)} | Alq: ${formatPrice(game.precio_alquiler)}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="action-btn" onclick="editGame(${game.id})">✏️</button>
+                        <button class="action-btn" onclick="deleteGame(${game.id})">🗑️</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- File Handling ---
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    uploadText.innerText = "Imagen seleccionada: " + file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // --- CRUD Actions ---
+        btnSave.onclick = async () => {
+            const formData = new FormData();
+            fields.forEach(f => formData.append(f, document.getElementById(f).value));
+            
+            if (fileInput.files[0]) {
+                formData.append('image', fileInput.files[0]);
+            }
+
+            const id = juegoIdInput.value;
+            const url = id ? `/api/admin/juegos/${id}` : '/api/admin/juegos';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                btnSave.disabled = true;
+                btnSave.innerText = "Guardando...";
+                
+                // If it's a PUT but we are sending FormData, we need to handle it.
+                // Flask PUT with FormData sometimes requires POST-shimming or just handling it in the route.
+                // Our backend handles PUT with multipart/form-data now.
+                const res = await fetch(url, {
+                    method: method,
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    resetForm();
+                    loadGames();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Fallo al guardar');
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerText = "Guardar Juego en Base de Datos";
+            }
+        };
+
+        window.editGame = (id) => {
+            const game = allGames.find(g => g.id === id);
+            if (!game) return;
+
+            juegoIdInput.value = game.id;
+            fields.forEach(f => {
+                document.getElementById(f).value = game[f] || '';
+            });
+
+            formTitle.innerText = "Editando: " + game.titulo;
+            btnSave.innerText = "Actualizar Juego";
+            btnCancel.style.display = 'block';
+            
+            if (game.imagen_filename) {
+                previewImg.src = `/uploads/${game.imagen_filename}`;
+                previewContainer.style.display = 'block';
+                uploadText.innerText = "Imagen actual: " + game.imagen_filename;
+            } else {
+                previewContainer.style.display = 'none';
+                uploadText.innerText = "📁 Haz clic para subir imagen";
+            }
+            primaryScrollIntoView();
+        };
+
+        window.deleteGame = async (id) => {
+            if (!confirm('¿Seguro que quieres eliminar este juego?')) return;
+            try {
+                const res = await fetch(`/api/admin/juegos/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.status === 'ok') loadGames();
+            } catch (err) { console.error(err); }
+        };
+
+        btnCancel.onclick = resetForm;
+
+        function resetForm() {
+            juegoIdInput.value = '';
+            fields.forEach(f => document.getElementById(f).value = '');
+            fileInput.value = '';
+            previewContainer.style.display = 'none';
+            uploadText.innerText = "📁 Haz clic para subir imagen";
+            formTitle.innerText = "Agregar Nuevo Juego";
+            btnSave.innerText = "Guardar Juego en Base de Datos";
+            btnCancel.style.display = 'none';
+        }
+
+        function primaryScrollIntoView() {
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        loadGames();
+    </script>
 </body>
 </html>

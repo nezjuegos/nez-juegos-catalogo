@@ -2,6 +2,7 @@ import threading
 import asyncio
 import os
 import json
+import time
 from functools import wraps
 from flask import Flask, jsonify, request, send_from_directory, session, redirect
 
@@ -130,12 +131,11 @@ def save_config():
 @admin_required
 def create_juego():
     # Supports JSON or Form Data (if file upload is included)
-    if request.content_type.startswith('multipart/form-data'):
+    if request.content_type and request.content_type.startswith('multipart/form-data'):
         data = dict(request.form)
         file = request.files.get('image')
         if file:
-            # Basic save for Custom Game Covers
-            filename = f"game_{int(asyncio.get_event_loop().time())}_{file.filename}"
+            filename = f"game_{int(time.time())}_{file.filename}"
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             data['imagen_filename'] = filename
     else:
@@ -151,7 +151,17 @@ def manage_juego(juego_id):
         db.delete_juego(juego_id)
         return jsonify({"status": "ok"})
     else:
-        data = request.json
+        # PUT supporting both JSON and multipart/form-data
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            data = dict(request.form)
+            file = request.files.get('image')
+            if file:
+                filename = f"game_{int(time.time())}_{file.filename}"
+                file.save(os.path.join(UPLOAD_FOLDER, filename))
+                data['imagen_filename'] = filename
+        else:
+            data = request.json
+            
         db.update_juego(juego_id, data)
         return jsonify({"status": "ok"})
 
