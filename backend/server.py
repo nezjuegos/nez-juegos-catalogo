@@ -57,34 +57,7 @@ def admin_required(f):
     return decorated_function
 
 
-# --- Public HTML Routes ---
-@app.route('/')
-def home():
-    return send_from_directory(UI_DIR, 'index.html')
-
-@app.route('/juegos')
-@app.route('/juegos.html')
-def juegos():
-    return send_from_directory(UI_DIR, 'juegos.html')
-
-@app.route('/packs')
-@app.route('/packs.html')
-@app.route('/cliente')  # Fallback aliases
-def packs():
-    return send_from_directory(UI_DIR, 'packs.html')
-
-
-# --- Admin HTML Routes ---
-@app.route('/admin')
-@app.route('/admin/index.html')
-@admin_required
-def admin_dashboard():
-    return send_from_directory(UI_ADMIN_DIR, 'index.html')
-
-@app.route('/admin/<page>.html')
-@admin_required
-def admin_pages(page):
-    return send_from_directory(UI_ADMIN_DIR, f'{page}.html')
+# HTML routing is handled automatically by the fallback catch-all route at the bottom
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def login():
@@ -229,10 +202,35 @@ def telegram_status():
 
 
 # --- Static Fallback ---
+@app.route('/')
 @app.route('/<path:path>')
-def serve_static(path):
-    if path == 'index.html': return redirect('/')
-    return send_from_directory(UI_DIR, path)
+def serve_static(path=''):
+    if not path or path == 'index' or path == 'index.html': 
+        return send_from_directory(UI_DIR, 'index.html')
+        
+    # Security: If trying to access admin views, check auth first
+    if path.startswith('admin') and not path.startswith('admin/login'):
+        if not session.get('is_admin'):
+            return redirect('/admin/login')
+            
+        # Admin paths route to UI_ADMIN_DIR
+        page = path.replace('admin/', '').replace('admin', '')
+        if not page or page == 'index': page = 'index'
+        
+        # Try finding the exact file or adding .html
+        if os.path.exists(os.path.join(UI_ADMIN_DIR, page)):
+            return send_from_directory(UI_ADMIN_DIR, page)
+        elif os.path.exists(os.path.join(UI_ADMIN_DIR, f"{page}.html")):
+            return send_from_directory(UI_ADMIN_DIR, f"{page}.html")
+        return "Not Found", 404
+
+    # Public paths
+    if os.path.exists(os.path.join(UI_DIR, path)):
+        return send_from_directory(UI_DIR, path)
+    elif os.path.exists(os.path.join(UI_DIR, f"{path}.html")):
+        return send_from_directory(UI_DIR, f"{path}.html")
+        
+    return "Not Found", 404
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
