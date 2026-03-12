@@ -198,6 +198,49 @@
         suggestionsBox.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); z-index: 100; display: none; max-height: 200px; overflow-y: auto;';
         searchInput.parentNode.appendChild(suggestionsBox);
 
+        // Helper functions
+        const isTitleHot = (name) => {
+            if (!name) return false;
+            const nameLower = name.toLowerCase();
+            return hotTitlesList.some(hot => nameLower.includes(hot.toLowerCase()));
+        };
+
+        const isLineMixed = g => g.is_mixed === true || (g.name && g.name.includes('+') && g.is_dlc === true);
+        const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
+
+        function formatPrice(p) { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(p); }
+
+        function generateText(pack) {
+            let text = `📦 *Pack #${pack.id}*\n\n`;
+            if (pack.games) {
+                pack.games.forEach(g => {
+                    const nameStr = g.name || 'Juego Desconocido';
+                    const prefix = isTitleHot(nameStr) ? '🔥 ' : '';
+                    if (isLineStrictDlc(g)) {
+                        text += `🧩 ${prefix}${nameStr} (Solo DLC)\n`;
+                    } else if (isLineMixed(g)) {
+                        text += `🎮 ${prefix}${nameStr} (Juego + DLC)\n`;
+                    } else {
+                        text += `🎮 ${prefix}${nameStr}\n`;
+                    }
+                });
+            }
+            text += `\n💰 *Precio:* ${formatPrice(pack.price_local)}\n`;
+            return text;
+        }
+
+        function wappLink(pack) {
+            const text = encodeURIComponent(`Hola, quiero el ${generateText(pack)}`);
+            return `https://wa.me/${waNumber}?text=${text}`;
+        }
+        
+        window.copyToClip = function(pack) {
+            const text = generateText(pack);
+            navigator.clipboard.writeText(text).then(() => {
+                alert('¡Copiado al portapapeles!');
+            }).catch(err => console.error('Error copying text:', err));
+        }
+
         // Fetch Packs API
         async function fetchPacks() {
             packsGrid.innerHTML = '<p style="color: var(--text-muted); text-align: center; width: 100%; padding: 3rem;">Cargando catálogo...</p>';
@@ -241,34 +284,30 @@
         }
 
         function createPackCard(pack, isFeaturedFlag = false) {
-            const isLineMixed = g => g.is_mixed === true || (g.name.includes('+') && g.is_dlc === true);
-            const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
             const isLineStrictGame = g => !g.is_dlc && !isLineMixed(g);
 
-            const allDlc = pack.games.length > 0 && pack.games.every(isLineStrictDlc);
-            const hasDlc = pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
-            const hasGame = pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
+            const allDlc = pack.games && pack.games.length > 0 && pack.games.every(isLineStrictDlc);
+            const hasDlc = pack.games && pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
+            const hasGame = pack.games && pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
+            
             const isPackMixed = hasDlc && hasGame;
             const isScraperNew = pack.is_new === 1;
             
             let gamesHtml = '';
             
-            // Helper to check if a title is hot
-            const isTitleHot = (name) => {
-                const nameLower = name.toLowerCase();
-                return hotTitlesList.some(hot => nameLower.includes(hot.toLowerCase()));
-            };
-            
-            pack.games.forEach(g => {
-                const prefix = isTitleHot(g.name) ? '🔥 ' : '';
-                if (isLineStrictDlc(g)) {
-                    gamesHtml += `<div class="game-title dlc-solo">${prefix}🧩 ${g.name}</div>`;
-                } else if (isLineMixed(g)) {
-                    gamesHtml += `<div class="game-title dlc-mixed">${prefix}🎮 ${g.name}</div>`;
-                } else {
-                    gamesHtml += `<div class="game-title">${prefix}🎮 ${g.name}</div>`;
-                }
-            });
+            if (pack.games) {
+                pack.games.forEach(g => {
+                    const nameStr = g.name || 'Juego Desconocido';
+                    const prefix = isTitleHot(nameStr) ? '🔥 ' : '';
+                    if (isLineStrictDlc(g)) {
+                        gamesHtml += `<div class="game-title dlc-solo">${prefix}🧩 ${nameStr}</div>`;
+                    } else if (isLineMixed(g)) {
+                        gamesHtml += `<div class="game-title dlc-mixed">${prefix}🎮 ${nameStr}</div>`;
+                    } else {
+                        gamesHtml += `<div class="game-title">${prefix}🎮 ${nameStr}</div>`;
+                    }
+                });
+            }
 
             let badgeHtml = '';
             if (allDlc) {
