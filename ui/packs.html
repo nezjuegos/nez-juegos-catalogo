@@ -140,7 +140,7 @@
     </header>
 
     <div class="container">
-        <h1>Catálogo de Packs</h1>
+        <h1>📦 Catálogo de packs</h1>
         <p style="color: var(--text-muted); margin-bottom: 2rem;">Los mejores combos de juegos armados a precios insuperables.</p>
 
         <div class="filters-section">
@@ -165,6 +165,17 @@
             <span><span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: 700;">JUEGO + DLC</span> = Juego completo + DLC</span>
         </div>
 
+        <div id="featuredSection" style="display: none; margin-bottom: 4rem;">
+            <h2 style="font-family: 'Outfit'; font-size: 1.8rem; margin-bottom: 1.5rem; color: #eab308; display: flex; align-items: center; gap: 0.5rem;">
+                ⭐ Packs Destacados
+            </h2>
+            <div class="packs-grid" id="featuredGrid">
+                <!-- Rendered via JS -->
+            </div>
+            <div style="width: 100%; height: 1px; background: var(--border); margin-top: 3rem;"></div>
+        </div>
+
+        <h2 style="font-family: 'Outfit'; font-size: 1.5rem; margin-bottom: 1.5rem; color: white;">Catálogo Completo</h2>
         <div class="packs-grid" id="packsGrid">
             <!-- Rendered via JS -->
         </div>
@@ -179,6 +190,7 @@
         const clearBtn = document.getElementById('btnLimpiar');
 
         let waNumber = '';  // loaded from config
+        let hotTitlesList = []; // loaded from public API
 
         // Create autocomplete suggestions container
         const suggestionsBox = document.createElement('div');
@@ -199,8 +211,28 @@
             if (dlcOnly) url += `&dlc_only=true`;
 
             try {
+                // Fetch regular results
                 const res = await fetch(url);
                 const data = await res.json();
+                
+                // Fetch featured results only if no search criteria is active
+                let featuredData = { results: [] };
+                const featuredSection = document.getElementById('featuredSection');
+                
+                if (!q && !priceMax && !dlcOnly) {
+                    const featRes = await fetch(`/api/packs?featured_only=true`);
+                    featuredData = await featRes.json();
+                    
+                    if (featuredData.results && featuredData.results.length > 0) {
+                        featuredSection.style.display = 'block';
+                        renderFeatured(featuredData.results);
+                    } else {
+                        featuredSection.style.display = 'none';
+                    }
+                } else {
+                    featuredSection.style.display = 'none';
+                }
+
                 renderPacks(data.results || []);
             } catch (err) {
                 console.error(err);
@@ -208,85 +240,94 @@
             }
         }
 
-        // Fetch Suggestions API
-        let debounceTimer;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(debounceTimer);
-            const val = e.target.value.trim();
-            if (val.length < 3) {
-                suggestionsBox.style.display = 'none';
-                return;
-            }
+        function createPackCard(pack, isFeaturedFlag = false) {
+            const isLineMixed = g => g.is_mixed === true || (g.name.includes('+') && g.is_dlc === true);
+            const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
+            const isLineStrictGame = g => !g.is_dlc && !isLineMixed(g);
+
+            const allDlc = pack.games.length > 0 && pack.games.every(isLineStrictDlc);
+            const hasDlc = pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
+            const hasGame = pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
+            const isPackMixed = hasDlc && hasGame;
+            const isScraperNew = pack.is_new === 1;
             
-            debounceTimer = setTimeout(async () => {
-                try {
-                    const res = await fetch(`/api/packs/suggestions?q=${encodeURIComponent(val)}`);
-                    const data = await res.json();
-                    if (data.suggestions && data.suggestions.length > 0) {
-                        suggestionsBox.innerHTML = '';
-                        data.suggestions.forEach(sugg => {
-                            const div = document.createElement('div');
-                            div.textContent = sugg;
-                            div.style.cssText = 'padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: 0.2s;';
-                            div.onmouseover = () => div.style.background = '#27272a';
-                            div.onmouseout = () => div.style.background = 'transparent';
-                            div.onclick = () => {
-                                searchInput.value = sugg;
-                                suggestionsBox.style.display = 'none';
-                                fetchPacks();
-                            };
-                            suggestionsBox.appendChild(div);
-                        });
-                        suggestionsBox.style.display = 'block';
-                    } else {
-                        suggestionsBox.style.display = 'none';
-                    }
-                } catch (err) { console.error(err); }
-            }, 300);
-        });
+            let gamesHtml = '';
+            
+            // Helper to check if a title is hot
+            const isTitleHot = (name) => {
+                const nameLower = name.toLowerCase();
+                return hotTitlesList.some(hot => nameLower.includes(hot.toLowerCase()));
+            };
+            
+            pack.games.forEach(g => {
+                const prefix = isTitleHot(g.name) ? '🔥 ' : '';
+                if (isLineStrictDlc(g)) {
+                    gamesHtml += `<div class="game-title dlc-solo">${prefix}🧩 ${g.name}</div>`;
+                } else if (isLineMixed(g)) {
+                    gamesHtml += `<div class="game-title dlc-mixed">${prefix}🎮 ${g.name}</div>`;
+                } else {
+                    gamesHtml += `<div class="game-title">${prefix}🎮 ${g.name}</div>`;
+                }
+            });
 
-        // Hide suggestions on click outside
-        document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
-                suggestionsBox.style.display = 'none';
+            let badgeHtml = '';
+            if (allDlc) {
+                badgeHtml = '<span class="dlc-badge" style="background:var(--secondary);">Solo DLC</span>';
+            } else if (isPackMixed) {
+                badgeHtml = '<span class="dlc-badge" style="background:#3b82f6;">Juego + DLC</span>';
             }
-        });
 
-        // Event Listeners for Filters
-        searchBtn.addEventListener('click', fetchPacks);
-        clearBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            maxPriceInput.value = '';
-            dlcToggle.checked = false;
-            suggestionsBox.style.display = 'none';
-            fetchPacks();
-        });
-        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { suggestionsBox.style.display = 'none'; fetchPacks(); } });
-        dlcToggle.addEventListener('change', fetchPacks);
+            const newBadge = isScraperNew ? '<span class="dlc-badge" style="left:1rem; right:auto; background:#ef4444;">🔥 Nuevo</span>' : '';
 
-        function formatPrice(val) {
-            return '$' + val.toLocaleString('es-AR');
-        }
+            const cardStyle = isFeaturedFlag ? 'border-color: rgba(234, 179, 8, 0.4); box-shadow: 0 5px 20px rgba(234, 179, 8, 0.1);' 
+                            : (isScraperNew ? 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 5px 20px rgba(239, 68, 68, 0.1);' : '');
 
-        function formatPackText(pack, includeGreeting = false) {
-            const gamesList = pack.games.map(g => g.name).join('\n');
-            let text = `ID : ${pack.id}\n\n---Lista de contenidos---\n${gamesList}\n\nPrecio: ${formatPrice(pack.price_local)}`;
-            if (includeGreeting) {
-                text = `Hola! Quiero consultarte si este pack está disponible, gracias!\n\n${text}`;
+            let coverHtml = '';
+            if (pack.manual_image_url) {
+                coverHtml = `
+                    <div class="pack-cover" style="background: url('${pack.manual_image_url}') center/cover; position: relative; height: 160px;">
+                        ${badgeHtml}
+                        ${newBadge}
+                    </div>
+                `;
+            } else {
+                coverHtml = `
+                    <div class="pack-cover" style="background: linear-gradient(135deg, #1e1b4b, #312e81); display: flex; align-items: center; justify-content: center; font-size: 3rem; position: relative;">
+                        📦
+                        ${badgeHtml}
+                        ${newBadge}
+                    </div>
+                `;
             }
-            return text;
+
+            const card = document.createElement('div');
+            card.className = 'pack-card';
+            card.style.cssText = cardStyle;
+            
+            card.innerHTML = `
+                ${coverHtml}
+                <div class="pack-content">
+                    <div class="pack-header">
+                        <span class="pack-id">ID: ${pack.id}</span>
+                        <span class="pack-price">${formatPrice(pack.price_local)}</span>
+                    </div>
+                    <div class="pack-games">
+                        ${gamesHtml}
+                    </div>
+                    <div class="pack-actions">
+                        <button class="btn btn-copy" onclick="copyToClip(${JSON.stringify(pack).replace(/"/g, '&quot;')})">Copiar</button>
+                        <a href="${wappLink(pack)}" target="_blank" class="btn btn-wa"><svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>Pedir</a>
+                    </div>
+                </div>
+            `;
+            return card;
         }
 
-        function wappLink(pack) {
-            if (!waNumber) return '#';
-            const msg = formatPackText(pack, true);
-            return `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
-        }
-
-        function copyToClip(pack) {
-            const text = formatPackText(pack, false);
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Pack copiado al portapapeles");
+        function renderFeatured(packs) {
+            const grid = document.getElementById('featuredGrid');
+            grid.innerHTML = '';
+            packs.forEach(pack => {
+                grid.appendChild(createPackCard(pack, true));
             });
         }
 
@@ -299,70 +340,17 @@
             }
             
             packs.forEach(pack => {
-                const isLineMixed = g => g.is_mixed === true || (g.name.includes('+') && g.is_dlc === true);
-                const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
-                const isLineStrictGame = g => !g.is_dlc && !isLineMixed(g);
-
-                const allDlc = pack.games.length > 0 && pack.games.every(isLineStrictDlc);
-                const hasDlc = pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
-                const hasGame = pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
-                const isPackMixed = hasDlc && hasGame;
-                const isFeatured = pack.is_new === 1;
-                
-                let gamesHtml = '';
-                
-                pack.games.forEach(g => {
-                    if (isLineStrictDlc(g)) {
-                        gamesHtml += `<div class="game-title dlc-solo">🧩 ${g.name}</div>`;
-                    } else if (isLineMixed(g)) {
-                        gamesHtml += `<div class="game-title dlc-mixed">🎮 ${g.name}</div>`;
-                    } else {
-                        gamesHtml += `<div class="game-title">🎮 ${g.name}</div>`;
-                    }
-                });
-
-                let badgeHtml = '';
-                if (allDlc) {
-                    badgeHtml = '<span class="dlc-badge" style="background:var(--secondary);">Solo DLC</span>';
-                } else if (isPackMixed) {
-                    badgeHtml = '<span class="dlc-badge" style="background:#3b82f6;">Juego + DLC</span>';
-                }
-
-                const newBadge = isFeatured ? '<span class="dlc-badge" style="left:1rem; right:auto; background:#ef4444;">🔥 Nuevo</span>' : '';
-
-                const cardStyle = isFeatured ? 'border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 5px 20px rgba(239, 68, 68, 0.1);' : '';
-
-                const card = document.createElement('div');
-                card.className = 'pack-card';
-                card.style.cssText = cardStyle;
-                
-                card.innerHTML = `
-                    <div class="pack-cover" style="background: linear-gradient(135deg, #1e1b4b, #312e81); display: flex; align-items: center; justify-content: center; font-size: 3rem;">
-                        📦
-                        ${badgeHtml}
-                        ${newBadge}
-                    </div>
-                    <div class="pack-content">
-                        <div class="pack-header">
-                            <span class="pack-id">ID: ${pack.id}</span>
-                            <span class="pack-price">${formatPrice(pack.price_local)}</span>
-                        </div>
-                        <div class="pack-games">
-                            ${gamesHtml}
-                        </div>
-                        <div class="pack-actions">
-                            <button class="btn btn-copy" onclick="copyToClip(${JSON.stringify(pack).replace(/"/g, '&quot;')})">Copiar</button>
-                            <a href="${wappLink(pack)}" target="_blank" class="btn btn-wa"><svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>Pedir</a>
-                        </div>
-                    </div>
-                `;
-                packsGrid.appendChild(card);
+                packsGrid.appendChild(createPackCard(pack, false));
             });
         }
 
         // Initial Load
-        fetch('/api/config').then(r => r.json()).then(cfg => {
+        Promise.all([
+            fetch('/api/config').then(r => r.json()),
+            fetch('/api/public/hot_titles').then(r => r.json())
+        ]).then(([cfg, hotTitles]) => {
             waNumber = cfg.numero_whatsapp || '';
+            hotTitlesList = hotTitles || [];
             fetchPacks();
         }).catch(() => {
             fetchPacks();

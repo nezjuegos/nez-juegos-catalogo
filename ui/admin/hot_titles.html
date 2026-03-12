@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Títulos Hot | Nez Juegos Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #f97316; /* Orange for Hot Titles */
+            --primary-hover: #ea580c;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            background-image: radial-gradient(circle at 100% 0%, rgba(249, 115, 22, 0.1) 0%, transparent 40%);
+            min-height: 100vh; display: flex;
+        }
+
+        h1, h2 { font-family: 'Outfit'; }
+
+        /* Sidebar Sidebar Sidebar... reusing same sidebar style */
+        .sidebar {
+            width: 250px; background: rgba(10, 10, 12, 0.95); border-right: 1px solid var(--border);
+            padding: 2rem 1rem; display: flex; flex-direction: column; gap: 1rem;
+        }
+        .sidebar .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; margin-bottom: 2rem; padding-left: 1rem; }
+        .sidebar .logo span { color: #8b5cf6; }
+        .nav-item {
+            padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: var(--radius-sm); transition: 0.2s;
+        }
+        .nav-item:hover { background: #27272a; color: white; }
+        .nav-item.active { background: rgba(249, 115, 22, 0.1); color: var(--primary); font-weight: 600; }
+
+        .main-content { flex: 1; padding: 3rem; max-width: 900px; }
+        
+        .header { margin-bottom: 3rem; }
+        .header h1 { font-size: 2.2rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 2rem; }
+        
+        .input-group { display: flex; gap: 1rem; margin-bottom: 2rem; }
+        .input-group input { flex: 1; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-size: 1rem; }
+        .input-group input:focus { outline: none; border-color: var(--primary); }
+        .input-group button { background: var(--primary); color: white; border: none; padding: 0 1.5rem; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .input-group button:hover { background: var(--primary-hover); }
+
+        .title-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .title-row { display: flex; justify-content: space-between; align-items: center; background: #0a0a0c; border: 1px solid var(--border); padding: 1rem; border-radius: var(--radius-sm); }
+        .title-name { font-weight: 500; display: flex; align-items: center; gap: 0.5rem; }
+        .btn-delete { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .btn-delete:hover { background: #ef4444; color: white; }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo">🎮 <span>Nez</span> Admin</div>
+        <a href="/admin" class="nav-item">🏠 Gestionar Home</a>
+        <a href="/admin/packs" class="nav-item">📦 Scraper Packs Telegram</a>
+        <a href="/admin/juegos" class="nav-item">🎮 Catálogo Títulos</a>
+        <a href="/admin/hot_titles" class="nav-item active">🔥 Títulos Hot</a>
+        <a href="/admin/logout" class="nav-item" style="color: #ef4444; margin-top: auto;">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🔥 Títulos Hot</h1>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Cualquier juego que contenga algunas de estas palabras en su título recibirá automáticamente el emoji 🔥 en la web y el generador de formatos de WhatsApp.</p>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Agregar palabra clave</h2>
+            <form id="addForm" class="input-group">
+                <input type="text" id="titleInput" placeholder="Ej: Mario" required>
+                <button type="submit">Agregar</button>
+            </form>
+
+            <h2 style="font-size: 1.3rem; margin-bottom: 1rem;">Lista Actual</h2>
+            <div class="title-list" id="titleList">
+                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const titleList = document.getElementById('titleList');
+        const addForm = document.getElementById('addForm');
+        const titleInput = document.getElementById('titleInput');
+
+        async function loadTitles() {
+            try {
+                const res = await fetch('/api/admin/hot_titles');
+                const data = await res.json();
+                
+                titleList.innerHTML = '';
+                if(data.length === 0) {
+                    titleList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay títulos configurados</p>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'title-row';
+                    row.innerHTML = `
+                        <span class="title-name">🔥 ${item.titulo}</span>
+                        <button class="btn-delete" onclick="deleteTitle(${item.id})">Eliminar</button>
+                    `;
+                    titleList.appendChild(row);
+                });
+            } catch (err) {
+                titleList.innerHTML = '<p style="color: #ef4444;">Error al cargar datos</p>';
+                console.error(err);
+            }
+        }
+
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const val = titleInput.value.trim();
+            if(!val) return;
+
+            try {
+                const res = await fetch('/api/admin/hot_titles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo: val })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'ok') {
+                    titleInput.value = '';
+                    loadTitles();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                alert("Error de red");
+            }
+        });
+
+        window.deleteTitle = async function(id) {
+            if(!confirm('¿Eliminar esta palabra clave?')) return;
+            try {
+                await fetch(`/api/admin/hot_titles/${id}`, { method: 'DELETE' });
+                loadTitles();
+            } catch (err) {
+                alert("Error de red");
+            }
+        }
+
+        // Init
+        loadTitles();
+    </script>
+</body>
+</html>

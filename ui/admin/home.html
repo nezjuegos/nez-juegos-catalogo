@@ -89,6 +89,15 @@
             </div>
 
             <div class="form-group" style="margin-top: 3rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Texto de la Tarjeta Flotante (Pokémon Pokopia)</h3>
+                <label>Título de la Tarjeta</label>
+                <input type="text" id="inputGlassTitle" value="Pokémon Pokopia" placeholder="Ej: Pokémon Pokopia" style="margin-bottom: 1rem;">
+                
+                <label>Subtítulo o Precio de la Tarjeta</label>
+                <input type="text" id="inputGlassPrice" value="Desde $20.000" placeholder="Ej: Desde $20.000">
+            </div>
+
+            <div class="form-group" style="margin-top: 3rem;">
                 <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Imágenes de Tarjetas de Catálogo</h3>
                 <label>Imagen para Tarjeta: Juegos Individuales</label>
                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 1rem;">
@@ -124,6 +133,9 @@
                 if (config.hero_img_2) document.getElementById('inputHeroImg2').value = config.hero_img_2;
                 if (config.hero_img_3) document.getElementById('inputHeroImg3').value = config.hero_img_3;
                 
+                if (config.glass_card_title) document.getElementById('inputGlassTitle').value = config.glass_card_title;
+                if (config.glass_card_price) document.getElementById('inputGlassPrice').value = config.glass_card_price;
+                
                 if (config.img_juegos) document.getElementById('labelJuegos').innerText = "Actual: " + config.img_juegos;
                 if (config.img_packs) document.getElementById('labelPacks').innerText = "Actual: " + config.img_packs;
                 
@@ -148,6 +160,14 @@
             btn.innerText = 'Guardando...';
             
             const formData = new FormData();
+            formData.append('titulo_principal', document.getElementById('inputTitle').value);
+            formData.append('subtitulo', document.getElementById('inputSubtitle').value);
+            formData.append('enlace_whatsapp', document.getElementById('inputWa').value);
+            formData.append('hero_img_1', document.getElementById('inputHeroImg1').value);
+            formData.append('hero_img_2', document.getElementById('inputHeroImg2').value);
+            formData.append('hero_img_3', document.getElementById('inputHeroImg3').value);
+            formData.append('glass_card_title', document.getElementById('inputGlassTitle').value);
+            formData.append('glass_card_price', document.getElementById('inputGlassPrice').value);
             formData.append('titulo_principal', document.getElementById('inputTitle').value);
             formData.append('subtitulo', document.getElementById('inputSubtitle').value);
             formData.append('enlace_whatsapp', document.getElementById('inputWa').value);

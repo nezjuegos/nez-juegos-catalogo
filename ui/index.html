@@ -413,8 +413,8 @@
                 style="position: absolute; bottom: -20px; left: -20px; z-index: 4; display: flex; align-items: center; gap: 15px; padding: 15px 25px;">
                 <span style="font-size: 2rem;">🍄</span>
                 <div>
-                    <div style="font-weight: 700; font-size: 1.1rem;">Pokémon Pokopia</div>
-                    <div style="color: var(--primary); font-size: 0.9rem;">Desde $20.000</div>
+                    <div id="glass-card-title" style="font-weight: 700; font-size: 1.1rem;">Pokémon Pokopia</div>
+                    <div id="glass-card-price" style="color: var(--primary); font-size: 0.9rem;">Desde $20.000</div>
                 </div>
             </div>
         </div>
@@ -466,6 +466,9 @@
                     if (config.hero_img_1) document.getElementById('hero-img-1').src = config.hero_img_1;
                     if (config.hero_img_2) document.getElementById('hero-img-2').src = config.hero_img_2;
                     if (config.hero_img_3) document.getElementById('hero-img-3').src = config.hero_img_3;
+                    
+                    if (config.glass_card_title) document.getElementById('glass-card-title').innerText = config.glass_card_title;
+                    if (config.glass_card_price) document.getElementById('glass-card-price').innerText = config.glass_card_price;
                     
                     if (config.img_juegos) {
                         document.getElementById('featureImgJuegos').style.background = `url('/uploads/${config.img_juegos}') center/cover`;
