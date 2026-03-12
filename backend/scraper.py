@@ -56,8 +56,9 @@ except:
     pass
 
 class GenericPack:
-    def __init__(self, raw_text):
+    def __init__(self, raw_text, tg_msg_id=0):
         self.raw_text = raw_text
+        self.tg_msg_id = tg_msg_id
         self.id = None
         self.games = []
         self.games_json = []  # List of dicts {name: str, is_dlc: bool}
@@ -139,6 +140,7 @@ class GenericPack:
         """Convert to dict structure matching the SQLite DB schema parameters"""
         return {
             "id": self.id,
+            "tg_msg_id": self.tg_msg_id,
             "raw_text": self.raw_text,
             "games_json": self.games_json,
             "price_usd": self.original_price,
@@ -291,13 +293,19 @@ class NintendoScraper:
                 break # Ensure we parse the messages on screen first before fully stopping
                 
             # 2. Parse messages
-            elements = await self.page.locator("div.text-content").all()
+            # Telegram Web A wraps messages in .message elements which have the ID we need.
+            # We select those instead of just the text.
+            elements = await self.page.locator(".message").all()
             for el in elements:
                 try:
-                    text = await el.inner_text()
-                    if text and text not in all_texts:
-                        all_texts.add(text)
-                        pack = GenericPack(text)
+                    text_content = await el.locator("div.text-content").first.inner_text()
+                    if text_content and text_content not in all_texts:
+                        # Extract the real chronological ID from the DOM
+                        msg_id_str = await el.get_attribute("data-message-id")
+                        tg_msg_id = int(msg_id_str) if msg_id_str else 0
+                        
+                        all_texts.add(text_content)
+                        pack = GenericPack(text_content, tg_msg_id)
                         if pack.is_valid:
                             # Avoid duplicates by content
                             if any(p.content_hash == pack.content_hash for p in packs):
@@ -327,13 +335,16 @@ class NintendoScraper:
         for _ in range(max_scrolls):
             if len(all_texts) >= message_count: break
             
-            elements = await self.page.locator("div.text-content").all()
+            elements = await self.page.locator(".message").all()
             for el in elements:
                 try:
-                    text = await el.inner_text()
-                    if text and text not in all_texts:
-                        all_texts.add(text)
-                        pack = GenericPack(text)
+                    text_content = await el.locator("div.text-content").first.inner_text()
+                    if text_content and text_content not in all_texts:
+                        msg_id_str = await el.get_attribute("data-message-id")
+                        tg_msg_id = int(msg_id_str) if msg_id_str else 0
+                        
+                        all_texts.add(text_content)
+                        pack = GenericPack(text_content, tg_msg_id)
                         if pack.is_valid:
                             if any(p.content_hash == pack.content_hash for p in packs):
                                 continue
@@ -351,9 +362,8 @@ class NintendoScraper:
 
     # --- MODE 3: Verify Deleted (Sync IDs) ---
     async def verify_deleted(self):
-        """Reads visible messages on screen. Checks existing DB IDs. If an ID is NOT found, marks it deleted.
-        WARNING: This requires scrolling enough to see all DB IDs. It's safer to just check if the ID exists via Telegram Search."""
-        print("[SCRAPE] Starting 'Verify Deleted' mode by rapid ID checking...")
+        """Verifies if packs have been deleted from the channel by scanning recent messages."""
+        print("[VERIFY] Starting 'Verify Deleted' mode using passive scan...")
         await self._open_chat()
         
         db_ids = self.db.get_all_active_pack_ids()
@@ -361,40 +371,40 @@ class NintendoScraper:
             return 0
             
         print(f"[VERIFY] Auditing {len(db_ids)} active packs stored in database...")
-        deleted_count = 0
         
-        # To avoid scrolling forever, a fast way to verify is searching the Telegram chat for the ID.
-        # But Telegram search is slow. The standard approach you wanted was to just scan visible messages
-        # assuming the catalog isn't massive.
-        # Let's do a reliable scroll of the entire recent history (e.g., last 50 scrolls ~ 500 messages)
-        # and gather ALL valid IDs currently in the channel. Then diff them.
+        # 1. Scan the last ~500 messages to collect active IDs
+        active_ids_in_tg = set()
+        all_texts = set()
+        max_scrolls = 35 # roughly 500 messages assuming ~15 per screen
         
-        visible_ids = set()
-        for _ in range(50): # Scroll back reasonably
-            elements = await self.page.locator("div.text-content").all()
+        for _ in range(max_scrolls):
+            elements = await self.page.locator(".message").all()
             for el in elements:
                 try:
-                    text = await el.inner_text()
-                    id_match = re.search(r"ID\s*:\s*(\d+)", text, re.IGNORECASE)
-                    if id_match:
-                        visible_ids.add(id_match.group(1))
+                    text_content = await el.locator("div.text-content").first.inner_text()
+                    if text_content and text_content not in all_texts:
+                        all_texts.add(text_content)
+                        pack = GenericPack(text_content, 0)
+                        if pack.is_valid:
+                            active_ids_in_tg.add(str(pack.id))
                 except: continue
-            
-            # If we've seen all our DB IDs, we can stop early!
-            missing = set(db_ids) - visible_ids
-            if not missing:
-                break
                 
             await self.page.keyboard.press("Home")
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             
-        # Any DB ID that we STILL didn't see after scrolling is considered deleted by the channel owner
-        missing_ids = set(db_ids) - visible_ids
-        for missing_id in missing_ids:
-            self.db.mark_pack_deleted(missing_id, manual=False)
-            deleted_count += 1
-            print(f"[VERIFY] Pack #{missing_id} deleted from Telegram. Removing from DB.")
-            
+        # 2. Find which ones to delete
+        deleted_count = 0
+        for pack_id in db_ids:
+            str_id = str(pack_id)
+            if str_id.startswith("MANUAL-"):
+                continue # Manually added packs are safe from sync deletions
+                
+            if str_id not in active_ids_in_tg:
+                self.db.mark_pack_deleted(str_id, manual=False)
+                deleted_count += 1
+                print(f"[VERIFY] Pack #{str_id} no longer in recent Telegram feed. Removing from DB.")
+                
+        print(f"[VERIFY] Audit Complete. Packs removed (deleted or expired): {deleted_count}")
         return deleted_count
 
     # --- MODE 4: Live Monitor (1 Hour Loop) ---

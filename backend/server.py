@@ -213,6 +213,53 @@ def manual_delete_pack(pack_id):
     db.mark_pack_deleted(pack_id, manual=True)
     return jsonify({"status": "ok"})
 
+@app.route('/api/admin/packs/<pack_id>/toggle_featured', methods=['POST'])
+@admin_required
+def toggle_pack_featured(pack_id):
+    """Admin clicked 'Destacar' -> toggles the is_featured flag (max 6)"""
+    # Accept optional force parameter from JSON body
+    force = request.json.get('force') if request.is_json else None
+    success = db.toggle_pack_featured(pack_id, force=force)
+    if success:
+        return jsonify({"status": "ok"})
+    else:
+        return jsonify({"error": "No se pudo destacar. El límite de 6 packs ha sido alcanzado o el pack no existe."}), 400
+
+@app.route('/api/admin/packs/manual', methods=['POST'])
+@admin_required
+def create_manual_pack():
+    """Admin form to manually add a pack."""
+    data = request.json
+    if not data or not data.get('games_text') or not data.get('price_local'):
+        return jsonify({"error": "Faltan datos obligatorios (juegos o precio)."}), 400
+        
+    games_lines = [g.strip() for g in data['games_text'].split('\n') if g.strip()]
+    games = []
+    
+    # Very simple parser for manual input: if it has +, assume mixed.
+    for line in games_lines:
+        is_dlc = 'dlc' in line.lower()
+        is_mixed = '+' in line
+        games.append({
+            "name": line,
+            "is_dlc": is_dlc,
+            "is_mixed": is_mixed
+        })
+        
+    pack_data = {
+        "raw_text": data['games_text'], # fallback
+        "games": games,
+        "price_usd": 0,
+        "price_local": int(data['price_local']),
+        "manual_image_url": data.get('image_url', '').strip()
+    }
+    
+    try:
+        new_id = db.insert_manual_pack(pack_data)
+        return jsonify({"status": "ok", "id": new_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/admin/telegram/status')
 def telegram_status():
     """Check if headless browser QR needs scanning"""
@@ -221,6 +268,36 @@ def telegram_status():
         return jsonify({"telegram_connected": logged_in})
     except:
         return jsonify({"telegram_connected": False})
+
+# --- Hot Titles API ---
+
+@app.route('/api/admin/hot_titles', methods=['GET', 'POST'])
+@admin_required
+def api_admin_hot_titles():
+    if request.method == 'GET':
+        return jsonify(db.get_hot_titles())
+    else:
+        # POST: add a new title
+        data = request.json
+        if not data or not data.get('titulo'):
+            return jsonify({"error": "Título requerido"}), 400
+        
+        success = db.add_hot_title(data['titulo'])
+        if success:
+            return jsonify({"status": "ok"})
+        else:
+            return jsonify({"error": "El título ya existe"}), 400
+
+@app.route('/api/admin/hot_titles/<int:id>', methods=['DELETE'])
+@admin_required
+def api_admin_delete_hot_title(id):
+    db.delete_hot_title(id)
+    return jsonify({"status": "ok"})
+
+@app.route('/api/public/hot_titles', methods=['GET'])
+def api_public_hot_titles():
+    # Public endpoint so index.html can know which titles get the fire emoji
+    return jsonify([t['titulo'] for t in db.get_hot_titles()])
 
 
 # --- Static Fallback ---

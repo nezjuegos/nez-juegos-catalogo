@@ -102,6 +102,28 @@
         </div>
     </div>
 
+    <!-- Manual Pack Form -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit'; font-size: 1.3rem; margin-bottom: 1.5rem;">Añadir Pack Manualmente</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Lista de Juegos (uno por línea)</label>
+                <textarea id="manualGames" placeholder="Juego 1&#10;Juego 2 (DLC)&#10;Juego 3" style="width: 100%; height: 120px; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem; resize: none;"></textarea>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Precio Local ($)</label>
+                    <input type="number" id="manualPrice" placeholder="Ej: 15000" style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">URL de Imagen (Opcional)</label>
+                    <input type="text" id="manualImage" placeholder="https://ejemplo.com/imagen.jpg" style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
+                </div>
+                <button id="btnSaveManual" class="btn" style="background: var(--primary); color: white; padding: 1rem; font-weight: 600; font-size: 1rem; border-radius: var(--radius-sm);">Guardar Pack Manual</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Table -->
     <div class="table-section">
         <table>
@@ -199,11 +221,14 @@
                 });
                 if (!gamesHtml) gamesHtml = '<span style="color:#52525b; font-size:0.85rem;">Sin juegos detectados</span>';
 
+                const featuredStyle = pack.is_featured ? 'background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid #eab308;' : 'background: transparent; color: var(--text-muted); border: 1px solid var(--border);';
+                
                 tr.innerHTML = `
                     <td style="font-family: monospace; vertical-align: top; padding-top: 1.2rem; white-space: nowrap;">${pack.id}</td>
                     <td>${newBadge}${dlcBadge}<div class="games-list">${gamesHtml}</div></td>
                     <td style="font-weight: bold; vertical-align: top; padding-top: 1.2rem;">${formatPrice(pack.price_local)}</td>
                     <td style="vertical-align: top; padding-top: 1.2rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="action-btn" title="Destacar Pack" onclick="toggleFeatured('${pack.id}', this)" style="${featuredStyle} padding: 4px 8px; border-radius: 4px; font-size: 0.9rem;">⭐</button>
                         <button class="action-btn" title="Copiar Pack" onclick="copyToClip('${encodeURIComponent(JSON.stringify(pack))}')">📋</button>
                         <button class="action-btn" title="Eliminar Manualmente" onclick="deletePack('${pack.id}', this)" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);">🗑️</button>
                     </td>
@@ -249,6 +274,61 @@
         btnScrapeToday.addEventListener('click', () => triggerScrape('/api/admin/scrape/today', btnScrapeToday, "Escaneando Hoy..."));
         btnScrapeFull.addEventListener('click', () => triggerScrape('/api/admin/scrape/full', btnScrapeFull, "Haciendo Scrape Full..."));
         btnVerifyDeleted.addEventListener('click', () => triggerScrape('/api/admin/scrape/verify', btnVerifyDeleted, "Verificando..."));
+
+        document.getElementById('btnSaveManual').addEventListener('click', async () => {
+            const gamesText = document.getElementById('manualGames').value.trim();
+            const priceLocal = document.getElementById('manualPrice').value.trim();
+            const imageUrl = document.getElementById('manualImage').value.trim();
+
+            if (!gamesText || !priceLocal) {
+                alert("Juegos y Precio son requeridos");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/packs/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        games_text: gamesText,
+                        price_local: priceLocal,
+                        image_url: imageUrl
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    alert('Pack manual agregado con ID: ' + data.id);
+                    document.getElementById('manualGames').value = '';
+                    document.getElementById('manualPrice').value = '';
+                    document.getElementById('manualImage').value = '';
+                    loadPacks();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                alert("Error de red");
+                console.error(err);
+            }
+        });
+
+        window.toggleFeatured = async function(id, btnElement) {
+            btnElement.disabled = true;
+            try {
+                const res = await fetch(`/api/admin/packs/${id}/toggle_featured`, { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    loadPacks(); // Reload to show updated styles
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                alert('Connection error');
+                console.error(err);
+            } finally {
+                btnElement.disabled = false;
+            }
+        };
 
         window.deletePack = async function(id, btnElement) {
             if(confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {

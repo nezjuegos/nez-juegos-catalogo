@@ -34,16 +34,35 @@ class Database:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS packs (
                 id TEXT PRIMARY KEY,
+                tg_msg_id INTEGER DEFAULT 0,
                 raw_text TEXT,
                 games_json TEXT,
                 price_usd INTEGER,
                 price_local INTEGER,
                 cover_url TEXT,
                 is_new INTEGER DEFAULT 0,
+                is_featured INTEGER DEFAULT 0,
                 is_manually_deleted INTEGER DEFAULT 0,
+                manual_image_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             ''')
+            
+            # Migration to add tg_msg_id and is_featured to existing DB
+            try:
+                cursor.execute("ALTER TABLE packs ADD COLUMN tg_msg_id INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass # Column already exists
+                
+            try:
+                cursor.execute("ALTER TABLE packs ADD COLUMN is_featured INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass # Column already exists
+                
+            try:
+                cursor.execute("ALTER TABLE packs ADD COLUMN manual_image_url TEXT")
+            except sqlite3.OperationalError:
+                pass # Column already exists
 
             # Table: juegos (Individual Games CRUD)
             cursor.execute('''
@@ -57,6 +76,14 @@ class Database:
                 precio_alquiler INTEGER,
                 imagen_filename TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            
+            # Table: hot_titles (For adding 🔥 emojis)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS hot_titles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo TEXT UNIQUE NOT NULL
             )
             ''')
             
@@ -185,25 +212,25 @@ class Database:
                 
                 # Check if it exists to maintain created_at and is_new properties if not overwriting
                 if existing:
-                    # Update without changing is_new unless explicitly asked
-                    is_new_val = 1 if is_scrape_today else '(SELECT is_new FROM packs WHERE id = ?)'
+                    # Never set an existing pack to "new". Just retain its current status.
+                    is_new_val = '(SELECT is_new FROM packs WHERE id = ?)'
                     query = f'''
                         UPDATE packs SET 
-                            raw_text=?, games_json=?, price_usd=?, price_local=?, cover_url=COALESCE(?, cover_url), is_new={is_new_val}
+                            tg_msg_id=?, raw_text=?, games_json=?, price_usd=?, price_local=?, cover_url=COALESCE(?, cover_url), is_new={is_new_val}
                         WHERE id=?
                     '''
-                    params = [pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
-                    if not is_scrape_today:
-                        params.append(pack['id']) # for the subquery
+                    params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
+                    params.append(pack['id']) # for the subquery
                     params.append(pack['id'])
                     cursor.execute(query, params)
                 else:
                     # Insert new
                     cursor.execute('''
-                        INSERT INTO packs (id, raw_text, games_json, price_usd, price_local, cover_url, is_new)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO packs (id, tg_msg_id, raw_text, games_json, price_usd, price_local, cover_url, is_new)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (
                         pack['id'],
+                        pack.get('tg_msg_id', 0),
                         pack['raw_text'],
                         games_json_str,
                         pack['price_usd'],
@@ -244,13 +271,13 @@ class Database:
             params = []
             
             if featured_only:
-                sql += " AND is_new = 1"
+                sql += " AND is_featured = 1"
                 
             if price_max is not None:
                 sql += " AND price_local <= ?"
                 params.append(price_max)
                 
-            cursor.execute(sql + " ORDER BY CAST(id AS INTEGER) DESC", params)
+            cursor.execute(sql + " ORDER BY COALESCE(tg_msg_id, 0) DESC, CAST(id AS INTEGER) DESC", params)
             all_packs = cursor.fetchall()
             
             results = []
@@ -261,6 +288,7 @@ class Database:
                 pack_dict = dict(row)
                 games = json.loads(pack_dict['games_json']) if pack_dict['games_json'] else []
                 pack_dict['games'] = games # parsed list for the UI
+                pack_dict['manual_image_url'] = pack_dict.get('manual_image_url')
                 
                 # 1. ID Match Short-circuit
                 if query.strip().isdigit() and query.strip() == pack_dict['id']:
@@ -330,6 +358,79 @@ class Database:
                         
             # Return alphabetical sorted list
             return sorted(list(matches))[:limit]
+
+    def count_featured_packs(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) as c FROM packs WHERE is_featured = 1 AND is_manually_deleted = 0')
+            return cursor.fetchone()['c']
+
+    def toggle_pack_featured(self, pack_id, force=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if force is not None:
+                new_val = 1 if force else 0
+            else:
+                cursor.execute('SELECT is_featured FROM packs WHERE id = ?', (pack_id,))
+                row = cursor.fetchone()
+                if not row: return False
+                new_val = 0 if row['is_featured'] == 1 else 1
+
+            if new_val == 1:
+                # Check limit before toggling on
+                if self.count_featured_packs() >= 6:
+                    return False # Over limit
+
+            cursor.execute('UPDATE packs SET is_featured = ? WHERE id = ?', (new_val, pack_id))
+            conn.commit()
+            return True
+
+    def insert_manual_pack(self, pack_data):
+        """Insert a manually created pack into the database."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Generate a pseudo-ID for manual packs
+            pseudo_id = f"MANUAL-{int(datetime.now().timestamp())}"
+            
+            cursor.execute('''
+                INSERT INTO packs (id, raw_text, games_json, price_usd, price_local, manual_image_url, is_new, is_featured)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                pseudo_id,
+                pack_data.get('raw_text', ''),
+                json.dumps(pack_data.get('games', [])),
+                pack_data.get('price_usd', 0),
+                pack_data.get('price_local', 0),
+                pack_data.get('manual_image_url'),
+                1, # Mark as new so it stands out
+                0
+            ))
+            conn.commit()
+            return pseudo_id
+
+    # --- Hot Titles CRUD ---
+    def get_hot_titles(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM hot_titles ORDER BY titulo COLLATE NOCASE')
+            return [dict(row) for row in cursor.fetchall()]
+            
+    def add_hot_title(self, titulo):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('INSERT INTO hot_titles (titulo) VALUES (?)', (titulo.strip(),))
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
+            return False # Already exists
+            
+    def delete_hot_title(self, id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM hot_titles WHERE id = ?', (id,))
+            conn.commit()
 
     @staticmethod
     def _strip_accents(text):
