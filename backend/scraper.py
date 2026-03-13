@@ -268,52 +268,34 @@ class NintendoScraper:
 
     # --- MODE 1: Scrape Today Only ---
     async def scrape_today(self, max_scrolls=150):
-        """Scroll upward until a date separator bubble NOT matching 'Hoy' (or similar) is reached"""
+        """Scroll upward capturing recent messages. Stops when it hits older date separators."""
         print("[SCRAPE] Starting 'Escanear Hoy' mode...")
         await self._open_chat()
         
         all_texts = set()
         packs = []
         scrolls = 0
-        hit_yesterday = False
         
-        while scrolls < max_scrolls and not hit_yesterday:
-            # 1. Check for old date separators in view
-            # Note: Web.telegram.org/a/ handles dates using sticky headers like .bubble-date
-            date_bubbles = await self.page.locator(".bubble .date, .bubble-date, .media-date").all_text_contents()
-            for date_text in date_bubbles:
-                dt = date_text.lower()
-                # If we see a date that is clearly NOT today (Ayer, specific dates like "marzo 1", etc.)
-                if "ayer" in dt or (" de " in dt and "hoy" not in dt):
-                    print(f"[SCRAPE] Hit date boundary '{dt}'. Stopping scroll.")
-                    hit_yesterday = True
-                    break
-
-            if hit_yesterday and scrolls > 0:
-                break # Ensure we parse the messages on screen first before fully stopping
-                
-            # 2. Parse messages
-            # Telegram Web A wraps messages in .message elements which have the ID we need.
-            # We select those instead of just the text.
-            elements = await self.page.locator(".message").all()
+        while scrolls < max_scrolls:
+            # Parse messages - use multiple selectors for compatibility
+            elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
-                    text_content = await el.locator("div.text-content").first.inner_text()
+                    text_el = el.locator("div.text-content, .text-content, .message-text").first
+                    text_content = await text_el.inner_text(timeout=500)
                     if text_content and text_content not in all_texts:
-                        # Extract the real chronological ID from the DOM
-                        msg_id_str = await el.get_attribute("data-message-id")
+                        msg_id_str = await el.get_attribute("data-message-id") or await el.get_attribute("data-mid")
                         tg_msg_id = int(msg_id_str) if msg_id_str else 0
                         
                         all_texts.add(text_content)
                         pack = GenericPack(text_content, tg_msg_id)
                         if pack.is_valid:
-                            # Avoid duplicates by content
                             if any(p.content_hash == pack.content_hash for p in packs):
                                 continue
                             packs.append(pack)
                 except: continue
                 
-            # 3. Scroll up
+            # Scroll up
             await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
             scrolls += 1
@@ -335,12 +317,13 @@ class NintendoScraper:
         for _ in range(max_scrolls):
             if len(all_texts) >= message_count: break
             
-            elements = await self.page.locator(".message").all()
+            elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
-                    text_content = await el.locator("div.text-content").first.inner_text()
+                    text_el = el.locator("div.text-content, .text-content, .message-text").first
+                    text_content = await text_el.inner_text(timeout=500)
                     if text_content and text_content not in all_texts:
-                        msg_id_str = await el.get_attribute("data-message-id")
+                        msg_id_str = await el.get_attribute("data-message-id") or await el.get_attribute("data-mid")
                         tg_msg_id = int(msg_id_str) if msg_id_str else 0
                         
                         all_texts.add(text_content)
@@ -362,26 +345,30 @@ class NintendoScraper:
 
     # --- MODE 3: Verify Deleted (Sync IDs) ---
     async def verify_deleted(self):
-        """Verifies if packs have been deleted from the channel by scanning recent messages."""
+        """Verifies if packs have been deleted from the channel by scanning recent messages.
+        Has multiple safety guards to prevent accidental mass deletion."""
         print("[VERIFY] Starting 'Verify Deleted' mode using passive scan...")
         await self._open_chat()
         
         db_ids = self.db.get_all_active_pack_ids()
         if not db_ids:
+            print("[VERIFY] No active packs in DB. Nothing to verify.")
             return 0
             
-        print(f"[VERIFY] Auditing {len(db_ids)} active packs stored in database...")
+        total_db_packs = len(db_ids)
+        print(f"[VERIFY] Auditing {total_db_packs} active packs stored in database...")
         
         # 1. Scan the last ~500 messages to collect active IDs
         active_ids_in_tg = set()
         all_texts = set()
-        max_scrolls = 35 # roughly 500 messages assuming ~15 per screen
+        max_scrolls = 35
         
         for _ in range(max_scrolls):
-            elements = await self.page.locator(".message").all()
+            elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
-                    text_content = await el.locator("div.text-content").first.inner_text()
+                    text_el = el.locator("div.text-content, .text-content, .message-text").first
+                    text_content = await text_el.inner_text(timeout=500)
                     if text_content and text_content not in all_texts:
                         all_texts.add(text_content)
                         pack = GenericPack(text_content, 0)
@@ -391,20 +378,44 @@ class NintendoScraper:
                 
             await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
+        
+        # ========== SAFETY GUARD 1 ==========
+        # If we found very few packs in the scan, something is wrong (chat not loaded, etc.)
+        # ABORT to prevent accidental mass deletion.
+        MIN_SCAN_THRESHOLD = 10
+        if len(active_ids_in_tg) < MIN_SCAN_THRESHOLD:
+            print(f"[VERIFY] ⚠️ SAFETY ABORT: Only found {len(active_ids_in_tg)} packs in Telegram scan.")
+            print(f"[VERIFY] This is below the minimum threshold of {MIN_SCAN_THRESHOLD}.")
+            print(f"[VERIFY] The chat likely didn't load properly. NO packs were deleted.")
+            return 0
             
         # 2. Find which ones to delete
-        deleted_count = 0
+        to_delete = []
         for pack_id in db_ids:
             str_id = str(pack_id)
             if str_id.startswith("MANUAL-"):
-                continue # Manually added packs are safe from sync deletions
+                continue # Manually added packs are always safe
                 
             if str_id not in active_ids_in_tg:
-                self.db.mark_pack_deleted(str_id, manual=False)
-                deleted_count += 1
-                print(f"[VERIFY] Pack #{str_id} no longer in recent Telegram feed. Removing from DB.")
+                to_delete.append(str_id)
+        
+        # ========== SAFETY GUARD 2 ==========
+        # If the operation would delete more than 60% of the database, abort.
+        # This prevents catastrophic wipes from scan errors.
+        scraped_pack_count = len([pid for pid in db_ids if not str(pid).startswith("MANUAL-")])
+        if scraped_pack_count > 0 and len(to_delete) > scraped_pack_count * 0.6:
+            print(f"[VERIFY] ⚠️ SAFETY ABORT: Would delete {len(to_delete)} of {scraped_pack_count} scraped packs (>{60}%).")
+            print(f"[VERIFY] This looks like a scan error, not real deletions. NO packs were deleted.")
+            return 0
+        
+        # 3. Actually delete
+        deleted_count = 0
+        for str_id in to_delete:
+            self.db.mark_pack_deleted(str_id, manual=False)
+            deleted_count += 1
+            print(f"[VERIFY] Pack #{str_id} no longer in recent Telegram feed. Removing from DB.")
                 
-        print(f"[VERIFY] Audit Complete. Packs removed (deleted or expired): {deleted_count}")
+        print(f"[VERIFY] Audit Complete. Scanned {len(active_ids_in_tg)} IDs in Telegram. Packs removed: {deleted_count}")
         return deleted_count
 
     # --- MODE 4: Live Monitor (1 Hour Loop) ---
