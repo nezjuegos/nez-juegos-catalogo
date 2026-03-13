@@ -194,43 +194,47 @@ class Database:
     # --- PACKS CRUD & SCRAPING LOGIC ---
     def save_packs(self, packs_list, is_scrape_today=False):
         """Saves a list of parsed Pack dictionary objects into the database.
-        Optionally marks them as 'is_new' if it's a 'Scan Today' operation."""
+        
+        If is_scrape_today=True:
+          - Packs already in DB are SKIPPED (they're not new).
+          - Only truly new packs (ID not in DB) are inserted with is_new=1.
+        If is_scrape_today=False (full scrape):
+          - Existing packs are updated (preserving is_new flag).
+          - New packs are inserted with is_new=0.
+        """
+        added_count = 0
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # If doing a full scrape, we might want to clear 'is_new' flag globally first
-            # But let's leave it manual for now.
-            
             for pack in packs_list:
-                # 1. Check if it exists and was manually deleted
-                cursor.execute('SELECT is_manually_deleted FROM packs WHERE id = ?', (pack['id'],))
+                # 1. Check if it already exists
+                cursor.execute('SELECT id, is_manually_deleted FROM packs WHERE id = ?', (pack['id'],))
                 existing = cursor.fetchone()
+                
+                # Skip manually deleted packs always
                 if existing and existing['is_manually_deleted'] == 1:
-                    continue # Skip this pack, the admin manually deleted it
+                    continue
                 
                 games_json_str = json.dumps(pack.get('games_json', []))
                 
-                # Check if it exists to maintain created_at and is_new properties if not overwriting
                 if existing:
-                    # If this is 'Scrape Today', force it to be new even if it already existed in DB
                     if is_scrape_today:
-                        is_new_val = '1'
-                        params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
-                        params.append(pack['id'])
+                        # "Escanear Hoy": pack already in catalog, skip it
+                        continue
                     else:
-                        is_new_val = '(SELECT is_new FROM packs WHERE id = ?)'
-                        params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
-                        params.append(pack['id']) # for the subquery
-                        params.append(pack['id'])
-
-                    query = f'''
-                        UPDATE packs SET 
-                            tg_msg_id=?, raw_text=?, games_json=?, price_usd=?, price_local=?, cover_url=COALESCE(?, cover_url), is_new={is_new_val}
-                        WHERE id=?
-                    '''
-                    cursor.execute(query, params)
+                        # Full scrape: update existing pack data, keep is_new as-is
+                        cursor.execute('''
+                            UPDATE packs SET 
+                                tg_msg_id=?, raw_text=?, games_json=?, price_usd=?, price_local=?, 
+                                cover_url=COALESCE(?, cover_url)
+                            WHERE id=?
+                        ''', (
+                            pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str,
+                            pack['price_usd'], pack['price_local'], pack.get('cover_url'),
+                            pack['id']
+                        ))
                 else:
-                    # Insert new
+                    # Truly new pack - insert it
                     cursor.execute('''
                         INSERT INTO packs (id, tg_msg_id, raw_text, games_json, price_usd, price_local, cover_url, is_new)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -244,9 +248,10 @@ class Database:
                         pack.get('cover_url'),
                         1 if is_scrape_today else 0
                     ))
+                    added_count += 1
             
             conn.commit()
-            return True
+            return added_count
 
     def mark_pack_deleted(self, pack_id, manual=False):
         """Marks a pack as deleted. If 'manual' is True, it flags it so it never comes back."""

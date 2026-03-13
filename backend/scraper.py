@@ -268,37 +268,16 @@ class NintendoScraper:
             await self.page.mouse.click(500, 400)
 
     # --- MODE 1: Scrape Today Only ---
-    async def scrape_today(self, max_scrolls=15): # Max 15 scrolls is enough for 1-2 days of content
-        """Scroll upward capturing recent messages. Stops when it hits older date separators."""
-        print("[SCRAPE] Starting 'Escanear Hoy' mode...")
+    async def scrape_today(self, max_scrolls=7):
+        """Scan the last ~100 messages. The DB layer handles deduplication:
+        packs already in the catalog are skipped, only truly new ones are inserted."""
+        print("[SCRAPE] Starting 'Escanear Hoy' mode (last ~100 messages)...")
         await self._open_chat()
         
         all_texts = set()
         packs = []
-        scrolls = 0
-        hit_boundary = False
         
-        while scrolls < max_scrolls and not hit_boundary:
-            # 1. Date Boundary Check
-            # Read all date bubbles currently visible on screen
-            try:
-                date_bubbles = await self.page.locator(".bubble .date, .bubble-date, .media-date").all_text_contents()
-                current_time_str = datetime.now().strftime("%B %d").lower() # e.g. "march 13"
-                
-                for dt in date_bubbles:
-                    dt_lower = dt.lower().strip()
-                    # If we see "ayer", "yesterday", or a specific date that is NOT today's date
-                    if "ayer" in dt_lower or "yesterday" in dt_lower:
-                        hit_boundary = True
-                        break
-                    # If it looks like a month+day (e.g. "march 12") but doesn't match today's ("march 13")
-                    if any(m in dt_lower for m in ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]):
-                        if current_time_str not in dt_lower and "hoy" not in dt_lower and "today" not in dt_lower:
-                            hit_boundary = True
-                            break
-            except: pass
-
-            # 2. Parse messages
+        for scroll in range(max_scrolls):
             elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
@@ -316,15 +295,14 @@ class NintendoScraper:
                             packs.append(pack)
                 except: continue
                 
-            # Scroll up
             await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
-            scrolls += 1
+            print(f"[SCRAPE] Scroll {scroll+1}/{max_scrolls}, found {len(packs)} valid packs so far")
             
-        packs.reverse() # Newest first
-        self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=True)
-        print(f"[SCRAPE] Finished Today. Guardados {len(packs)} packs nuevos.")
-        return len(packs)
+        packs.reverse()  # Newest first
+        added = self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=True)
+        print(f"[SCRAPE] Finished. Scanned {len(packs)} packs total, {added} truly new packs added.")
+        return added
 
     # --- MODE 2: Full Scrape ---
     async def scrape_full(self, message_count=1000):
