@@ -263,7 +263,7 @@
                 const featuredSection = document.getElementById('featuredSection');
                 
                 if (!q && !priceMax && !dlcOnly) {
-                    const featRes = await fetch(`/api/packs?featured_only=true`);
+                    const featRes = await fetch(`/api/packs?featured=true`);
                     featuredData = await featRes.json();
                     
                     if (featuredData.results && featuredData.results.length > 0) {
