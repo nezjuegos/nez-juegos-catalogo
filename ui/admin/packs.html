@@ -256,26 +256,59 @@
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
                 const data = await res.json();
-                if (data.status === 'ok') {
-                    if(data.packs_added !== undefined) alert(`Éxito. Packs agregados: ${data.packs_added}`);
-                    if(data.packs_removed_from_db !== undefined) alert(`Éxito. Packs limpiados: ${data.packs_removed_from_db}`);
-                    loadPacks();
-                } else {
+                
+                if (data.error) {
                     alert('Error: ' + data.error);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.style.opacity = 1;
+                    return;
+                }
+                
+                if (data.status === 'started') {
+                    // Poll for completion
+                    let dots = 0;
+                    const pollInterval = setInterval(async () => {
+                        dots = (dots + 1) % 4;
+                        btn.innerText = loadingText + '.'.repeat(dots);
+                        
+                        try {
+                            const statusRes = await fetch('/api/admin/scrape/status');
+                            const statusData = await statusRes.json();
+                            
+                            if (!statusData.running) {
+                                clearInterval(pollInterval);
+                                btn.innerText = originalText;
+                                btn.disabled = false;
+                                btn.style.opacity = 1;
+                                
+                                if (statusData.error) {
+                                    alert('Error en scrape: ' + statusData.error);
+                                } else {
+                                    const result = statusData.result || 0;
+                                    if (statusData.action === 'verify_deleted') {
+                                        alert(`✅ Verificación completa. Packs limpiados: ${result}`);
+                                    } else {
+                                        alert(`✅ Scrape completo. Packs procesados: ${result}`);
+                                    }
+                                    loadPacks();
+                                }
+                            }
+                        } catch(e) { /* keep polling */ }
+                    }, 3000);
                 }
             } catch (err) {
                 alert('Fallo de red al intentar ejecutar la acción.');
                 console.error(err);
-            } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
                 btn.style.opacity = 1;
             }
         }
 
-        btnScrapeToday.addEventListener('click', () => triggerScrape('/api/admin/scrape/today', btnScrapeToday, "Escaneando Hoy..."));
-        btnScrapeFull.addEventListener('click', () => triggerScrape('/api/admin/scrape/full', btnScrapeFull, "Haciendo Scrape Full..."));
-        btnVerifyDeleted.addEventListener('click', () => triggerScrape('/api/admin/scrape/verify', btnVerifyDeleted, "Verificando..."));
+        btnScrapeToday.addEventListener('click', () => triggerScrape('/api/admin/scrape/today', btnScrapeToday, "Escaneando Hoy"));
+        btnScrapeFull.addEventListener('click', () => triggerScrape('/api/admin/scrape/full', btnScrapeFull, "Haciendo Scrape Full"));
+        btnVerifyDeleted.addEventListener('click', () => triggerScrape('/api/admin/scrape/verify', btnVerifyDeleted, "Verificando"));
 
         document.getElementById('btnSaveManual').addEventListener('click', async () => {
             const gamesText = document.getElementById('manualGames').value.trim();

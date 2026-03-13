@@ -179,32 +179,53 @@ def manage_juego(juego_id):
 
 
 # --- Admin API Routes (Scraping & Telegram Packs) ---
+# Scrape tasks run in background to avoid HTTP timeout on Railway
+scrape_status = {"running": False, "result": None, "error": None, "action": None}
+
+def _run_scrape_bg(coro, action_name):
+    """Run a scrape coroutine in the background thread, updating scrape_status."""
+    global scrape_status
+    scrape_status = {"running": True, "result": None, "error": None, "action": action_name}
+    
+    def callback(future):
+        global scrape_status
+        try:
+            result = future.result()
+            scrape_status = {"running": False, "result": result, "error": None, "action": action_name}
+        except Exception as e:
+            scrape_status = {"running": False, "result": None, "error": str(e), "action": action_name}
+    
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    future.add_done_callback(callback)
+
+@app.route('/api/admin/scrape/status', methods=['GET'])
+@admin_required
+def api_scrape_status():
+    return jsonify(scrape_status)
+
 @app.route('/api/admin/scrape/today', methods=['POST'])
 @admin_required
 def api_scrape_today():
-    try:
-        count = run_on_scraper_thread(scraper.scrape_today())
-        return jsonify({"status": "ok", "packs_added": count})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if scrape_status.get('running'):
+        return jsonify({"error": "Ya hay un scrape en ejecución"}), 409
+    _run_scrape_bg(scraper.scrape_today(), 'scrape_today')
+    return jsonify({"status": "started", "action": "scrape_today"})
 
 @app.route('/api/admin/scrape/full', methods=['POST'])
 @admin_required
 def api_scrape_full():
-    try:
-        count = run_on_scraper_thread(scraper.scrape_full(1000))
-        return jsonify({"status": "ok", "packs_added": count})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if scrape_status.get('running'):
+        return jsonify({"error": "Ya hay un scrape en ejecución"}), 409
+    _run_scrape_bg(scraper.scrape_full(1000), 'scrape_full')
+    return jsonify({"status": "started", "action": "scrape_full"})
 
 @app.route('/api/admin/scrape/verify', methods=['POST'])
 @admin_required
 def api_verify_deleted():
-    try:
-        deleted = run_on_scraper_thread(scraper.verify_deleted())
-        return jsonify({"status": "ok", "packs_removed_from_db": deleted})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if scrape_status.get('running'):
+        return jsonify({"error": "Ya hay un scrape en ejecución"}), 409
+    _run_scrape_bg(scraper.verify_deleted(), 'verify_deleted')
+    return jsonify({"status": "started", "action": "verify_deleted"})
 
 @app.route('/api/admin/packs/<pack_id>', methods=['DELETE'])
 @admin_required
