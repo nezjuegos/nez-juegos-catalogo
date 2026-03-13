@@ -379,7 +379,7 @@
                     <div class="pack-games">${gamesHtml}</div>
                     <div class="pack-games-fade" id="fade-${pack.id}"></div>
                    </div>
-                   <button class="btn-toggle-collapse" id="btn-col-${pack.id}" onclick="togglePack(${pack.id})">Ver más 🔽</button>`
+                   <button class="btn-toggle-collapse" id="btn-col-${pack.id}" onclick="togglePack('${pack.id}')">Ver más 🔽</button>`
                 : `<div class="pack-games">${gamesHtml}</div>`;
 
             card.innerHTML = `
