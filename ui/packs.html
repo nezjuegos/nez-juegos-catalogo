@@ -383,6 +383,18 @@
             });
         }
 
+        // Button listeners
+        searchBtn.addEventListener('click', fetchPacks);
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            maxPriceInput.value = '';
+            dlcToggle.checked = false;
+            fetchPacks();
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') fetchPacks();
+        });
+
         // Initial Load
         Promise.all([
             fetch('/api/config').then(r => r.json()),
