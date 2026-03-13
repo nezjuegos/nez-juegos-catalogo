@@ -212,16 +212,22 @@ class Database:
                 
                 # Check if it exists to maintain created_at and is_new properties if not overwriting
                 if existing:
-                    # Never set an existing pack to "new". Just retain its current status.
-                    is_new_val = '(SELECT is_new FROM packs WHERE id = ?)'
+                    # If this is 'Scrape Today', force it to be new even if it already existed in DB
+                    if is_scrape_today:
+                        is_new_val = '1'
+                        params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
+                        params.append(pack['id'])
+                    else:
+                        is_new_val = '(SELECT is_new FROM packs WHERE id = ?)'
+                        params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
+                        params.append(pack['id']) # for the subquery
+                        params.append(pack['id'])
+
                     query = f'''
                         UPDATE packs SET 
                             tg_msg_id=?, raw_text=?, games_json=?, price_usd=?, price_local=?, cover_url=COALESCE(?, cover_url), is_new={is_new_val}
                         WHERE id=?
                     '''
-                    params = [pack.get('tg_msg_id', 0), pack['raw_text'], games_json_str, pack['price_usd'], pack['price_local'], pack.get('cover_url')]
-                    params.append(pack['id']) # for the subquery
-                    params.append(pack['id'])
                     cursor.execute(query, params)
                 else:
                     # Insert new

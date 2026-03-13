@@ -4,6 +4,7 @@ import os
 import time
 import json
 import threading
+from datetime import datetime
 from playwright.async_api import async_playwright
 
 # --- CONFIGURATION ---
@@ -267,7 +268,7 @@ class NintendoScraper:
             await self.page.mouse.click(500, 400)
 
     # --- MODE 1: Scrape Today Only ---
-    async def scrape_today(self, max_scrolls=150):
+    async def scrape_today(self, max_scrolls=15): # Max 15 scrolls is enough for 1-2 days of content
         """Scroll upward capturing recent messages. Stops when it hits older date separators."""
         print("[SCRAPE] Starting 'Escanear Hoy' mode...")
         await self._open_chat()
@@ -275,9 +276,29 @@ class NintendoScraper:
         all_texts = set()
         packs = []
         scrolls = 0
+        hit_boundary = False
         
-        while scrolls < max_scrolls:
-            # Parse messages - use multiple selectors for compatibility
+        while scrolls < max_scrolls and not hit_boundary:
+            # 1. Date Boundary Check
+            # Read all date bubbles currently visible on screen
+            try:
+                date_bubbles = await self.page.locator(".bubble .date, .bubble-date, .media-date").all_text_contents()
+                current_time_str = datetime.now().strftime("%B %d").lower() # e.g. "march 13"
+                
+                for dt in date_bubbles:
+                    dt_lower = dt.lower().strip()
+                    # If we see "ayer", "yesterday", or a specific date that is NOT today's date
+                    if "ayer" in dt_lower or "yesterday" in dt_lower:
+                        hit_boundary = True
+                        break
+                    # If it looks like a month+day (e.g. "march 12") but doesn't match today's ("march 13")
+                    if any(m in dt_lower for m in ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]):
+                        if current_time_str not in dt_lower and "hoy" not in dt_lower and "today" not in dt_lower:
+                            hit_boundary = True
+                            break
+            except: pass
+
+            # 2. Parse messages
             elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
