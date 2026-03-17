@@ -253,12 +253,16 @@
             const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
             const term = normalize(searchInput.value);
 
-            // Filter by platform (only for main catalog, not featured)
-            const platformGames = allJuegos.filter(j => j.plataforma === currentPlatform);
+            // Platform match: Nintendo Switch tab includes "Nintendo Switch" and "Nintendo Switch 2"
+            const matchesPlatform = (p) => currentPlatform === 'PlayStation' ? p === 'PlayStation' : p.startsWith('Nintendo Switch');
+
+            // Filter by platform
+            const platformGames = allJuegos.filter(j => matchesPlatform(j.plataforma));
+            const platformFeatured = featuredJuegos.filter(j => matchesPlatform(j.plataforma));
 
             // Filter by search
             const filtered = platformGames.filter(j => normalize(j.titulo).includes(term));
-            const filteredFeatured = featuredJuegos.filter(j => normalize(j.titulo).includes(term));
+            const filteredFeatured = platformFeatured.filter(j => normalize(j.titulo).includes(term));
 
             // Show featured section
             const featuredSection = document.getElementById('featuredSection');
