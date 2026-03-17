@@ -60,6 +60,13 @@
         .title-name { font-weight: 500; display: flex; align-items: center; gap: 0.5rem; }
         .btn-delete { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
         .btn-delete:hover { background: #ef4444; color: white; }
+        /* Toast */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
 
     </style>
 </head>
@@ -95,6 +102,16 @@
     </div>
 
     <script>
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer') || document.createElement('div');
+            if (!c.id) { c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
         const titleList = document.getElementById('titleList');
         const addForm = document.getElementById('addForm');
         const titleInput = document.getElementById('titleInput');
@@ -142,10 +159,10 @@
                     titleInput.value = '';
                     loadTitles();
                 } else {
-                    alert(data.error);
+                    showToast(data.error, true);
                 }
             } catch (err) {
-                alert("Error de red");
+                showToast("Error de red", true);
             }
         });
 
@@ -155,7 +172,7 @@
                 await fetch(`/api/admin/hot_titles/${id}`, { method: 'DELETE' });
                 loadTitles();
             } catch (err) {
-                alert("Error de red");
+                showToast("Error de red", true);
             }
         }
 

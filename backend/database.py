@@ -64,6 +64,11 @@ class Database:
             except sqlite3.OperationalError:
                 pass # Column already exists
 
+            try:
+                cursor.execute("ALTER TABLE juegos ADD COLUMN is_featured INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass # Column already exists
+
             # Table: juegos (Individual Games CRUD)
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS juegos (
@@ -123,10 +128,13 @@ class Database:
             return True
 
     # --- JUEGOS CRUD ---
-    def get_all_juegos(self):
+    def get_all_juegos(self, featured_only=False):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM juegos ORDER BY titulo COLLATE NOCASE ASC')
+            if featured_only:
+                cursor.execute('SELECT * FROM juegos WHERE is_featured = 1 ORDER BY titulo COLLATE NOCASE ASC')
+            else:
+                cursor.execute('SELECT * FROM juegos ORDER BY titulo COLLATE NOCASE ASC')
             results = []
             for row in cursor.fetchall():
                 d = dict(row)
@@ -150,8 +158,8 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, imagen_filename)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, imagen_filename, is_featured)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data.get('titulo'),
                 data.get('plataforma', 'Nintendo Switch'),
@@ -159,7 +167,8 @@ class Database:
                 data.get('precio_primaria'),
                 data.get('precio_secundaria'),
                 data.get('precio_alquiler'),
-                data.get('imagen_filename')
+                data.get('imagen_filename'),
+                int(data.get('is_featured', 0))
             ))
             conn.commit()
             return cursor.lastrowid
@@ -169,7 +178,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE juegos 
-                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, imagen_filename=COALESCE(?, imagen_filename)
+                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?
                 WHERE id=?
             ''', (
                 data.get('titulo'),
@@ -179,6 +188,7 @@ class Database:
                 data.get('precio_secundaria'),
                 data.get('precio_alquiler'),
                 data.get('imagen_filename'),
+                int(data.get('is_featured', 0)),
                 juego_id
             ))
             conn.commit()
@@ -300,6 +310,14 @@ class Database:
                 games = json.loads(pack_dict['games_json']) if pack_dict['games_json'] else []
                 pack_dict['games'] = games # parsed list for the UI
                 pack_dict['manual_image_url'] = pack_dict.get('manual_image_url')
+                
+                # Auto-expire "Nuevo" tag after 48 hours
+                if pack_dict.get('is_new') == 1 and pack_dict.get('created_at'):
+                    try:
+                        created = datetime.strptime(pack_dict['created_at'], '%Y-%m-%d %H:%M:%S')
+                        if (datetime.now() - created).total_seconds() > 48 * 3600:
+                            pack_dict['is_new'] = 0
+                    except: pass
                 
                 # 1. ID Match Short-circuit
                 if query.strip().isdigit() and query.strip() == pack_dict['id']:

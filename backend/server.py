@@ -109,7 +109,8 @@ def pack_suggestions():
 
 @app.route('/api/juegos')
 def get_juegos():
-    return jsonify({"results": db.get_all_juegos()})
+    featured = request.args.get('featured', 'false').lower() == 'true'
+    return jsonify({"results": db.get_all_juegos(featured_only=featured)})
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):

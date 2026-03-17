@@ -58,9 +58,17 @@
             .header { flex-direction: column; gap: 1rem; align-items: flex-start; }
             body { padding: 1rem; }
         }
+        /* Toast */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
     </style>
 </head>
 <body>
+<div class="toast-container" id="toastContainer"></div>
 
     <div class="header">
         <h1>🎮 Gestión de Juegos Individuales</h1>
@@ -84,7 +92,13 @@
                 <select id="plataforma">
                     <option>Nintendo Switch</option>
                     <option>Nintendo Switch 2</option>
+                    <option>PlayStation</option>
                 </select>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.75rem;">
+                <input type="checkbox" id="is_featured" style="width: auto; accent-color: #eab308; transform: scale(1.3);">
+                <label for="is_featured" style="margin-bottom: 0; cursor: pointer;">⭐ Juego Destacado</label>
             </div>
 
             <div class="form-group">
@@ -147,6 +161,15 @@
         // Form Fields
         const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler'];
 
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
         let allGames = [];
 
         // --- Fetch & Render ---
@@ -173,7 +196,7 @@
                     <td>
                         <div class="game-cell">
                             <img src="${cover}" alt="${game.titulo}">
-                            <strong>${game.titulo}</strong>
+                            <strong>${game.is_featured ? '⭐ ' : ''}${game.titulo}</strong>
                         </div>
                     </td>
                     <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${game.plataforma}</span></td>
@@ -211,6 +234,7 @@
         btnSave.onclick = async () => {
             const formData = new FormData();
             fields.forEach(f => formData.append(f, document.getElementById(f).value));
+            formData.append('is_featured', document.getElementById('is_featured').checked ? '1' : '0');
             
             if (fileInput.files[0]) {
                 formData.append('image', fileInput.files[0]);
@@ -237,11 +261,11 @@
                     resetForm();
                     loadGames();
                 } else {
-                    alert('Error: ' + data.error);
+                    showToast('Error: ' + data.error, true);
                 }
             } catch (err) {
                 console.error(err);
-                alert('Fallo al guardar');
+                showToast('Fallo al guardar', true);
             } finally {
                 btnSave.disabled = false;
                 btnSave.innerText = "Guardar Juego en Base de Datos";
@@ -260,6 +284,7 @@
             formTitle.innerText = "Editando: " + game.titulo;
             btnSave.innerText = "Actualizar Juego";
             btnCancel.style.display = 'block';
+            document.getElementById('is_featured').checked = game.is_featured == 1;
             
             if (game.imagen_filename) {
                 previewImg.src = `/uploads/${game.imagen_filename}`;
@@ -292,6 +317,7 @@
             formTitle.innerText = "Agregar Nuevo Juego";
             btnSave.innerText = "Guardar Juego en Base de Datos";
             btnCancel.style.display = 'none';
+            document.getElementById('is_featured').checked = false;
         }
 
         function primaryScrollIntoView() {

@@ -55,10 +55,18 @@
             .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
             .filters-container { flex-direction: column; }
         }
+        /* Toast */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
         
     </style>
 </head>
 <body>
+<div class="toast-container" id="toastContainer"></div>
 
     <div class="header">
         <h1>📦 Gestión de Packs de Telegram</h1>
@@ -144,6 +152,15 @@
     </div>
 
     <script>
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
         const packsTableBody = document.getElementById('packsTableBody');
         const searchInput = document.getElementById('searchInput');
         const excludeInput = document.getElementById('excludeInput');
@@ -165,7 +182,7 @@
             const pack = JSON.parse(decodeURIComponent(packStr));
             const text = formatPackText(pack);
             navigator.clipboard.writeText(text).then(() => {
-                alert("Pack copiado al portapapeles");
+                showToast("Pack copiado al portapapeles");
             });
         };
 
@@ -258,7 +275,7 @@
                 const data = await res.json();
                 
                 if (data.error) {
-                    alert('Error: ' + data.error);
+                    showToast('Error: ' + data.error, true);
                     btn.innerText = originalText;
                     btn.disabled = false;
                     btn.style.opacity = 1;
@@ -283,13 +300,13 @@
                                 btn.style.opacity = 1;
                                 
                                 if (statusData.error) {
-                                    alert('Error en scrape: ' + statusData.error);
+                                    showToast('Error en scrape: ' + statusData.error, true);
                                 } else {
                                     const result = statusData.result || 0;
                                     if (statusData.action === 'verify_deleted') {
-                                        alert(`✅ Verificación completa. Packs limpiados: ${result}`);
+                                        showToast(`✅ Verificación completa. Packs limpiados: ${result}`);
                                     } else {
-                                        alert(`✅ Scrape completo. Packs procesados: ${result}`);
+                                        showToast(`✅ Scrape completo. Packs procesados: ${result}`);
                                     }
                                     loadPacks();
                                 }
@@ -298,7 +315,7 @@
                     }, 3000);
                 }
             } catch (err) {
-                alert('Fallo de red al intentar ejecutar la acción.');
+                showToast('Fallo de red al intentar ejecutar la acción.', true);
                 console.error(err);
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -316,7 +333,7 @@
             const imageUrl = document.getElementById('manualImage').value.trim();
 
             if (!gamesText || !priceLocal) {
-                alert("Juegos y Precio son requeridos");
+                showToast("Juegos y Precio son requeridos", true);
                 return;
             }
 
@@ -333,16 +350,16 @@
                 
                 const data = await res.json();
                 if (data.status === 'ok') {
-                    alert('Pack manual agregado con ID: ' + data.id);
+                    showToast('Pack manual agregado con ID: ' + data.id);
                     document.getElementById('manualGames').value = '';
                     document.getElementById('manualPrice').value = '';
                     document.getElementById('manualImage').value = '';
                     loadPacks();
                 } else {
-                    alert(data.error);
+                    showToast(data.error, true);
                 }
             } catch (err) {
-                alert("Error de red");
+                showToast("Error de red", true);
                 console.error(err);
             }
         });
@@ -355,10 +372,10 @@
                 if (data.status === 'ok') {
                     loadPacks(); // Reload to show updated styles
                 } else {
-                    alert(data.error);
+                    showToast(data.error, true);
                 }
             } catch (err) {
-                alert('Connection error');
+                showToast('Error de conexión', true);
                 console.error(err);
             } finally {
                 btnElement.disabled = false;

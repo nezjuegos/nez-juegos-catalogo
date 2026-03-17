@@ -38,6 +38,13 @@
         .preview-box { background: #000; padding: 2rem; border-radius: 8px; border: 1px dashed var(--border); margin-bottom: 2rem; text-align: center; }
         .preview-box h2 { font-family: 'Outfit'; font-size: 2rem; margin-bottom: 1rem; background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%); -webkit-background-clip: text; color: transparent; }
         .preview-box p { color: var(--text-muted); }
+        /* Toast */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
 
     </style>
 </head>
@@ -155,6 +162,16 @@
         document.getElementById('inputTitle').addEventListener('input', updatePreview);
         document.getElementById('inputSubtitle').addEventListener('input', updatePreview);
 
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer') || document.createElement('div');
+            if (!c.id) { c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
         document.getElementById('btnSave').addEventListener('click', async () => {
             const btn = document.getElementById('btnSave');
             btn.innerText = 'Guardando...';
@@ -198,12 +215,12 @@
                     loadConfig();
                 } else {
                     if (res.status === 401) window.location.href = '/admin/login';
-                    else alert('Error guardando la configuración');
+                    else showToast('Error guardando la configuración', true);
                     btn.innerText = 'Guardar Cambios de la Home';
                 }
             } catch (err) {
                 console.error(err);
-                alert('Error de red');
+                showToast('Error de red', true);
                 btn.innerText = 'Guardar Cambios de la Home';
             }
         });

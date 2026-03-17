@@ -94,6 +94,25 @@
         }
         .btn-wa-small:hover { background: var(--whatsapp-hover); transform: scale(1.05); }
 
+        /* Info Banner */
+        .info-banner {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(217, 70, 239, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3); border-radius: var(--radius-md);
+            padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;
+        }
+        .info-banner-icon { font-size: 1.8rem; flex-shrink: 0; }
+        .info-banner-text { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+        .info-banner-text strong { color: var(--text-main); }
+        .info-banner-text .highlight { color: var(--secondary); font-weight: 700; }
+
+        /* Share Button */
+        .btn-share {
+            background: #27272a; color: var(--text-muted); border: 1px solid var(--border);
+            padding: 0.7rem; width: 100%; text-align: center; cursor: pointer;
+            border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem; transition: 0.2s; margin-top: 0.5rem;
+        }
+        .btn-share:hover { background: #3f3f46; color: white; }
+
         /* Responsive */
         @media (max-width: 768px) {
             header { padding: 0.8rem 1rem; }
@@ -109,7 +128,37 @@
             .pricing-list { padding: 1rem; gap: 0.75rem; }
             .price-row { padding: 0.6rem; }
             .price-amount { font-size: 1rem; }
+            .info-banner { padding: 1rem; gap: 0.75rem; }
+            .info-banner-icon { font-size: 1.4rem; }
+            .info-banner-text { font-size: 0.85rem; }
+            .platform-tabs { flex-direction: column; gap: 0.5rem; }
+            .platform-tab { padding: 0.6rem 1rem; font-size: 0.9rem; }
         }
+
+        /* Platform Tabs */
+        .platform-tabs { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+        .platform-tab {
+            padding: 0.75rem 1.5rem; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer;
+            border: 1px solid var(--border); background: transparent; color: var(--text-muted); transition: 0.2s; font-size: 0.95rem;
+        }
+        .platform-tab:hover { background: rgba(255,255,255,0.05); color: white; }
+        .platform-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Featured Section */
+        .featured-section { margin-bottom: 3rem; }
+        .featured-section h2 { font-size: 1.3rem; margin-bottom: 1.25rem; }
+        /* Toast Notification */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast {
+            background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: var(--radius-sm);
+            border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%);
+            animation: toastIn 0.3s ease forwards;
+        }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
 
     </style>
 </head>
@@ -129,12 +178,31 @@
         <h1>Juegos Individuales</h1>
         <p style="color: var(--text-muted); margin-bottom: 2rem;">Elige la modalidad que mejor se adapte a ti.</p>
 
+        <div class="info-banner">
+            <span class="info-banner-icon">💡</span>
+            <div class="info-banner-text">
+                <strong>¡Ahorrá comprando con nosotros!</strong> Todas nuestras modalidades son <span class="highlight">más baratas que comprar en la eShop con impuestos</span> (23% adicional como mínimo).
+                Recomendamos la compra de <strong>Cuenta Primaria permanente</strong> como la mejor opción calidad-precio.
+            </div>
+        </div>
+
         <div class="search-box">
             <span style="font-size: 1.5rem; color: var(--text-muted)">🔍</span>
             <input type="text" id="searchInput" placeholder="Buscar por el nombre de un juego específico...">
             <button class="btn-wa-small" id="searchBtn" style="background: var(--primary); padding: 0.8rem 1.5rem; font-size: 1rem;">Buscar</button>
         </div>
 
+        <div class="platform-tabs" id="platformTabs">
+            <button class="platform-tab active" data-platform="Nintendo Switch">🎎 Nintendo Switch</button>
+            <button class="platform-tab" data-platform="PlayStation">🎮 PlayStation</button>
+        </div>
+
+        <div class="featured-section" id="featuredSection" style="display: none;">
+            <h2>⭐ Juegos Destacados</h2>
+            <div class="games-grid" id="featuredGrid"></div>
+        </div>
+
+        <h2 style="font-size: 1.2rem; margin-bottom: 1.25rem; color: var(--text-muted);">Catálogo Completo</h2>
         <div class="games-grid" id="gamesGrid">
             <!-- Rendered via JS -->
         </div>
@@ -142,31 +210,68 @@
 
     <script>
         let allJuegos = [];
+        let featuredJuegos = [];
         let waNumber = '';
+        let currentPlatform = 'Nintendo Switch';
 
         document.addEventListener('DOMContentLoaded', () => {
             Promise.all([
                 fetch('/api/juegos').then(r => r.json()),
+                fetch('/api/juegos?featured=true').then(r => r.json()),
                 fetch('/api/config').then(r => r.json()).catch(() => ({}))
-            ]).then(([juegosData, configData]) => {
+            ]).then(([juegosData, featData, configData]) => {
                 waNumber = configData.numero_whatsapp || '';
                 allJuegos = juegosData.results || [];
-                renderGames(allJuegos);
+                featuredJuegos = featData.results || [];
+                applyFilters();
             }).catch(err => console.error("Error loading data:", err));
 
             // Wire up search
             const searchInput = document.getElementById('searchInput');
             const searchBtn = document.getElementById('searchBtn');
 
-            const performSearch = () => {
-                const term = searchInput.value.toLowerCase();
-                const filtered = allJuegos.filter(j => j.titulo.toLowerCase().includes(term));
-                renderGames(filtered);
-            };
+            const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+            const performSearch = () => applyFilters();
 
             searchInput.addEventListener('input', performSearch);
             searchBtn.addEventListener('click', performSearch);
+
+            // Wire up platform tabs
+            document.querySelectorAll('.platform-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentPlatform = tab.dataset.platform;
+                    applyFilters();
+                });
+            });
         });
+
+        function applyFilters() {
+            const searchInput = document.getElementById('searchInput');
+            const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const term = normalize(searchInput.value);
+
+            // Filter by platform
+            const platformGames = allJuegos.filter(j => j.plataforma === currentPlatform);
+            const platformFeatured = featuredJuegos.filter(j => j.plataforma === currentPlatform);
+
+            // Filter by search
+            const filtered = platformGames.filter(j => normalize(j.titulo).includes(term));
+            const filteredFeatured = platformFeatured.filter(j => normalize(j.titulo).includes(term));
+
+            // Show featured section
+            const featuredSection = document.getElementById('featuredSection');
+            if (filteredFeatured.length > 0 && !term) {
+                featuredSection.style.display = 'block';
+                renderGames(filteredFeatured, 'featuredGrid');
+            } else {
+                featuredSection.style.display = 'none';
+            }
+
+            renderGames(filtered, 'gamesGrid');
+        }
 
         function formatPrice(val) {
             if (!val) return 'Consultar';
@@ -198,8 +303,8 @@
             `;
         }
 
-        function renderGames(gamesArray) {
-            const container = document.getElementById('gamesGrid');
+        function renderGames(gamesArray, containerId = 'gamesGrid') {
+            const container = document.getElementById(containerId);
             container.innerHTML = '';
 
             if (gamesArray.length === 0) {
@@ -222,14 +327,36 @@
                     </div>
                     <div class="pricing-list">
                         ${createPriceOption(game, 'CÓDIGO DIGITAL', 'codigo_digital', 'Canjeable en tu cuenta', true)}
-                        ${createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Juegas con tu usuario (Permanente)')}
-                        ${createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Juegas con perfil alterno (Permanente)')}
+                        ${createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Jugás con tu usuario (Permanente)')}
+                        ${createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Jugás con perfil alterno (Permanente)')}
                         ${createPriceOption(game, 'ALQUILER 30 DÍAS', 'alquiler', 'Cuenta prestada por 1 mes')}
                     </div>
+                    <button class="btn-share" onclick="shareGame(${JSON.stringify(game).replace(/"/g, '&quot;')})">📋 Compartir precios</button>
                 `;
                 container.appendChild(card);
             });
         }
+        window.shareGame = function(game) {
+            let text = `🎮 ${game.titulo} — Nez Juegos\n\n`;
+            if (game.precios.codigo_digital) text += `• Código Digital: ${formatPrice(game.precios.codigo_digital)}\n`;
+            if (game.precios.primaria) text += `• Cuenta Primaria: ${formatPrice(game.precios.primaria)}\n`;
+            if (game.precios.secundaria) text += `• Cuenta Secundaria: ${formatPrice(game.precios.secundaria)}\n`;
+            if (game.precios.alquiler) text += `• Alquiler 30 días: ${formatPrice(game.precios.alquiler)}\n`;
+            text += `\n🛒 Ver más: nezjuegos.com/juegos`;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('¡Precios copiados al portapapeles!');
+            }).catch(err => console.error('Error:', err));
+        }
     </script>
-</body>
+    <div class="toast-container" id="toastContainer"></div>
+    <script>
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+    </script>
 </html>
