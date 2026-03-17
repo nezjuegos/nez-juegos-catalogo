@@ -253,13 +253,12 @@
             const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
             const term = normalize(searchInput.value);
 
-            // Filter by platform
+            // Filter by platform (only for main catalog, not featured)
             const platformGames = allJuegos.filter(j => j.plataforma === currentPlatform);
-            const platformFeatured = featuredJuegos.filter(j => j.plataforma === currentPlatform);
 
             // Filter by search
             const filtered = platformGames.filter(j => normalize(j.titulo).includes(term));
-            const filteredFeatured = platformFeatured.filter(j => normalize(j.titulo).includes(term));
+            const filteredFeatured = featuredJuegos.filter(j => normalize(j.titulo).includes(term));
 
             // Show featured section
             const featuredSection = document.getElementById('featuredSection');
