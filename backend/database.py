@@ -194,6 +194,15 @@ class Database:
             conn.commit()
             return True
 
+    def toggle_featured_juego(self, juego_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE juegos SET is_featured = CASE WHEN is_featured = 1 THEN 0 ELSE 1 END WHERE id = ?', (juego_id,))
+            conn.commit()
+            cursor.execute('SELECT is_featured FROM juegos WHERE id = ?', (juego_id,))
+            row = cursor.fetchone()
+            return row['is_featured'] if row else 0
+
     def delete_juego(self, juego_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()

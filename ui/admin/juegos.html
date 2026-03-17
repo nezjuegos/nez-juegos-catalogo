@@ -129,6 +129,9 @@
 
         <!-- Tabla -->
         <div class="table-section">
+            <div style="padding: 1rem; border-bottom: 1px solid var(--border);">
+                <input type="text" id="adminSearchInput" placeholder="🔍 Buscar juego por nombre..." style="width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.95rem;">
+            </div>
             <table id="gamesTable">
                 <thead>
                     <tr>
@@ -188,9 +191,12 @@
 
         function renderTable() {
             tableBody.innerHTML = '';
-            allGames.forEach(game => {
+            const searchTerm = (document.getElementById('adminSearchInput')?.value || '').toLowerCase();
+            const filtered = allGames.filter(g => g.titulo.toLowerCase().includes(searchTerm));
+            filtered.forEach(game => {
                 const tr = document.createElement('tr');
                 const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://via.placeholder.com/160x90?text=S/I';
+                const starStyle = game.is_featured ? 'opacity:1; filter: none;' : 'opacity:0.3; filter: grayscale(1);';
                 
                 tr.innerHTML = `
                     <td>
@@ -207,6 +213,7 @@
                         </div>
                     </td>
                     <td>
+                        <button class="action-btn" style="${starStyle}" onclick="toggleFeatured(${game.id})" title="Destacar">⭐</button>
                         <button class="action-btn" onclick="editGame(${game.id})">✏️</button>
                         <button class="action-btn" onclick="deleteGame(${game.id})">🗑️</button>
                     </td>
@@ -214,6 +221,9 @@
                 tableBody.appendChild(tr);
             });
         }
+
+        // Wire up admin search
+        document.getElementById('adminSearchInput').addEventListener('input', renderTable);
 
         // --- File Handling ---
         dropZone.onclick = () => fileInput.click();
@@ -307,6 +317,19 @@
         };
 
         btnCancel.onclick = resetForm;
+
+        window.toggleFeatured = async (id) => {
+            try {
+                const res = await fetch(`/api/admin/juegos/${id}/toggle_featured`, { method: 'PATCH' });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    const game = allGames.find(g => g.id === id);
+                    if (game) game.is_featured = data.is_featured;
+                    renderTable();
+                    showToast(data.is_featured ? '⭐ Juego destacado' : 'Juego sin destacar');
+                }
+            } catch (err) { showToast('Error al cambiar destacado', true); }
+        };
 
         function resetForm() {
             juegoIdInput.value = '';

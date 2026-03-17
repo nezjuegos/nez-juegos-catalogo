@@ -178,6 +178,12 @@ def manage_juego(juego_id):
         db.update_juego(juego_id, data)
         return jsonify({"status": "ok"})
 
+@app.route('/api/admin/juegos/<int:juego_id>/toggle_featured', methods=['PATCH'])
+@admin_required
+def toggle_featured_juego(juego_id):
+    new_val = db.toggle_featured_juego(juego_id)
+    return jsonify({"status": "ok", "is_featured": new_val})
+
 
 # --- Admin API Routes (Scraping & Telegram Packs) ---
 # Scrape tasks run in background to avoid HTTP timeout on Railway
