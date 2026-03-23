@@ -330,6 +330,38 @@ def api_admin_manage_title_tag(id):
         else:
             return jsonify({"error": "Error de base de datos o tag inválido"}), 400
 
+@app.route('/api/admin/title_tags/bulk', methods=['POST'])
+@admin_required
+def api_admin_bulk_title_tags():
+    data = request.json
+    keyword = data.get('keyword')
+    tags = data.get('tags', [])
+    if not keyword:
+        return jsonify({"error": "Keyword requerido"}), 400
+    
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM title_tags WHERE keyword = ?', (keyword.strip().lower(),))
+        for t in tags:
+            if t in ('juego', 'dlc', 'hot'):
+                try:
+                    cursor.execute('INSERT INTO title_tags (keyword, tag) VALUES (?, ?)', (keyword.strip().lower(), t))
+                except:
+                    pass
+        conn.commit()
+    return jsonify({"status": "ok"})
+
+@app.route('/api/admin/title_tags/by_keyword', methods=['DELETE'])
+@admin_required
+def api_admin_delete_title_tags_by_keyword():
+    keyword = request.json.get('keyword')
+    if keyword:
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM title_tags WHERE keyword = ?', (keyword.strip().lower(),))
+            conn.commit()
+    return jsonify({"status": "ok"})
+
 @app.route('/api/public/title_tags', methods=['GET'])
 def api_public_title_tags():
     # Public endpoint so frontend can know which titles are hot

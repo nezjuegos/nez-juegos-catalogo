@@ -1,72 +1,294 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Packs | Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #09090b; --bg-card: #18181b; --primary: #8b5cf6;
-            --text-main: #f8fafc; --text-muted: #a1a1aa; --border: #27272a;
+            --bg-dark: #09090b;
+            --bg-card: #18181b;
+            --primary: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #a1a1aa;
+            --border: #27272a;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-        .header h1 { font-family: 'Outfit'; font-size: 2rem; }
-        
-        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #7c3aed; }
-        .btn-back { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-        .btn-back:hover { background: #27272a; color: white; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
-        .actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
-        
-        .system-card { background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); }
-        .system-card h3 { margin-bottom: 0.5rem; font-family: 'Outfit'; font-size: 1.2rem; }
-        .system-card p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+        }
 
-        .table-section { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: #09090b; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
-        
-        .pack-row:hover { background: rgba(255,255,255,0.02); }
-        .games-list { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-top: 4px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
 
-        .badge { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-top: 5px; }
-        .action-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; margin-right: 0.5rem; }
-        .action-btn:hover { opacity: 1; transform: scale(1.1); }
-        .btn-clear { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-        .btn-clear:hover { background: #27272a; color: white; }
+        .header h1 {
+            font-family: 'Outfit';
+            font-size: 2rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #7c3aed;
+        }
+
+        .btn-back {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-back:hover {
+            background: #27272a;
+            color: white;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .system-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .system-card h3 {
+            margin-bottom: 0.5rem;
+            font-family: 'Outfit';
+            font-size: 1.2rem;
+        }
+
+        .system-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .table-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #09090b;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .pack-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .games-list {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        .badge {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.2s;
+            margin-right: 0.5rem;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .btn-clear {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-clear:hover {
+            background: #27272a;
+            color: white;
+        }
 
         /* Search & Filters */
-        .filters-container { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); }
-        .filter-input { flex: 1; min-width: 250px; }
-        .filter-input label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
-        .filter-input input { width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem; border-radius: 6px; }
-        .filter-input input:focus { outline: none; border-color: var(--primary); }
+        .filters-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .filter-input {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .filter-input label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .filter-input input {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+
+        .filter-input input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
 
         @media (max-width: 768px) {
-            .actions-grid { grid-template-columns: 1fr; }
-            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .filters-container { flex-direction: column; }
+            .actions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .filters-container {
+                flex-direction: column;
+            }
         }
+
         /* Toast */
-        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
-        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
-        .toast.error { border-left-color: #ef4444; }
-        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
-        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
-        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
-        
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: #1e1e2e;
+            color: white;
+            padding: 0.9rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(100%);
+            animation: toastIn 0.3s ease forwards;
+        }
+
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+
+        .toast.fade-out {
+            animation: toastOut 0.3s ease forwards;
+        }
+
+        @keyframes toastIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
     </style>
 </head>
+
 <body>
-<div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" id="toastContainer"></div>
 
     <div class="header">
         <h1>📦 Gestión de Packs de Telegram</h1>
@@ -78,19 +300,22 @@
         <div class="system-card" style="border-color: rgba(239, 68, 68, 0.3);">
             <h3>🔥 Escanear "Hoy"</h3>
             <p>Abre el canal, captura únicamente los mensajes subidos hoy y los agrega a la base de datos.</p>
-            <button id="btnScrapeToday" class="btn btn-primary" style="width: 100%; background: #ef4444;">Escanear Novedades</button>
+            <button id="btnScrapeToday" class="btn btn-primary" style="width: 100%; background: #ef4444;">Escanear
+                Novedades</button>
         </div>
 
         <div class="system-card" style="border-color: rgba(34, 197, 94, 0.3);">
             <h3>🧹 Verificar Eliminados</h3>
             <p>Lee la DB, se fija en Telegram si fueron borrados, y los da de baja solos.</p>
-            <button id="btnVerifyDeleted" class="btn btn-primary" style="width: 100%; background: #22c55e;">Limpiar Catálogo</button>
+            <button id="btnVerifyDeleted" class="btn btn-primary" style="width: 100%; background: #22c55e;">Limpiar
+                Catálogo</button>
         </div>
 
         <div class="system-card" style="border-color: rgba(59, 130, 246, 0.3);">
             <h3>🔄 Scrape Completo</h3>
             <p>Peligroso. Recorre los últimos 1000 mensajes completos para rehacer la base de datos de cero.</p>
-            <button id="btnScrapeFull" class="btn btn-primary" style="width: 100%; background: #3b82f6;">Scrape Profundo</button>
+            <button id="btnScrapeFull" class="btn btn-primary" style="width: 100%; background: #3b82f6;">Scrape
+                Profundo</button>
         </div>
     </div>
 
@@ -105,31 +330,46 @@
             <input type="text" id="excludeInput" placeholder="Ej: FIFA, NBA..." style="border-left: 2px solid #ef4444;">
         </div>
         <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
-            <button id="btnFilter" class="btn btn-primary" style="height: 45px; padding: 0 2rem;">Filtrar / Recargar</button>
+            <button id="btnFilter" class="btn btn-primary" style="height: 45px; padding: 0 2rem;">Filtrar /
+                Recargar</button>
             <button id="btnClear" class="btn btn-clear" style="height: 45px; padding: 0 1.5rem;">Limpiar</button>
         </div>
     </div>
 
     <!-- Manual Pack Form (Collapsible) -->
-    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem 2rem; margin-bottom: 2rem;">
-        <button id="btnToggleManual" onclick="document.getElementById('manualFormBody').style.display = document.getElementById('manualFormBody').style.display === 'none' ? 'grid' : 'none'; this.querySelector('span').textContent = document.getElementById('manualFormBody').style.display === 'none' ? '▶' : '▼'" style="background: none; border: none; color: white; font-family: 'Outfit'; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left;">
+    <div
+        style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem 2rem; margin-bottom: 2rem;">
+        <button id="btnToggleManual"
+            onclick="document.getElementById('manualFormBody').style.display = document.getElementById('manualFormBody').style.display === 'none' ? 'grid' : 'none'; this.querySelector('span').textContent = document.getElementById('manualFormBody').style.display === 'none' ? '▶' : '▼'"
+            style="background: none; border: none; color: white; font-family: 'Outfit'; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left;">
             <span>▶</span> Añadir Pack Manualmente
         </button>
-        <div id="manualFormBody" style="display: none; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+        <div id="manualFormBody"
+            style="display: none; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
             <div>
-                <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Lista de Juegos (uno por línea)</label>
-                <textarea id="manualGames" placeholder="Juego 1&#10;Juego 2 (DLC)&#10;Juego 3" style="width: 100%; height: 120px; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem; resize: none;"></textarea>
+                <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Lista
+                    de Juegos (uno por línea)</label>
+                <textarea id="manualGames" placeholder="Juego 1&#10;Juego 2 (DLC)&#10;Juego 3"
+                    style="width: 100%; height: 120px; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem; resize: none;"></textarea>
             </div>
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <div>
-                    <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Precio Local ($)</label>
-                    <input type="number" id="manualPrice" placeholder="Ej: 15000" style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
+                    <label
+                        style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">Precio
+                        Local ($)</label>
+                    <input type="number" id="manualPrice" placeholder="Ej: 15000"
+                        style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">URL de Imagen (Opcional)</label>
-                    <input type="text" id="manualImage" placeholder="https://ejemplo.com/imagen.jpg" style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
+                    <label
+                        style="display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);">URL
+                        de Imagen (Opcional)</label>
+                    <input type="text" id="manualImage" placeholder="https://ejemplo.com/imagen.jpg"
+                        style="width: 100%; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.95rem;">
                 </div>
-                <button id="btnSaveManual" class="btn" style="background: var(--primary); color: white; padding: 1rem; font-weight: 600; font-size: 1rem; border-radius: var(--radius-sm);">Guardar Pack Manual</button>
+                <button id="btnSaveManual" class="btn"
+                    style="background: var(--primary); color: white; padding: 1rem; font-weight: 600; font-size: 1rem; border-radius: var(--radius-sm);">Guardar
+                    Pack Manual</button>
             </div>
         </div>
     </div>
@@ -178,7 +418,7 @@
             return `ID : ${pack.id}\n\n---Lista de contenidos---\n${gamesList}\n\nPrecio: ${formatPrice(pack.price_local)}`;
         }
 
-        window.copyToClip = function(packStr) {
+        window.copyToClip = function (packStr) {
             const pack = JSON.parse(decodeURIComponent(packStr));
             const text = formatPackText(pack);
             navigator.clipboard.writeText(text).then(() => {
@@ -190,7 +430,7 @@
             packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem;">Cargando catálogo...</td></tr>';
             const q = searchInput.value;
             const exc = excludeInput.value;
-            
+
             try {
                 const url = `/api/packs?q=${encodeURIComponent(q)}&exclude=${encodeURIComponent(exc)}`;
                 const res = await fetch(url);
@@ -204,8 +444,8 @@
 
         function renderTable(packs) {
             packsTableBody.innerHTML = '';
-            
-            if(packs.length === 0) {
+
+            if (packs.length === 0) {
                 packsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color:var(--text-muted)">No hay resultados</td></tr>';
                 return;
             }
@@ -213,7 +453,7 @@
             packs.forEach((pack, index) => {
                 const tr = document.createElement('tr');
                 tr.className = 'pack-row';
-                
+
                 const isLineMixed = g => g.is_mixed === true || (g.name.includes('+') && g.is_dlc === true);
                 const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
                 const isLineStrictGame = g => !g.is_dlc && !isLineMixed(g);
@@ -222,7 +462,7 @@
                 const hasDlc = pack.games.some(g => isLineStrictDlc(g) || isLineMixed(g));
                 const hasGame = pack.games.some(g => isLineStrictGame(g) || isLineMixed(g));
                 const isPackMixed = hasDlc && hasGame;
-                
+
                 let dlcBadge = '';
                 if (allDlc) {
                     dlcBadge = '<span style="background:var(--secondary); color:white; padding:2px 8px; border-radius:12px; font-size:0.7rem; margin-right:8px;">Solo DLC</span>';
@@ -241,7 +481,7 @@
                 if (!gamesHtml) gamesHtml = '<span style="color:#52525b; font-size:0.85rem;">Sin juegos detectados</span>';
 
                 const featuredStyle = pack.is_featured ? 'background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid #eab308;' : 'background: transparent; color: var(--text-muted); border: 1px solid var(--border);';
-                
+
                 tr.innerHTML = `
                     <td style="font-family: monospace; vertical-align: top; padding-top: 1.2rem; white-space: nowrap;">${pack.id}</td>
                     <td>${newBadge}${dlcBadge}<div class="games-list">${gamesHtml}</div></td>
@@ -273,7 +513,7 @@
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
                 const data = await res.json();
-                
+
                 if (data.error) {
                     showToast('Error: ' + data.error, true);
                     btn.innerText = originalText;
@@ -281,24 +521,24 @@
                     btn.style.opacity = 1;
                     return;
                 }
-                
+
                 if (data.status === 'started') {
                     // Poll for completion
                     let dots = 0;
                     const pollInterval = setInterval(async () => {
                         dots = (dots + 1) % 4;
                         btn.innerText = loadingText + '.'.repeat(dots);
-                        
+
                         try {
                             const statusRes = await fetch('/api/admin/scrape/status');
                             const statusData = await statusRes.json();
-                            
+
                             if (!statusData.running) {
                                 clearInterval(pollInterval);
                                 btn.innerText = originalText;
                                 btn.disabled = false;
                                 btn.style.opacity = 1;
-                                
+
                                 if (statusData.error) {
                                     showToast('Error en scrape: ' + statusData.error, true);
                                 } else {
@@ -311,7 +551,7 @@
                                     loadPacks();
                                 }
                             }
-                        } catch(e) { /* keep polling */ }
+                        } catch (e) { /* keep polling */ }
                     }, 3000);
                 }
             } catch (err) {
@@ -347,7 +587,7 @@
                         image_url: imageUrl
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.status === 'ok') {
                     showToast('Pack manual agregado con ID: ' + data.id);
@@ -364,7 +604,7 @@
             }
         });
 
-        window.toggleFeatured = async function(id, btnElement) {
+        window.toggleFeatured = async function (id, btnElement) {
             btnElement.disabled = true;
             try {
                 const res = await fetch(`/api/admin/packs/${id}/toggle_featured`, { method: 'POST' });
@@ -382,41 +622,62 @@
             }
         };
 
-        window.deletePack = async function(id, btnElement) {
-            if(confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {
+        window.deletePack = async function (id, btnElement) {
+            if (confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {
                 // Optimistic UI hide
                 const row1 = btnElement.closest('tr');
                 row1.style.display = 'none';
 
                 fetch(`/api/admin/packs/${id}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .catch(e => console.error("Could not delete via API", e));
+                    .then(res => res.json())
+                    .catch(e => console.error("Could not delete via API", e));
             }
         }
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
             loadPacks();
-            
-            // Ping Telegram status to show badge next to title
+
             const headerH1 = document.querySelector('.header h1');
             fetch('/api/admin/telegram/status')
                 .then(res => res.json())
                 .then(data => {
                     const statusSpan = document.createElement('span');
-                    statusSpan.style.cssText = 'font-size: 0.8rem; margin-left: 1rem; padding: 4px 8px; border-radius: 4px; vertical-align: middle;';
+                    statusSpan.style.cssText = 'font-size: 0.8rem; margin-left: 1rem; padding: 4px 8px; border-radius: 4px; vertical-align: middle; cursor: pointer;';
                     if (data.telegram_connected) {
                         statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
                         statusSpan.style.color = '#4ade80';
                         statusSpan.innerText = '🟢 Telegram Conectado';
+                        statusSpan.style.cursor = 'default';
                     } else {
                         statusSpan.style.background = 'rgba(239, 68, 68, 0.2)';
                         statusSpan.style.color = '#f87171';
-                        statusSpan.innerText = '🔴 Requiere Iniciar Sesión';
+                        statusSpan.innerText = '🔴 Requiere Iniciar Sesión (Ver QR)';
+                        statusSpan.onclick = () => {
+                            const modal = document.createElement('div');
+                            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+                            modal.innerHTML = `
+                                <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-lg); text-align: center; border: 1px solid var(--border);">
+                                    <h2 style="margin-bottom: 1rem; font-family: 'Outfit';">Escanea con Telegram</h2>
+                                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                        Abre Telegram > Ajustes > Dispositivos > Vincular Dispositivo.<br>
+                                        Si la imagen no carga, ejecuta la tarea "Escanear Novedades" para forzar al bot a generarla.
+                                    </p>
+                                    <img src="/qr_login.png?t=${Date.now()}" style="max-width: 300px; border-radius: 8px; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; min-height: 200px; background: white;" onerror="this.onerror=null; this.alt='El código QR aún no se ha generado.'; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <div style="display: none; color: #ef4444; margin-bottom: 1.5rem;">[Imagen QR No Encontrada]</div>
+                                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                                        <button class="btn btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">Cerrar</button>
+                                        <button class="btn btn-back" onclick="this.parentElement.previousElementSibling.previousElementSibling.src='/qr_login.png?t=' + Date.now()">Recargar Imagen</button>
+                                    </div>
+                                </div>
+                            `;
+                            document.body.appendChild(modal);
+                        };
                     }
                     headerH1.appendChild(statusSpan);
                 }).catch(e => console.log(e));
         });
     </script>
 </body>
+
 </html>

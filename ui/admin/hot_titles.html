@@ -110,13 +110,10 @@
 
         .input-group {
             display: flex;
-            gap: 0.75rem;
             margin-bottom: 2rem;
-            align-items: stretch;
         }
 
-        .input-group input {
-            flex: 1;
+        .input-group input[type="text"] {
             background: #0a0a0c;
             border: 1px solid var(--border);
             color: white;
@@ -125,23 +122,7 @@
             font-size: 1rem;
         }
 
-        .input-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .input-group select {
-            background: #0a0a0c;
-            border: 1px solid var(--border);
-            color: white;
-            padding: 0.8rem 1rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.95rem;
-            cursor: pointer;
-            min-width: 140px;
-        }
-
-        .input-group select:focus {
+        .input-group input[type="text"]:focus {
             outline: none;
             border-color: var(--primary);
         }
@@ -150,21 +131,20 @@
             background: var(--primary);
             color: white;
             border: none;
-            padding: 0 1.5rem;
             border-radius: var(--radius-sm);
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
-            white-space: nowrap;
         }
 
         .input-group button:hover {
             background: var(--primary-hover);
         }
 
-        /* Tag badges */
         .tag-badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
             padding: 0.25rem 0.7rem;
             border-radius: 12px;
             font-size: 0.75rem;
@@ -188,7 +168,6 @@
             color: #22c55e;
         }
 
-        /* Filter tabs */
         .filter-tabs {
             display: flex;
             gap: 0.5rem;
@@ -227,26 +206,16 @@
         .title-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             background: #0a0a0c;
             border: 1px solid var(--border);
-            padding: 0.8rem 1rem;
+            padding: 1rem;
             border-radius: var(--radius-sm);
             transition: 0.2s;
         }
 
         .title-row:hover {
             border-color: #3f3f46;
-        }
-
-        .title-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .title-keyword {
-            font-weight: 500;
         }
 
         .btn-delete {
@@ -265,29 +234,6 @@
             color: white;
         }
 
-        .empty-state {
-            color: var(--text-muted);
-            text-align: center;
-            padding: 2rem;
-        }
-
-        /* Legend */
-        .legend {
-            display: flex;
-            gap: 1.5rem;
-            margin-top: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        /* Toast */
         .toast-container {
             position: fixed;
             bottom: 2rem;
@@ -333,17 +279,10 @@
                 transform: translateX(100%);
             }
         }
-
-        .count-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-        }
     </style>
 </head>
 
 <body>
-
     <div class="sidebar">
         <div class="logo">🎮 <span>Nez</span> Admin</div>
         <a href="/admin" class="nav-item">🏠 Gestionar Home</a>
@@ -357,39 +296,57 @@
         <div class="header">
             <h1>🏷️ Title Tags</h1>
             <p style="color: var(--text-muted); margin-top: 0.5rem;">
-                Gestiona cómo se clasifican los juegos. Asigna keywords para marcar títulos como <strong>Juego</strong>,
-                <strong>DLC</strong> o <strong>Hot</strong>.
+                Gestiona cómo se clasifican los juegos marcándolos con múltiples etiquetas a la vez. <br>
+                <em>Los juegos que no tengan ninguna etiqueta se tratarán por defecto como 🎮 Juegos Base en el
+                    scraper.</em>
             </p>
-            <div class="legend" style="margin-top: 1rem;">
-                <div class="legend-item"><span class="tag-badge tag-juego">juego</span> Fuerza a que sea Juego (no DLC)
-                </div>
-                <div class="legend-item"><span class="tag-badge tag-dlc">dlc</span> Fuerza a que sea DLC</div>
-                <div class="legend-item"><span class="tag-badge tag-hot">hot</span> Agrega emoji 🔥</div>
-            </div>
         </div>
 
         <div class="card">
-            <h2 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Agregar regla</h2>
-            <form id="addForm" class="input-group">
-                <input type="text" id="keywordInput" placeholder="Keyword (ej: mario, expansion pass)" required>
-                <select id="tagSelect">
-                    <option value="hot">🔥 Hot</option>
-                    <option value="dlc">🧩 DLC</option>
-                    <option value="juego">🎮 Juego</option>
-                </select>
-                <button type="submit">Agregar</button>
+            <h2 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Agregar o Editar Reglas</h2>
+            <form id="addForm" class="input-group" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
+                <input type="text" id="keywordInput"
+                    placeholder="Ingresa la Keyword del juego (ej: mario, zelda, byleth...)" required
+                    style="width: 100%;">
+
+                <div
+                    style="display: flex; gap: 1.5rem; align-items: center; background: #0a0a0c; border: 1px solid var(--border); padding: 1rem; border-radius: var(--radius-sm); width: 100%; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="checkHot" value="hot"
+                            style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <span class="tag-badge tag-hot">🔥 HOT</span> (Destacado)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="checkDlc" value="dlc"
+                            style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <span class="tag-badge tag-dlc">🧩 DLC</span> (Fuerza a DLC)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="checkJuego" value="juego"
+                            style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <span class="tag-badge tag-juego">🎮 JUEGO</span> (Fuerza a Juego)
+                    </label>
+                </div>
+
+                <p style="font-size: 0.85rem; color: var(--text-muted);">
+                    <strong>💡 Tip:</strong> Un juego puede tener múltiples propiedades (ej. marcado como "HOT" y al
+                    mismo tiempo "Juego"). Marca todas las cajas necesarias y pulsa Guardar.
+                </p>
+
+                <button type="submit" style="width: 100%; padding: 1rem;">Guardar Reglas para Keyword</button>
             </form>
 
-            <div class="filter-tabs">
+            <div class="filter-tabs" style="margin-top: 3rem;">
                 <button class="filter-tab active" data-filter="all">Todos</button>
                 <button class="filter-tab" data-filter="hot">🔥 Hot</button>
                 <button class="filter-tab" data-filter="dlc">🧩 DLC</button>
                 <button class="filter-tab" data-filter="juego">🎮 Juego</button>
             </div>
 
-            <div class="count-label" id="countLabel"></div>
+            <div class="count-label" id="countLabel"
+                style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"></div>
             <div class="title-list" id="titleList">
-                <p class="empty-state">Cargando...</p>
+                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Cargando...</p>
             </div>
         </div>
     </div>
@@ -409,15 +366,15 @@
         const countLabel = document.getElementById('countLabel');
         const addForm = document.getElementById('addForm');
         const keywordInput = document.getElementById('keywordInput');
-        const tagSelect = document.getElementById('tagSelect');
+        const checkHot = document.getElementById('checkHot');
+        const checkDlc = document.getElementById('checkDlc');
+        const checkJuego = document.getElementById('checkJuego');
 
-        let allTags = [];
+        let groupedTags = {};
         let activeFilter = 'all';
-
-        const TAG_EMOJI = { hot: '🔥', dlc: '🧩', juego: '🎮' };
         const TAG_CLASS = { hot: 'tag-hot', dlc: 'tag-dlc', juego: 'tag-juego' };
+        const TAG_EMOJI = { hot: '🔥', dlc: '🧩', juego: '🎮' };
 
-        // Filter tabs
         document.querySelectorAll('.filter-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
@@ -428,109 +385,117 @@
         });
 
         function renderList() {
-            const filtered = activeFilter === 'all' ? allTags : allTags.filter(t => t.tag === activeFilter);
             titleList.innerHTML = '';
-            countLabel.textContent = `${filtered.length} regla${filtered.length !== 1 ? 's' : ''}`;
+            let count = 0;
 
-            if (filtered.length === 0) {
-                titleList.innerHTML = '<p class="empty-state">No hay reglas configuradas</p>';
-                return;
-            }
-
-            filtered.forEach(item => {
+            for (const [kw, tags] of Object.entries(groupedTags)) {
+                if (activeFilter !== 'all' && !tags.includes(activeFilter)) continue;
+                count++;
                 const row = document.createElement('div');
                 row.className = 'title-row';
+
+                let badges = '';
+                tags.forEach(t => {
+                    badges += `<span class="tag-badge ${TAG_CLASS[t]}">${TAG_EMOJI[t]} ${t}</span> `;
+                });
+
                 row.innerHTML = `
-                    <div class="title-info">
-                        <span class="tag-badge ${TAG_CLASS[item.tag]}">${item.tag}</span>
-                        <span class="title-keyword">${TAG_EMOJI[item.tag] || ''} ${item.keyword}</span>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <span style="font-weight: 600; font-size: 1.1rem;">${kw}</span>
+                        <div>${badges}</div>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn-delete" onclick="editTag(${item.id}, '${item.keyword.replace(/'/g, "\\'")}', '${item.tag}')" style="background: rgba(139,92,246,0.1); color: var(--primary); border: 1px solid rgba(139,92,246,0.2);">Editar</button>
-                        <button class="btn-delete" onclick="deleteTag(${item.id})">Eliminar</button>
+                        <button class="btn-delete" onclick="editTag('${kw.replace(/'/g, "\\'")}')" style="background: rgba(139,92,246,0.1); color: var(--primary); border: 1px solid rgba(139,92,246,0.2);">Editar</button>
+                        <button class="btn-delete" onclick="deleteTag('${kw.replace(/'/g, "\\'")}')">Eliminar</button>
                     </div>
                 `;
                 titleList.appendChild(row);
-            });
+            }
+
+            countLabel.textContent = `${count} keyword${count !== 1 ? 's' : ''}`;
+            if (count === 0) {
+                titleList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No hay reglas configuradas</p>';
+            }
         }
 
         async function loadTags() {
             try {
                 const res = await fetch('/api/admin/title_tags');
-                allTags = await res.json();
+                const allTags = await res.json();
+                groupedTags = {};
+                allTags.forEach(t => {
+                    if (!groupedTags[t.keyword]) groupedTags[t.keyword] = [];
+                    groupedTags[t.keyword].push(t.tag);
+                });
                 renderList();
             } catch (err) {
                 titleList.innerHTML = '<p style="color: #ef4444;">Error al cargar datos</p>';
-                console.error(err);
             }
         }
 
-        let editingId = null;
-
-        window.editTag = function (id, keyword, tag) {
+        window.editTag = function (keyword) {
             keywordInput.value = keyword;
-            tagSelect.value = tag;
-            editingId = id;
-            document.querySelector('#addForm button').textContent = 'Guardar';
+            const tags = groupedTags[keyword] || [];
+            checkHot.checked = tags.includes('hot');
+            checkDlc.checked = tags.includes('dlc');
+            checkJuego.checked = tags.includes('juego');
             keywordInput.focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
         addForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const keyword = keywordInput.value.trim();
-            const tag = tagSelect.value;
             if (!keyword) return;
 
-            try {
-                if (editingId) {
-                    const res = await fetch(`/api/admin/title_tags/${editingId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ keyword, tag })
-                    });
-                    const data = await res.json();
-                    if (data.status === 'ok') {
-                        showToast(`Regla actualizada a ${tag}`);
-                        editingId = null;
-                        document.querySelector('#addForm button').textContent = 'Agregar';
-                        keywordInput.value = '';
-                        loadTags();
-                    } else {
-                        showToast(data.error, true);
-                    }
-                } else {
-                    const res = await fetch('/api/admin/title_tags', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ keyword, tag })
-                    });
-                    const data = await res.json();
+            const selectedTags = [];
+            if (checkHot.checked) selectedTags.push('hot');
+            if (checkDlc.checked) selectedTags.push('dlc');
+            if (checkJuego.checked) selectedTags.push('juego');
 
-                    if (data.status === 'ok') {
-                        keywordInput.value = '';
-                        showToast(`Regla "${keyword}" → ${tag} agregada`);
-                        loadTags();
-                    } else {
-                        showToast(data.error, true);
-                    }
+            if (selectedTags.length === 0) {
+                showToast("Debes seleccionar al menos un tag", true);
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/title_tags/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: keyword, tags: selectedTags })
+                });
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    keywordInput.value = '';
+                    checkHot.checked = false;
+                    checkDlc.checked = false;
+                    checkJuego.checked = false;
+                    showToast(`Reglas guardadas para "${keyword}"`);
+                    loadTags();
+                } else {
+                    showToast(data.error, true);
                 }
             } catch (err) {
                 showToast("Error de red", true);
             }
         });
 
-        window.deleteTag = async function (id) {
-            if (!confirm('¿Eliminar esta regla?')) return;
+        window.deleteTag = async function (keyword) {
+            if (!confirm(`¿Eliminar TODAS las reglas para "${keyword}"?`)) return;
             try {
-                await fetch(`/api/admin/title_tags/${id}`, { method: 'DELETE' });
-                showToast('Regla eliminada');
+                await fetch('/api/admin/title_tags/by_keyword', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword: keyword })
+                });
+                showToast('Reglas eliminadas');
                 loadTags();
             } catch (err) {
                 showToast("Error de red", true);
             }
         }
 
-        // Init
         loadTags();
     </script>
 </body>
