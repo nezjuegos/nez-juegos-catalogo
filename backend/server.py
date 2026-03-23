@@ -341,7 +341,7 @@ def api_admin_bulk_title_tags():
     
     with db.get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM title_tags WHERE keyword = ?', (keyword.strip().lower(),))
+        cursor.execute('DELETE FROM title_tags WHERE LOWER(keyword) = ?', (keyword.strip().lower(),))
         for t in tags:
             if t in ('juego', 'dlc', 'hot'):
                 try:
@@ -358,7 +358,7 @@ def api_admin_delete_title_tags_by_keyword():
     if keyword:
         with db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM title_tags WHERE keyword = ?', (keyword.strip().lower(),))
+            cursor.execute('DELETE FROM title_tags WHERE LOWER(keyword) = ?', (keyword.strip().lower(),))
             conn.commit()
     return jsonify({"status": "ok"})
 
