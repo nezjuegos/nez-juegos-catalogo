@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Title Tags | Nez Juegos Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-dark: #0a0a0c;
@@ -19,93 +22,326 @@
             --radius-sm: 8px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
         body {
-            background-color: var(--bg-dark); color: var(--text-main);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
             background-image: radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
-            min-height: 100vh; display: flex;
+            min-height: 100vh;
+            display: flex;
         }
 
-        h1, h2 { font-family: 'Outfit'; }
+        h1,
+        h2 {
+            font-family: 'Outfit';
+        }
 
         .sidebar {
-            width: 250px; background: rgba(10, 10, 12, 0.95); border-right: 1px solid var(--border);
-            padding: 2rem 1rem; display: flex; flex-direction: column; gap: 1rem;
+            width: 250px;
+            background: rgba(10, 10, 12, 0.95);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
-        .sidebar .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; margin-bottom: 2rem; padding-left: 1rem; }
-        .sidebar .logo span { color: #8b5cf6; }
+
+        .sidebar .logo {
+            font-family: 'Outfit';
+            font-weight: 800;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            padding-left: 1rem;
+        }
+
+        .sidebar .logo span {
+            color: #8b5cf6;
+        }
+
         .nav-item {
-            padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: var(--radius-sm); transition: 0.2s;
+            padding: 0.75rem 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            transition: 0.2s;
         }
-        .nav-item:hover { background: #27272a; color: white; }
-        .nav-item.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); font-weight: 600; }
 
-        .main-content { flex: 1; padding: 3rem; max-width: 1000px; }
+        .nav-item:hover {
+            background: #27272a;
+            color: white;
+        }
 
-        .header { margin-bottom: 3rem; }
-        .header h1 { font-size: 2.2rem; display: flex; align-items: center; gap: 0.5rem; }
+        .nav-item.active {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
 
-        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 2rem; }
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            max-width: 1000px;
+        }
 
-        .input-group { display: flex; gap: 0.75rem; margin-bottom: 2rem; align-items: stretch; }
-        .input-group input { flex: 1; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-size: 1rem; }
-        .input-group input:focus { outline: none; border-color: var(--primary); }
-        .input-group select { background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-size: 0.95rem; cursor: pointer; min-width: 140px; }
-        .input-group select:focus { outline: none; border-color: var(--primary); }
-        .input-group button { background: var(--primary); color: white; border: none; padding: 0 1.5rem; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap; }
-        .input-group button:hover { background: var(--primary-hover); }
+        .header {
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            align-items: stretch;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: #0a0a0c;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .input-group select {
+            background: #0a0a0c;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .input-group button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 1.5rem;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+
+        .input-group button:hover {
+            background: var(--primary-hover);
+        }
 
         /* Tag badges */
         .tag-badge {
-            display: inline-block; padding: 0.25rem 0.7rem; border-radius: 12px;
-            font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+            display: inline-block;
+            padding: 0.25rem 0.7rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .tag-hot { background: rgba(249,115,22,0.15); color: #f97316; }
-        .tag-dlc { background: rgba(168,85,247,0.15); color: #a855f7; }
-        .tag-juego { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+        .tag-hot {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+
+        .tag-dlc {
+            background: rgba(168, 85, 247, 0.15);
+            color: #a855f7;
+        }
+
+        .tag-juego {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
 
         /* Filter tabs */
-        .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
         .filter-tab {
-            padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 20px;
-            background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; transition: 0.2s;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
         }
-        .filter-tab:hover { border-color: var(--primary); color: white; }
-        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .title-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .filter-tab:hover {
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .filter-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .title-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
         .title-row {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #0a0a0c; border: 1px solid var(--border); padding: 0.8rem 1rem;
-            border-radius: var(--radius-sm); transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0a0a0c;
+            border: 1px solid var(--border);
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm);
+            transition: 0.2s;
         }
-        .title-row:hover { border-color: #3f3f46; }
-        .title-info { display: flex; align-items: center; gap: 0.75rem; }
-        .title-keyword { font-weight: 500; }
-        .btn-delete {
-            background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);
-            padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; transition: 0.2s;
-        }
-        .btn-delete:hover { background: #ef4444; color: white; }
 
-        .empty-state { color: var(--text-muted); text-align: center; padding: 2rem; }
+        .title-row:hover {
+            border-color: #3f3f46;
+        }
+
+        .title-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .title-keyword {
+            font-weight: 500;
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .empty-state {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2rem;
+        }
 
         /* Legend */
-        .legend { display: flex; gap: 1.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
-        .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
 
         /* Toast */
-        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
-        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
-        .toast.error { border-left-color: #ef4444; }
-        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
-        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
-        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
 
-        .count-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .toast {
+            background: #1e1e2e;
+            color: white;
+            padding: 0.9rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(100%);
+            animation: toastIn 0.3s ease forwards;
+        }
+
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+
+        .toast.fade-out {
+            animation: toastOut 0.3s ease forwards;
+        }
+
+        @keyframes toastIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .count-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="sidebar">
@@ -121,10 +357,12 @@
         <div class="header">
             <h1>🏷️ Title Tags</h1>
             <p style="color: var(--text-muted); margin-top: 0.5rem;">
-                Gestiona cómo se clasifican los juegos. Asigna keywords para marcar títulos como <strong>Juego</strong>, <strong>DLC</strong> o <strong>Hot</strong>.
+                Gestiona cómo se clasifican los juegos. Asigna keywords para marcar títulos como <strong>Juego</strong>,
+                <strong>DLC</strong> o <strong>Hot</strong>.
             </p>
             <div class="legend" style="margin-top: 1rem;">
-                <div class="legend-item"><span class="tag-badge tag-juego">juego</span> Fuerza a que sea Juego (no DLC)</div>
+                <div class="legend-item"><span class="tag-badge tag-juego">juego</span> Fuerza a que sea Juego (no DLC)
+                </div>
                 <div class="legend-item"><span class="tag-badge tag-dlc">dlc</span> Fuerza a que sea DLC</div>
                 <div class="legend-item"><span class="tag-badge tag-hot">hot</span> Agrega emoji 🔥</div>
             </div>
@@ -207,7 +445,10 @@
                         <span class="tag-badge ${TAG_CLASS[item.tag]}">${item.tag}</span>
                         <span class="title-keyword">${TAG_EMOJI[item.tag] || ''} ${item.keyword}</span>
                     </div>
-                    <button class="btn-delete" onclick="deleteTag(${item.id})">Eliminar</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-delete" onclick="editTag(${item.id}, '${item.keyword.replace(/'/g, "\\'")}', '${item.tag}')" style="background: rgba(139,92,246,0.1); color: var(--primary); border: 1px solid rgba(139,92,246,0.2);">Editar</button>
+                        <button class="btn-delete" onclick="deleteTag(${item.id})">Eliminar</button>
+                    </div>
                 `;
                 titleList.appendChild(row);
             });
@@ -224,6 +465,16 @@
             }
         }
 
+        let editingId = null;
+
+        window.editTag = function (id, keyword, tag) {
+            keywordInput.value = keyword;
+            tagSelect.value = tag;
+            editingId = id;
+            document.querySelector('#addForm button').textContent = 'Guardar';
+            keywordInput.focus();
+        };
+
         addForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const keyword = keywordInput.value.trim();
@@ -231,26 +482,44 @@
             if (!keyword) return;
 
             try {
-                const res = await fetch('/api/admin/title_tags', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ keyword, tag })
-                });
-                const data = await res.json();
-
-                if (data.status === 'ok') {
-                    keywordInput.value = '';
-                    showToast(`Regla "${keyword}" → ${tag} agregada`);
-                    loadTags();
+                if (editingId) {
+                    const res = await fetch(`/api/admin/title_tags/${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ keyword, tag })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        showToast(`Regla actualizada a ${tag}`);
+                        editingId = null;
+                        document.querySelector('#addForm button').textContent = 'Agregar';
+                        keywordInput.value = '';
+                        loadTags();
+                    } else {
+                        showToast(data.error, true);
+                    }
                 } else {
-                    showToast(data.error, true);
+                    const res = await fetch('/api/admin/title_tags', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ keyword, tag })
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'ok') {
+                        keywordInput.value = '';
+                        showToast(`Regla "${keyword}" → ${tag} agregada`);
+                        loadTags();
+                    } else {
+                        showToast(data.error, true);
+                    }
                 }
             } catch (err) {
                 showToast("Error de red", true);
             }
         });
 
-        window.deleteTag = async function(id) {
+        window.deleteTag = async function (id) {
             if (!confirm('¿Eliminar esta regla?')) return;
             try {
                 await fetch(`/api/admin/title_tags/${id}`, { method: 'DELETE' });
@@ -265,4 +534,5 @@
         loadTags();
     </script>
 </body>
+
 </html>

@@ -314,11 +314,21 @@ def api_admin_title_tags():
         else:
             return jsonify({"error": "Ya existe esa combinación o tag inválido"}), 400
 
-@app.route('/api/admin/title_tags/<int:id>', methods=['DELETE'])
+@app.route('/api/admin/title_tags/<int:id>', methods=['PUT', 'DELETE'])
 @admin_required
-def api_admin_delete_title_tag(id):
-    db.delete_title_tag(id)
-    return jsonify({"status": "ok"})
+def api_admin_manage_title_tag(id):
+    if request.method == 'DELETE':
+        db.delete_title_tag(id)
+        return jsonify({"status": "ok"})
+    else:
+        data = request.json
+        if not data or not data.get('keyword') or not data.get('tag'):
+            return jsonify({"error": "Keyword y tag requeridos"}), 400
+        success = db.update_title_tag(id, data['keyword'], data['tag'])
+        if success:
+            return jsonify({"status": "ok"})
+        else:
+            return jsonify({"error": "Error de base de datos o tag inválido"}), 400
 
 @app.route('/api/public/title_tags', methods=['GET'])
 def api_public_title_tags():

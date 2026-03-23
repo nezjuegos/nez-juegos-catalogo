@@ -491,6 +491,19 @@ class Database:
             cursor.execute('DELETE FROM title_tags WHERE id = ?', (id,))
             conn.commit()
 
+    def update_title_tag(self, id, keyword, tag):
+        if tag not in ('juego', 'dlc', 'hot'):
+            return False
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE title_tags SET keyword = ?, tag = ? WHERE id = ?', (keyword.strip().lower(), tag, id))
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
+
     def apply_title_tags(self, games_list):
         """Override is_dlc and add is_hot based on title_tags keywords."""
         tags = self.get_title_tags()
@@ -503,9 +516,9 @@ class Database:
             name_norm = self._strip_accents(name_lower)
 
             # Check for explicit "juego" tag first (overrides DLC)
-            forced_juego = any(self._strip_accents(kw) in name_norm for kw in juego_keywords)
-            matched_dlc = any(self._strip_accents(kw) in name_norm for kw in dlc_keywords)
-            matched_hot = any(self._strip_accents(kw) in name_norm for kw in hot_keywords)
+            forced_juego = any(self._strip_accents(kw.lower()) in name_norm for kw in juego_keywords)
+            matched_dlc = any(self._strip_accents(kw.lower()) in name_norm for kw in dlc_keywords)
+            matched_hot = any(self._strip_accents(kw.lower()) in name_norm for kw in hot_keywords)
 
             if forced_juego:
                 game['is_dlc'] = False
