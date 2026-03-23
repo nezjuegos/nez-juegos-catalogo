@@ -252,11 +252,7 @@
         searchInput.parentNode.appendChild(suggestionsBox);
 
         // Helper functions
-        const isTitleHot = (name) => {
-            if (!name) return false;
-            const nameLower = name.toLowerCase();
-            return hotTitlesList.some(hot => nameLower.includes(hot.toLowerCase()));
-        };
+        const isTitleHot = (g) => g && g.is_hot === true;
 
         const isLineMixed = g => g.is_mixed === true || (g.name && g.name.includes('+') && g.is_dlc === true);
         const isLineStrictDlc = g => g.is_dlc && !isLineMixed(g);
@@ -268,7 +264,7 @@
             if (pack.games) {
                 pack.games.forEach(g => {
                     const nameStr = g.name || 'Juego Desconocido';
-                    const prefix = isTitleHot(nameStr) ? '🔥 ' : '';
+                    const prefix = isTitleHot(g) ? '🔥 ' : '';
                     if (isLineStrictDlc(g)) {
                         text += `🧩 ${prefix}${nameStr} (Solo DLC)\n`;
                     } else if (isLineMixed(g)) {
@@ -351,7 +347,7 @@
             if (pack.games) {
                 pack.games.forEach(g => {
                     const nameStr = g.name || 'Juego Desconocido';
-                    const prefix = isTitleHot(nameStr) ? '🔥 ' : '';
+                    const prefix = isTitleHot(g) ? '🔥 ' : '';
                     if (isLineStrictDlc(g)) {
                         gamesHtml += `<div class="game-title dlc-solo">${prefix}🧩 ${nameStr}</div>`;
                     } else if (isLineMixed(g)) {
@@ -471,10 +467,8 @@
         // Initial Load
         Promise.all([
             fetch('/api/config').then(r => r.json()),
-            fetch('/api/public/hot_titles').then(r => r.json())
-        ]).then(([cfg, hotTitles]) => {
+        ]).then(([cfg]) => {
             waNumber = cfg.numero_whatsapp || '';
-            hotTitlesList = hotTitles || [];
             fetchPacks();
         }).catch(() => {
             fetchPacks();

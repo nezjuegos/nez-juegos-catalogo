@@ -266,11 +266,10 @@ def create_manual_pack():
     
     # Very simple parser for manual input: if it has +, assume mixed.
     for line in games_lines:
-        is_dlc = 'dlc' in line.lower()
         is_mixed = '+' in line
         games.append({
             "name": line,
-            "is_dlc": is_dlc,
+            "is_dlc": False,
             "is_mixed": is_mixed
         })
         
@@ -297,35 +296,35 @@ def telegram_status():
     except:
         return jsonify({"telegram_connected": False})
 
-# --- Hot Titles API ---
+# --- Title Tags API (Unified: juego, dlc, hot) ---
 
-@app.route('/api/admin/hot_titles', methods=['GET', 'POST'])
+@app.route('/api/admin/title_tags', methods=['GET', 'POST'])
 @admin_required
-def api_admin_hot_titles():
+def api_admin_title_tags():
     if request.method == 'GET':
-        return jsonify(db.get_hot_titles())
+        return jsonify(db.get_title_tags())
     else:
-        # POST: add a new title
         data = request.json
-        if not data or not data.get('titulo'):
-            return jsonify({"error": "Título requerido"}), 400
+        if not data or not data.get('keyword') or not data.get('tag'):
+            return jsonify({"error": "Keyword y tag requeridos"}), 400
         
-        success = db.add_hot_title(data['titulo'])
+        success = db.add_title_tag(data['keyword'], data['tag'])
         if success:
             return jsonify({"status": "ok"})
         else:
-            return jsonify({"error": "El título ya existe"}), 400
+            return jsonify({"error": "Ya existe esa combinación o tag inválido"}), 400
 
-@app.route('/api/admin/hot_titles/<int:id>', methods=['DELETE'])
+@app.route('/api/admin/title_tags/<int:id>', methods=['DELETE'])
 @admin_required
-def api_admin_delete_hot_title(id):
-    db.delete_hot_title(id)
+def api_admin_delete_title_tag(id):
+    db.delete_title_tag(id)
     return jsonify({"status": "ok"})
 
-@app.route('/api/public/hot_titles', methods=['GET'])
-def api_public_hot_titles():
-    # Public endpoint so index.html can know which titles get the fire emoji
-    return jsonify([t['titulo'] for t in db.get_hot_titles()])
+@app.route('/api/public/title_tags', methods=['GET'])
+def api_public_title_tags():
+    # Public endpoint so frontend can know which titles are hot
+    tags = db.get_title_tags(tag_filter='hot')
+    return jsonify([t['keyword'] for t in tags])
 
 
 # --- Static Fallback ---

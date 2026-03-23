@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEMO — Title Tags | Nez Juegos Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body {
+            background-color: var(--bg-dark); color: var(--text-main);
+            background-image: radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            min-height: 100vh; display: flex;
+        }
+        h1, h2 { font-family: 'Outfit'; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px; background: rgba(10, 10, 12, 0.95); border-right: 1px solid var(--border);
+            padding: 2rem 1rem; display: flex; flex-direction: column; gap: 1rem;
+        }
+        .sidebar .logo { font-family: 'Outfit'; font-weight: 800; font-size: 1.5rem; margin-bottom: 2rem; padding-left: 1rem; }
+        .sidebar .logo span { color: #8b5cf6; }
+        .nav-item {
+            padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: var(--radius-sm); transition: 0.2s; cursor: default;
+        }
+        .nav-item:hover { background: #27272a; color: white; }
+        .nav-item.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); font-weight: 600; }
+        .nav-item.disabled { opacity: 0.4; pointer-events: none; }
+
+        .main-content { flex: 1; padding: 3rem; max-width: 1000px; overflow-y: auto; }
+
+        .header { margin-bottom: 3rem; }
+        .header h1 { font-size: 2.2rem; display: flex; align-items: center; gap: 0.5rem; }
+        .demo-badge { background: #ef4444; color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 8px; font-family: 'Inter'; font-weight: 700; letter-spacing: 1px; vertical-align: middle; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 2rem; }
+
+        .input-group { display: flex; gap: 0.75rem; margin-bottom: 2rem; align-items: stretch; flex-wrap: wrap; }
+        .input-group input { flex: 1; min-width: 200px; background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-size: 1rem; }
+        .input-group input:focus { outline: none; border-color: var(--primary); }
+        .input-group select { background: #0a0a0c; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-size: 0.95rem; cursor: pointer; min-width: 140px; }
+        .input-group select:focus { outline: none; border-color: var(--primary); }
+        .input-group button { background: var(--primary); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .input-group button:hover { background: var(--primary-hover); }
+
+        /* Tag badges */
+        .tag-badge { display: inline-block; padding: 0.25rem 0.7rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tag-hot { background: rgba(249,115,22,0.15); color: #f97316; }
+        .tag-dlc { background: rgba(168,85,247,0.15); color: #a855f7; }
+        .tag-juego { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+        /* Filter tabs */
+        .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .filter-tab {
+            padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 20px;
+            background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; transition: 0.2s;
+        }
+        .filter-tab:hover { border-color: var(--primary); color: white; }
+        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .title-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .title-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #0a0a0c; border: 1px solid var(--border); padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm); transition: 0.2s; animation: fadeIn 0.25s ease;
+        }
+        .title-row:hover { border-color: #3f3f46; }
+        .title-info { display: flex; align-items: center; gap: 0.75rem; }
+        .title-keyword { font-weight: 500; }
+        .btn-delete {
+            background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);
+            padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+        }
+        .btn-delete:hover { background: #ef4444; color: white; }
+
+        .empty-state { color: var(--text-muted); text-align: center; padding: 2rem; }
+
+        /* Legend */
+        .legend { display: flex; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+
+        /* Toast */
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .count-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+
+        /* Preview section */
+        .preview-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
+        .preview-title { font-family: 'Outfit'; font-size: 1.3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .pack-preview {
+            background: #0a0a0c; border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 1.5rem; max-width: 400px;
+        }
+        .pack-preview .pack-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+        .pack-preview .pack-id { font-size: 0.85rem; color: var(--text-muted); }
+        .pack-preview .pack-price { font-weight: 700; color: #22c55e; }
+        .pack-preview .game-line { padding: 0.4rem 0; font-size: 0.95rem; border-bottom: 1px solid #1a1a1f; }
+        .pack-preview .game-line:last-child { border-bottom: none; }
+        .pack-preview .game-line.hot { color: #f97316; }
+        .pack-preview .game-line.dlc { color: #a855f7; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo">🎮 <span>Nez</span> Admin</div>
+        <a class="nav-item disabled">🏠 Gestionar Home</a>
+        <a class="nav-item disabled">📦 Scraper Packs</a>
+        <a class="nav-item disabled">🎮 Catálogo Títulos</a>
+        <a class="nav-item active">🏷️ Title Tags</a>
+        <a class="nav-item disabled" style="color: #ef4444; margin-top: auto;">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🏷️ Title Tags <span class="demo-badge">DEMO</span></h1>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">
+                Gestiona cómo se clasifican los juegos. Asigna keywords para marcar títulos como <strong>Juego</strong>, <strong>DLC</strong> o <strong>Hot</strong>.
+            </p>
+            <div class="legend">
+                <div class="legend-item"><span class="tag-badge tag-juego">juego</span> Fuerza a que sea Juego</div>
+                <div class="legend-item"><span class="tag-badge tag-dlc">dlc</span> Fuerza a que sea DLC</div>
+                <div class="legend-item"><span class="tag-badge tag-hot">hot</span> Agrega emoji 🔥</div>
+            </div>
+        </div>
+
+        <!-- Add form -->
+        <div class="card">
+            <h2 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Agregar regla</h2>
+            <form id="addForm" class="input-group">
+                <input type="text" id="keywordInput" placeholder="Keyword (ej: mario, expansion pass)" required>
+                <select id="tagSelect">
+                    <option value="hot">🔥 Hot</option>
+                    <option value="dlc">🧩 DLC</option>
+                    <option value="juego">🎮 Juego</option>
+                </select>
+                <button type="submit">Agregar</button>
+            </form>
+
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">Todos</button>
+                <button class="filter-tab" data-filter="hot">🔥 Hot</button>
+                <button class="filter-tab" data-filter="dlc">🧩 DLC</button>
+                <button class="filter-tab" data-filter="juego">🎮 Juego</button>
+            </div>
+
+            <div class="count-label" id="countLabel"></div>
+            <div class="title-list" id="titleList"></div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="preview-card">
+            <div class="preview-title">👁️ Vista previa — Pack de ejemplo</div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                Así se vería un pack en el catálogo público con tus reglas aplicadas:
+            </p>
+            <div class="pack-preview" id="packPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  MOCK DATA — simula la base de datos en memoria
+        // ============================================================
+        let nextId = 6;
+        let allTags = [
+            { id: 1, keyword: 'mario', tag: 'hot' },
+            { id: 2, keyword: 'zelda', tag: 'hot' },
+            { id: 3, keyword: 'expansion pass', tag: 'dlc' },
+            { id: 4, keyword: 'dlc', tag: 'dlc' },
+            { id: 5, keyword: 'pokemon', tag: 'hot' },
+        ];
+
+        const SAMPLE_PACK = {
+            id: 42,
+            price: 18500,
+            games: [
+                'Super Mario Bros. Wonder',
+                'The Legend of Zelda: Tears of the Kingdom',
+                'Mario Kart 8 Deluxe + Expansion Pass',
+                'Pokemon Scarlet',
+                'Kirby and the Forgotten Land',
+                'Hollow Knight',
+                'Zelda: Breath of the Wild DLC Pack',
+            ]
+        };
+
+        const TAG_EMOJI = { hot: '🔥', dlc: '🧩', juego: '🎮' };
+        const TAG_CLASS = { hot: 'tag-hot', dlc: 'tag-dlc', juego: 'tag-juego' };
+
+        let activeFilter = 'all';
+
+        // ============================================================
+        //  TOAST
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer') || document.createElement('div');
+            if (!c.id) { c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+
+        // ============================================================
+        //  RENDER TAG LIST
+        // ============================================================
+        const titleList = document.getElementById('titleList');
+        const countLabel = document.getElementById('countLabel');
+
+        function renderList() {
+            const filtered = activeFilter === 'all' ? allTags : allTags.filter(t => t.tag === activeFilter);
+            titleList.innerHTML = '';
+            countLabel.textContent = `${filtered.length} regla${filtered.length !== 1 ? 's' : ''}`;
+
+            if (filtered.length === 0) {
+                titleList.innerHTML = '<p class="empty-state">No hay reglas configuradas</p>';
+                renderPreview();
+                return;
+            }
+
+            filtered.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'title-row';
+                row.innerHTML = `
+                    <div class="title-info">
+                        <span class="tag-badge ${TAG_CLASS[item.tag]}">${item.tag}</span>
+                        <span class="title-keyword">${TAG_EMOJI[item.tag] || ''} ${item.keyword}</span>
+                    </div>
+                    <button class="btn-delete" onclick="deleteTag(${item.id})">Eliminar</button>
+                `;
+                titleList.appendChild(row);
+            });
+
+            renderPreview();
+        }
+
+        // ============================================================
+        //  FILTER TABS
+        // ============================================================
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeFilter = tab.dataset.filter;
+                renderList();
+            });
+        });
+
+        // ============================================================
+        //  ADD / DELETE
+        // ============================================================
+        document.getElementById('addForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const keyword = document.getElementById('keywordInput').value.trim().toLowerCase();
+            const tag = document.getElementById('tagSelect').value;
+            if (!keyword) return;
+
+            // Check duplicate
+            if (allTags.some(t => t.keyword === keyword && t.tag === tag)) {
+                showToast(`"${keyword}" → ${tag} ya existe`, true);
+                return;
+            }
+
+            allTags.push({ id: nextId++, keyword, tag });
+            document.getElementById('keywordInput').value = '';
+            showToast(`Regla "${keyword}" → ${tag} agregada`);
+            renderList();
+        });
+
+        window.deleteTag = function(id) {
+            if (!confirm('¿Eliminar esta regla?')) return;
+            allTags = allTags.filter(t => t.id !== id);
+            showToast('Regla eliminada');
+            renderList();
+        };
+
+        // ============================================================
+        //  LIVE PREVIEW — applies tags to sample pack
+        // ============================================================
+        function applyTags(gameName) {
+            const nameLower = gameName.toLowerCase();
+            let is_hot = false;
+            let is_dlc = false;
+
+            for (const rule of allTags) {
+                if (!nameLower.includes(rule.keyword.toLowerCase())) continue;
+                if (rule.tag === 'hot') is_hot = true;
+                if (rule.tag === 'dlc') is_dlc = true;
+                if (rule.tag === 'juego') is_dlc = false;
+            }
+
+            return { is_hot, is_dlc };
+        }
+
+        function renderPreview() {
+            const el = document.getElementById('packPreview');
+            let html = `
+                <div class="pack-header">
+                    <span class="pack-id">Pack #${SAMPLE_PACK.id}</span>
+                    <span class="pack-price">$${SAMPLE_PACK.price.toLocaleString('es-AR')}</span>
+                </div>
+            `;
+
+            SAMPLE_PACK.games.forEach(name => {
+                const tags = applyTags(name);
+                let classes = 'game-line';
+                let prefix = '';
+
+                if (tags.is_hot) { classes += ' hot'; prefix += '🔥 '; }
+                if (tags.is_dlc) {
+                    classes += ' dlc';
+                    html += `<div class="${classes}">${prefix}🧩 ${name} <small style="opacity:0.6">(DLC)</small></div>`;
+                } else {
+                    html += `<div class="${classes}">${prefix}🎮 ${name}</div>`;
+                }
+            });
+
+            el.innerHTML = html;
+        }
+
+        // ============================================================
+        //  INIT
+        // ============================================================
+        renderList();
+    </script>
+</body>
+</html>

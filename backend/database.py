@@ -84,13 +84,28 @@ class Database:
             )
             ''')
             
-            # Table: hot_titles (For adding 🔥 emojis)
+            # Table: title_tags (Unified tagging: juego, dlc, hot)
             cursor.execute('''
-            CREATE TABLE IF NOT EXISTS hot_titles (
+            CREATE TABLE IF NOT EXISTS title_tags (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                titulo TEXT UNIQUE NOT NULL
+                keyword TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                UNIQUE(keyword, tag)
             )
             ''')
+
+            # Migration: move hot_titles -> title_tags if old table exists
+            try:
+                cursor.execute('SELECT id, titulo FROM hot_titles')
+                old_rows = cursor.fetchall()
+                for row in old_rows:
+                    try:
+                        cursor.execute('INSERT OR IGNORE INTO title_tags (keyword, tag) VALUES (?, ?)', (row['titulo'], 'hot'))
+                    except: pass
+                if old_rows:
+                    cursor.execute('DROP TABLE IF EXISTS hot_titles')
+            except sqlite3.OperationalError:
+                pass  # hot_titles doesn't exist, nothing to migrate
             
             # Insert default config if empty
             cursor.execute('SELECT COUNT(*) FROM config')
@@ -145,7 +160,7 @@ class Database:
                     'alquiler': d.get('precio_alquiler'),
                 }
                 results.append(d)
-            return results
+            return self.apply_title_tags(results)
 
     def get_juego(self, juego_id):
         with self.get_connection() as conn:
@@ -317,6 +332,7 @@ class Database:
             for row in all_packs:
                 pack_dict = dict(row)
                 games = json.loads(pack_dict['games_json']) if pack_dict['games_json'] else []
+                games = self.apply_title_tags(games)
                 pack_dict['games'] = games # parsed list for the UI
                 pack_dict['manual_image_url'] = pack_dict.get('manual_image_url')
                 
@@ -447,28 +463,61 @@ class Database:
             conn.commit()
             return pseudo_id
 
-    # --- Hot Titles CRUD ---
-    def get_hot_titles(self):
+    # --- Title Tags CRUD (Unified: juego, dlc, hot) ---
+    def get_title_tags(self, tag_filter=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM hot_titles ORDER BY titulo COLLATE NOCASE')
+            if tag_filter:
+                cursor.execute('SELECT * FROM title_tags WHERE tag = ? ORDER BY keyword COLLATE NOCASE', (tag_filter,))
+            else:
+                cursor.execute('SELECT * FROM title_tags ORDER BY tag, keyword COLLATE NOCASE')
             return [dict(row) for row in cursor.fetchall()]
-            
-    def add_hot_title(self, titulo):
+
+    def add_title_tag(self, keyword, tag):
+        if tag not in ('juego', 'dlc', 'hot'):
+            return False
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('INSERT INTO hot_titles (titulo) VALUES (?)', (titulo.strip(),))
+                cursor.execute('INSERT INTO title_tags (keyword, tag) VALUES (?, ?)', (keyword.strip().lower(), tag))
                 conn.commit()
                 return True
         except sqlite3.IntegrityError:
-            return False # Already exists
-            
-    def delete_hot_title(self, id):
+            return False  # Already exists
+
+    def delete_title_tag(self, id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM hot_titles WHERE id = ?', (id,))
+            cursor.execute('DELETE FROM title_tags WHERE id = ?', (id,))
             conn.commit()
+
+    def apply_title_tags(self, games_list):
+        """Override is_dlc and add is_hot based on title_tags keywords."""
+        tags = self.get_title_tags()
+        dlc_keywords = [t['keyword'] for t in tags if t['tag'] == 'dlc']
+        hot_keywords = [t['keyword'] for t in tags if t['tag'] == 'hot']
+        juego_keywords = [t['keyword'] for t in tags if t['tag'] == 'juego']
+
+        for game in games_list:
+            name_lower = game.get('name', game.get('titulo', '')).lower()
+            name_norm = self._strip_accents(name_lower)
+
+            # Check for explicit "juego" tag first (overrides DLC)
+            forced_juego = any(self._strip_accents(kw) in name_norm for kw in juego_keywords)
+            matched_dlc = any(self._strip_accents(kw) in name_norm for kw in dlc_keywords)
+            matched_hot = any(self._strip_accents(kw) in name_norm for kw in hot_keywords)
+
+            if forced_juego:
+                game['is_dlc'] = False
+                game['is_mixed'] = False
+            elif matched_dlc:
+                game['is_dlc'] = True
+                # Keep is_mixed if it has "+" in the name
+                game['is_mixed'] = '+' in name_lower and game.get('is_dlc', False)
+
+            game['is_hot'] = matched_hot
+
+        return games_list
 
     @staticmethod
     def _strip_accents(text):
