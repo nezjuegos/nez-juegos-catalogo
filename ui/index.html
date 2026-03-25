@@ -9,7 +9,7 @@
         !function (f, b, e, v, n, t, s) {
             if (f.fbq) return; n = f.fbq = function () {
                 n.callMethod ?
-                n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+                    n.callMethod.apply(n, arguments) : n.queue.push(arguments)
             };
             if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
             n.queue = []; t = b.createElement(e); t.async = !0;
@@ -437,6 +437,7 @@
                 </div>
             </div>
         </div>
+        </div> <!-- Close .hero container to prevent grid bleed -->
 
         <section class="features">
             <a href="/juegos" class="feature-card">
@@ -599,13 +600,26 @@
                         }
                         imgsHtml += '</div>';
 
+                        let gamesList = '';
+                        if (pack.games && pack.games.length > 0) {
+                            gamesList = '<div style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">';
+                            const limit = 4;
+                            pack.games.slice(0, limit).forEach(g => {
+                                gamesList += `<div style="color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">• ${g.name}</div>`;
+                            });
+                            if (pack.games.length > limit) {
+                                gamesList += `<div style="color: var(--primary); font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">+ ${pack.games.length - limit} juegos más</div>`;
+                            }
+                            gamesList += '</div>';
+                        }
+
                         pGrid.innerHTML += `
                             <a href="/packs?q=${pack.id}" style="display: block; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
                                 <div style="${headerBg} padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-bottom: 1rem;">${headerText}</div>
                                 ${imgsHtml}
                                 <div style="font-size: 1.3rem; font-family: 'Outfit'; font-weight: 700; color: white;">Pack #${pack.id}</div>
                                 <div style="color: var(--primary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600;">$${pack.price_local.toLocaleString('es-AR')}</div>
-                                <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">${pack.games ? pack.games.length : 0} juegos incluidos</div>
+                                ${gamesList}
                             </a>
                         `;
                     });
