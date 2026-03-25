@@ -68,6 +68,11 @@ class Database:
                 cursor.execute("ALTER TABLE juegos ADD COLUMN is_featured INTEGER DEFAULT 0")
             except sqlite3.OperationalError:
                 pass # Column already exists
+                
+            try:
+                cursor.execute("ALTER TABLE juegos ADD COLUMN orden_destacado INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass # Column already exists
 
             try:
                 cursor.execute("ALTER TABLE juegos ADD COLUMN precio_eshop INTEGER")
