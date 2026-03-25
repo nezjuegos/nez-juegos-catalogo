@@ -69,6 +69,11 @@ class Database:
             except sqlite3.OperationalError:
                 pass # Column already exists
 
+            try:
+                cursor.execute("ALTER TABLE juegos ADD COLUMN precio_eshop INTEGER")
+            except sqlite3.OperationalError:
+                pass # Column already exists
+
             # Table: juegos (Individual Games CRUD)
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS juegos (
@@ -158,6 +163,7 @@ class Database:
                     'primaria': d.get('precio_primaria'),
                     'secundaria': d.get('precio_secundaria'),
                     'alquiler': d.get('precio_alquiler'),
+                    'eshop': d.get('precio_eshop'),
                 }
                 results.append(d)
             return self.apply_title_tags(results)
@@ -173,8 +179,8 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, imagen_filename, is_featured)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, precio_eshop, imagen_filename, is_featured)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data.get('titulo'),
                 data.get('plataforma', 'Nintendo Switch'),
@@ -182,6 +188,7 @@ class Database:
                 data.get('precio_primaria'),
                 data.get('precio_secundaria'),
                 data.get('precio_alquiler'),
+                data.get('precio_eshop'),
                 data.get('imagen_filename'),
                 int(data.get('is_featured', 0))
             ))
@@ -193,7 +200,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE juegos 
-                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?
+                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, precio_eshop=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?
                 WHERE id=?
             ''', (
                 data.get('titulo'),
@@ -202,6 +209,7 @@ class Database:
                 data.get('precio_primaria'),
                 data.get('precio_secundaria'),
                 data.get('precio_alquiler'),
+                data.get('precio_eshop'),
                 data.get('imagen_filename'),
                 int(data.get('is_featured', 0)),
                 juego_id

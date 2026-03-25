@@ -1,74 +1,282 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Juegos | Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #09090b; --bg-card: #18181b; --primary: #8b5cf6;
-            --text-main: #f8fafc; --text-muted: #a1a1aa; --border: #27272a;
+            --bg-dark: #09090b;
+            --bg-card: #18181b;
+            --primary: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #a1a1aa;
+            --border: #27272a;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-        .header h1 { font-family: 'Outfit'; font-size: 2rem; }
-        
-        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #7c3aed; }
-        .btn-back { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-        .btn-back:hover { background: #27272a; color: white; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
-        .layout { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+        }
 
-        .form-section { background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); }
-        .form-group { margin-bottom: 1.2rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
-        input, select { width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem; border-radius: 6px; }
-        input:focus { outline: none; border-color: var(--primary); }
-        
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-family: 'Outfit';
+            font-size: 2rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #7c3aed;
+        }
+
+        .btn-back {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-back:hover {
+            background: #27272a;
+            color: white;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+
+        .form-section {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.8rem;
+            border-radius: 6px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
         /* File Upload */
-        .file-upload { border: 2px dashed var(--border); padding: 2rem; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.3s; margin-bottom: 1rem; }
-        .file-upload:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.05); }
+        .file-upload {
+            border: 2px dashed var(--border);
+            padding: 2rem;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload:hover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+        }
 
         /* Table */
-        .table-section { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: #09090b; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
-        tr:hover { background: rgba(255,255,255,0.02); }
-        
-        .game-cell { display: flex; align-items: center; gap: 1rem; }
-        .game-cell img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
-        
-        .action-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; margin-right: 0.5rem; }
-        .action-btn:hover { opacity: 1; transform: scale(1.1); }
+        .table-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #09090b;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .game-cell {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .game-cell img {
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.2s;
+            margin-right: 0.5rem;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
 
         /* Responsive Layout */
         @media (max-width: 900px) {
-            .layout { grid-template-columns: 1fr; }
-            .table-section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            .table-section table { min-width: 600px; }
-            .header { flex-direction: column; gap: 1rem; align-items: flex-start; }
-            body { padding: 1rem; }
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .table-section {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .table-section table {
+                min-width: 600px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            body {
+                padding: 1rem;
+            }
         }
+
         /* Toast */
-        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
-        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
-        .toast.error { border-left-color: #ef4444; }
-        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
-        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
-        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: #1e1e2e;
+            color: white;
+            padding: 0.9rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(100%);
+            animation: toastIn 0.3s ease forwards;
+        }
+
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+
+        .toast.fade-out {
+            animation: toastOut 0.3s ease forwards;
+        }
+
+        @keyframes toastIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
     </style>
 </head>
+
 <body>
-<div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" id="toastContainer"></div>
 
     <div class="header">
         <h1>🎮 Gestión de Juegos Individuales</h1>
@@ -79,7 +287,7 @@
         <!-- Formulario (CRUD) -->
         <div class="form-section">
             <h2 id="formTitle" style="margin-bottom: 1.5rem; font-family: 'Outfit';">Agregar Nuevo Juego</h2>
-            
+
             <input type="hidden" id="juegoId">
 
             <div class="form-group">
@@ -97,7 +305,8 @@
             </div>
 
             <div class="form-group" style="display: flex; align-items: center; gap: 0.75rem;">
-                <input type="checkbox" id="is_featured" style="width: auto; accent-color: #eab308; transform: scale(1.3);">
+                <input type="checkbox" id="is_featured"
+                    style="width: auto; accent-color: #eab308; transform: scale(1.3);">
                 <label for="is_featured" style="margin-bottom: 0; cursor: pointer;">⭐ Juego Destacado</label>
             </div>
 
@@ -108,6 +317,8 @@
                     <input type="number" id="precio_primaria" placeholder="Primaria (Ej: 85000)">
                     <input type="number" id="precio_secundaria" placeholder="Secundaria (Ej: 45000)">
                     <input type="number" id="precio_alquiler" placeholder="Alquiler (Ej: 18000)">
+                    <input type="number" id="precio_eshop" placeholder="eShop (Referencia)"
+                        style="grid-column: 1 / -1;">
                 </div>
             </div>
 
@@ -116,21 +327,25 @@
                 <input type="file" id="fileInput" accept="image/*" style="display: none;">
                 <div class="file-upload" id="dropZone">
                     <div id="previewContainer" style="display: none; margin-bottom: 1rem;">
-                        <img id="imagePreview" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);">
+                        <img id="imagePreview"
+                            style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);">
                     </div>
                     <span id="uploadText">📁 Haz clic para subir imagen</span>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en el servidor</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en
+                        el servidor</p>
                 </div>
             </div>
 
             <button class="btn btn-primary" id="btnSave" style="width: 100%;">Guardar Juego en Base de Datos</button>
-            <button class="btn btn-back" id="btnCancel" style="width: 100%; margin-top: 0.5rem; display: none;">Cancelar Edición</button>
+            <button class="btn btn-back" id="btnCancel" style="width: 100%; margin-top: 0.5rem; display: none;">Cancelar
+                Edición</button>
         </div>
 
         <!-- Tabla -->
         <div class="table-section">
             <div style="padding: 1rem; border-bottom: 1px solid var(--border);">
-                <input type="text" id="adminSearchInput" placeholder="🔍 Buscar juego por nombre..." style="width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.95rem;">
+                <input type="text" id="adminSearchInput" placeholder="🔍 Buscar juego por nombre..."
+                    style="width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.95rem;">
             </div>
             <table id="gamesTable">
                 <thead>
@@ -155,14 +370,14 @@
         const previewImg = document.getElementById('imagePreview');
         const previewContainer = document.getElementById('previewContainer');
         const uploadText = document.getElementById('uploadText');
-        
+
         const btnSave = document.getElementById('btnSave');
         const btnCancel = document.getElementById('btnCancel');
         const formTitle = document.getElementById('formTitle');
         const juegoIdInput = document.getElementById('juegoId');
 
         // Form Fields
-        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler'];
+        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler', 'precio_eshop'];
 
         function showToast(msg, isError = false) {
             const c = document.getElementById('toastContainer');
@@ -197,7 +412,7 @@
                 const tr = document.createElement('tr');
                 const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://via.placeholder.com/160x90?text=S/I';
                 const starStyle = game.is_featured ? 'opacity:1; filter: none;' : 'opacity:0.3; filter: grayscale(1);';
-                
+
                 tr.innerHTML = `
                     <td>
                         <div class="game-cell">
@@ -209,7 +424,8 @@
                     <td>
                         <div style="font-size: 0.85rem; color: var(--text-muted);">
                             Cód: ${formatPrice(game.precio_codigo)} | Pri: ${formatPrice(game.precio_primaria)}<br>
-                            Sec: ${formatPrice(game.precio_secundaria)} | Alq: ${formatPrice(game.precio_alquiler)}
+                            Sec: ${formatPrice(game.precio_secundaria)} | Alq: ${formatPrice(game.precio_alquiler)}<br>
+                            eShop: <span style="color: #eab308;">${formatPrice(game.precio_eshop)}</span>
                         </div>
                     </td>
                     <td>
@@ -245,7 +461,7 @@
             const formData = new FormData();
             fields.forEach(f => formData.append(f, document.getElementById(f).value));
             formData.append('is_featured', document.getElementById('is_featured').checked ? '1' : '0');
-            
+
             if (fileInput.files[0]) {
                 formData.append('image', fileInput.files[0]);
             }
@@ -257,7 +473,7 @@
             try {
                 btnSave.disabled = true;
                 btnSave.innerText = "Guardando...";
-                
+
                 // If it's a PUT but we are sending FormData, we need to handle it.
                 // Flask PUT with FormData sometimes requires POST-shimming or just handling it in the route.
                 // Our backend handles PUT with multipart/form-data now.
@@ -265,7 +481,7 @@
                     method: method,
                     body: formData
                 });
-                
+
                 const data = await res.json();
                 if (data.status === 'ok') {
                     resetForm();
@@ -295,7 +511,7 @@
             btnSave.innerText = "Actualizar Juego";
             btnCancel.style.display = 'block';
             document.getElementById('is_featured').checked = game.is_featured == 1;
-            
+
             if (game.imagen_filename) {
                 previewImg.src = `/uploads/${game.imagen_filename}`;
                 previewContainer.style.display = 'block';
@@ -350,4 +566,5 @@
         loadGames();
     </script>
 </body>
+
 </html>
