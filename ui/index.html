@@ -6,20 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Meta Pixel Code -->
     <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '899306702968875');
-      fbq('track', 'PageView');
+        !function (f, b, e, v, n, t, s) {
+            if (f.fbq) return; n = f.fbq = function () {
+                n.callMethod ?
+                n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+            };
+            if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
+            n.queue = []; t = b.createElement(e); t.async = !0;
+            t.src = v; s = b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t, s)
+        }(window, document, 'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '899306702968875');
+        fbq('track', 'PageView');
     </script>
     <noscript><img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=899306702968875&ev=PageView&noscript=1"
-    /></noscript>
+            src="https://www.facebook.com/tr?id=899306702968875&ev=PageView&noscript=1" /></noscript>
     <!-- End Meta Pixel Code -->
     <title>Nez Juegos | Catálogo Digital</title>
     <link
@@ -456,6 +458,32 @@
             </a>
         </section>
 
+        <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
+            id="featuredJuegosContainer">
+            <h2
+                style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <span style="color: #eab308; font-family: 'Outfit';">⭐ Juegos Destacados</span>
+                <a href="/juegos"
+                    style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver
+                    catálogo completo ↗</a>
+            </h2>
+            <div id="featuredJuegosGrid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;"></div>
+        </section>
+
+        <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
+            id="featuredPacksContainer">
+            <h2
+                style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <span style="color: #eab308; font-family: 'Outfit';">🔥 Packs Destacados</span>
+                <a href="/packs"
+                    style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver todos
+                    los packs ↗</a>
+            </h2>
+            <div id="featuredPacksGrid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div>
+        </section>
+
         <section class="community">
             <h2>¡Sumate a nuestra Comunidad!</h2>
             <p>Se parte de la mejor comunidad gamer de WhatsApp! Podés unirte libremente sin necesidad de hacer ninguna
@@ -483,10 +511,10 @@
                     if (config.hero_img_1) document.getElementById('hero-img-1').src = config.hero_img_1;
                     if (config.hero_img_2) document.getElementById('hero-img-2').src = config.hero_img_2;
                     if (config.hero_img_3) document.getElementById('hero-img-3').src = config.hero_img_3;
-                    
+
                     if (config.glass_card_title) document.getElementById('glass-card-title').innerText = config.glass_card_title;
                     if (config.glass_card_price) document.getElementById('glass-card-price').innerText = config.glass_card_price;
-                    
+
                     if (config.img_juegos) {
                         document.getElementById('featureImgJuegos').style.background = `url('/uploads/${config.img_juegos}') center/cover`;
                     }
@@ -495,6 +523,94 @@
                     }
                 })
                 .catch(err => console.error("Error loading config:", err));
+
+            // Fetch Featured Items
+            Promise.all([
+                fetch('/api/juegos?featured=true').then(r => r.json()),
+                fetch('/api/packs?featured=true').then(r => r.json())
+            ]).then(([juegosData, packsData]) => {
+                const jContainer = document.getElementById('featuredJuegosContainer');
+                const jGrid = document.getElementById('featuredJuegosGrid');
+                if (juegosData.results && juegosData.results.length > 0) {
+                    jContainer.style.display = 'block';
+                    juegosData.results.slice(0, 8).forEach(game => {
+                        const prices = [game.precios.codigo_digital, game.precios.primaria, game.precios.secundaria, game.precios.alquiler]
+                            .map(Number).filter(p => !isNaN(p) && p > 0);
+                        const min = prices.length ? Math.min(...prices) : 0;
+
+                        let badge = '';
+                        let maxPct = 0;
+                        ['codigo_digital', 'primaria', 'secundaria', 'alquiler'].forEach(pk => {
+                            const reg = game.precios[pk];
+                            const off = game.precios['oferta_' + pk];
+                            if (reg && off && off < reg) {
+                                const pct = Math.round((1 - (off / reg)) * 100);
+                                if (pct > maxPct) maxPct = pct;
+                            }
+                        });
+                        if (maxPct > 0) {
+                            badge = `<div style="position:absolute; top:10px; right:10px; background:#eab308; color:black; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem; z-index: 10;">🔥 -${maxPct}%</div>`;
+                        }
+
+                        const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch';
+
+                        // Add title prefix logic
+                        let titlePrefix = '';
+                        if (game.is_hot) titlePrefix += '🔥 ';
+                        if (game.is_dlc) titlePrefix += '🧩 ';
+
+                        jGrid.innerHTML += `
+                            <a href="/juegos?q=${encodeURIComponent(game.titulo)}" style="display: block; text-decoration: none; padding: 1rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative; overflow: hidden;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                                <div style="width: 100%; height: 160px; border-radius: 8px; background: url('${cover}') center/cover; position: relative;">
+                                    <span style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; color: white;">${game.plataforma}</span>
+                                </div>
+                                ${badge}
+                                <h3 style="margin-top: 1rem; color: white; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h3>
+                                ${min > 0 ? `<p style="color: var(--primary); font-size: 1rem; margin-top: 0.5rem; font-weight: 600;">Desde $${min.toLocaleString('es-AR')}</p>` : `<p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Consultar precio</p>`}
+                            </a>
+                        `;
+                    });
+                }
+
+                const pContainer = document.getElementById('featuredPacksContainer');
+                const pGrid = document.getElementById('featuredPacksGrid');
+                if (packsData.results && packsData.results.length > 0) {
+                    pContainer.style.display = 'block';
+                    packsData.results.slice(0, 6).forEach(pack => {
+                        const isMixed = pack.games && pack.games.some(g => g.is_mixed || (g.name && g.name.includes('+') && g.is_dlc));
+                        const isStrictDlc = pack.games && pack.games.every(g => g.is_dlc && !isMixed);
+                        const isHot = pack.games && pack.games.some(g => g.is_hot);
+
+                        let headerBg = 'background: rgba(255, 255, 255, 0.05);';
+                        let headerText = '✨ MIX PACK';
+                        if (isStrictDlc) { headerBg = 'background: rgba(217, 70, 239, 0.15); color: #d946ef;'; headerText = '🧩 PACK DLC'; }
+                        else if (isHot) { headerBg = 'background: rgba(239, 68, 68, 0.15); color: #ef4444;'; headerText = '🔥 HOT PACK'; }
+                        else if (pack.is_new) { headerBg = 'background: rgba(34, 197, 94, 0.15); color: #22c55e;'; headerText = '🆕 NUEVO PACK'; }
+
+                        let imgsHtml = '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">';
+                        if (pack.manual_image_url) {
+                            imgsHtml += `<img src="${pack.manual_image_url}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
+                        } else if (pack.games) {
+                            pack.games.forEach(g => {
+                                if (g.imageUrl) {
+                                    imgsHtml += `<img src="${g.imageUrl}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
+                                }
+                            });
+                        }
+                        imgsHtml += '</div>';
+
+                        pGrid.innerHTML += `
+                            <a href="/packs?q=${pack.id}" style="display: block; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                                <div style="${headerBg} padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-bottom: 1rem;">${headerText}</div>
+                                ${imgsHtml}
+                                <div style="font-size: 1.3rem; font-family: 'Outfit'; font-weight: 700; color: white;">Pack #${pack.id}</div>
+                                <div style="color: var(--primary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600;">$${pack.price_local.toLocaleString('es-AR')}</div>
+                                <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">${pack.games ? pack.games.length : 0} juegos incluidos</div>
+                            </a>
+                        `;
+                    });
+                }
+            }).catch(err => console.error("Error loading featured items:", err));
         </script>
 </body>
 

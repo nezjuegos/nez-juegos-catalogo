@@ -160,7 +160,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if featured_only:
-                cursor.execute('SELECT * FROM juegos WHERE is_featured = 1 ORDER BY titulo COLLATE NOCASE ASC')
+                cursor.execute('SELECT * FROM juegos WHERE is_featured = 1 ORDER BY CASE WHEN orden_destacado = 0 THEN 9999 ELSE orden_destacado END ASC, titulo COLLATE NOCASE ASC')
             else:
                 cursor.execute('SELECT * FROM juegos ORDER BY titulo COLLATE NOCASE ASC')
             results = []
@@ -177,6 +177,7 @@ class Database:
                     'oferta_secundaria': d.get('oferta_secundaria'),
                     'oferta_alquiler': d.get('oferta_alquiler'),
                 }
+                d['orden_destacado'] = d.get('orden_destacado', 0)
                 results.append(d)
             return self.apply_title_tags(results)
 
@@ -192,8 +193,8 @@ class Database:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, precio_eshop, 
-                                    oferta_codigo, oferta_primaria, oferta_secundaria, oferta_alquiler, imagen_filename, is_featured)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    oferta_codigo, oferta_primaria, oferta_secundaria, oferta_alquiler, imagen_filename, is_featured, orden_destacado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data.get('titulo'),
                 data.get('plataforma', 'Nintendo Switch'),
@@ -207,7 +208,8 @@ class Database:
                 data.get('oferta_secundaria'),
                 data.get('oferta_alquiler'),
                 data.get('imagen_filename'),
-                int(data.get('is_featured', 0))
+                int(data.get('is_featured', 0)),
+                int(data.get('orden_destacado') or 0)
             ))
             conn.commit()
             return cursor.lastrowid
@@ -218,7 +220,7 @@ class Database:
             cursor.execute('''
                 UPDATE juegos 
                 SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, precio_eshop=?, 
-                    oferta_codigo=?, oferta_primaria=?, oferta_secundaria=?, oferta_alquiler=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?
+                    oferta_codigo=?, oferta_primaria=?, oferta_secundaria=?, oferta_alquiler=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?, orden_destacado=?
                 WHERE id=?
             ''', (
                 data.get('titulo'),
@@ -234,6 +236,7 @@ class Database:
                 data.get('oferta_alquiler'),
                 data.get('imagen_filename'),
                 int(data.get('is_featured', 0)),
+                int(data.get('orden_destacado') or 0),
                 juego_id
             ))
             conn.commit()

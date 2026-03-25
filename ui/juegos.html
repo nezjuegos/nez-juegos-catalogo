@@ -644,17 +644,25 @@
             return '$' + val.toLocaleString('es-AR');
         }
 
-        function createOrderLink(game, type, price) {
+        function createOrderLink(game, type, currentPrice) {
             const base = waNumber ? `https://wa.me/${waNumber}?text=` : '#';
             if (!waNumber) return '#';
 
-            let msg = `Hola, quiero comprar ${game.titulo} en modalidad ${type} por ${formatPrice(price)}.`;
+            let msg = `🛒 *Pedido desde el catálogo web:*\n`;
+            msg += `🎮 *Juego:* ${game.titulo}\n`;
+            msg += `🖥️ *Plataforma:* ${game.plataforma}\n`;
+            msg += `🎯 *Formato:* ${type}\n`;
+            msg += `💸 *Tu Precio:* ${formatPrice(currentPrice)}\n\n`;
+
             if (game.precios.eshop) {
-                const savings = game.precios.eshop - price;
+                const savings = game.precios.eshop - currentPrice;
                 if (savings > 0) {
-                    msg += `\n\n(Precio oficial eShop: ${formatPrice(game.precios.eshop)} | Ahorras: ${formatPrice(savings)})`;
+                    msg += `❌ ~Precio eShop:~ ~${formatPrice(game.precios.eshop)}~\n`;
+                    msg += `✅ *Ahorro total:* ${formatPrice(savings)}\n\n`;
                 }
             }
+
+            msg += `Hola, quiero comprar este juego...`;
 
             const text = encodeURIComponent(msg);
             return base + text;
@@ -743,8 +751,8 @@
             });
         }
         window.shareGame = function (game) {
-            let text = `🎮 ${game.titulo} — Nez Juegos\n`;
-            if (game.precios.eshop) text += `🏪 Precio oficial eShop: ${formatPrice(game.precios.eshop)}\n`;
+            let text = `🎮 *${game.titulo}* — Nez Juegos\n`;
+            if (game.precios.eshop) text += `🏪 *Precio oficial eShop:* ${formatPrice(game.precios.eshop)}\n`;
             text += `\n`;
 
             const addLine = (label, priceKey) => {
@@ -760,9 +768,9 @@
 
                 if (isDiscounted) {
                     const pct = Math.round((1 - (off / reg)) * 100);
-                    lineDisplay += `  🔥 (-${pct}% OFF | Antes: ${formatPrice(reg)})`;
+                    lineDisplay += ` (🔥 -${pct}% OFF | Antes: ${formatPrice(reg)})`;
                 } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
-                    lineDisplay += `  (Ahorras ${formatPrice(game.precios.eshop - currentPrice)})`;
+                    lineDisplay += ` (Ahorras ${formatPrice(game.precios.eshop - currentPrice)})`;
                 }
 
                 text += lineDisplay + '\n';
