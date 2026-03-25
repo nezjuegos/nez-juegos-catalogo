@@ -661,17 +661,29 @@
         }
 
         function createPriceOption(game, typeName, priceKey, desc, isPrimary = false) {
-            const price = game.precios[priceKey];
-            if (!price) return ''; // If price is missing or null, don't show the option
+            const regular = game.precios[priceKey];
+            const offer = game.precios['oferta_' + priceKey];
+            if (!regular && !offer) return '';
+
+            const currentPrice = offer || regular;
+            const isDiscounted = offer && offer < regular;
+
+            let amountHtml = '';
+            if (isDiscounted) {
+                amountHtml = `<span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.85rem; font-weight: normal; margin-right: 0.5rem;">${formatPrice(regular)}</span>`;
+                amountHtml += `<span class="price-amount" style="color: #eab308;">${formatPrice(offer)}</span>`;
+            } else {
+                amountHtml = `<span class="price-amount">${formatPrice(regular)}</span>`;
+            }
 
             return `
                 <div class="price-row">
                     <div class="price-details">
                         <span class="price-type">${typeName}</span>
-                        <span class="price-amount">${formatPrice(price)}</span>
+                        <div>${amountHtml}</div>
                         <span class="price-desc">${desc}</span>
                     </div>
-                    <a href="${createOrderLink(game, typeName, price)}" target="_blank" class="btn-wa-small" style="text-decoration: none;" onclick="fbq('track','Lead')">
+                    <a href="${createOrderLink(game, typeName, currentPrice)}" target="_blank" class="btn-wa-small" style="text-decoration: none;" onclick="fbq('track','Lead')">
                         <svg style="width:14px;height:14px;vertical-align:middle;margin-right:3px" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>Pedir
                     </a>
                 </div>
@@ -694,10 +706,24 @@
                 if (game.is_hot) titlePrefix += '🔥 ';
                 if (game.is_dlc) titlePrefix += '🧩 ';
 
+                // Calculate max discount
+                let maxPct = 0;
+                ['codigo_digital', 'primaria', 'secundaria', 'alquiler'].forEach(pk => {
+                    const reg = game.precios[pk];
+                    const off = game.precios['oferta_' + pk];
+                    if (reg && off && off < reg) {
+                        const pct = Math.round((1 - (off / reg)) * 100);
+                        if (pct > maxPct) maxPct = pct;
+                    }
+                });
+
+                const discountBadge = maxPct > 0 ? `<div style="position: absolute; top: 0.75rem; left: 0.75rem; background: #eab308; color: black; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; z-index: 2; box-shadow: 0 4px 12px rgba(234,179,8,0.3);">- ${maxPct}% OFF</div>` : '';
+
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 card.innerHTML = `
-                    <div class="game-cover" style="${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}">
+                    <div class="game-cover" style="position: relative; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}">
+                        ${discountBadge}
                         ${!cover ? '🎮' : ''}
                         <span class="platform-badge">${game.plataforma}</span>
                     </div>
@@ -722,14 +748,24 @@
             text += `\n`;
 
             const addLine = (label, priceKey) => {
-                const p = game.precios[priceKey];
-                if (p) {
-                    if (game.precios.eshop && game.precios.eshop > p) {
-                        text += `• ${label}: ${formatPrice(p)}  (Ahorras ${formatPrice(game.precios.eshop - p)})\n`;
-                    } else {
-                        text += `• ${label}: ${formatPrice(p)}\n`;
-                    }
+                const reg = game.precios[priceKey];
+                const off = game.precios['oferta_' + priceKey];
+
+                if (!reg && !off) return;
+
+                const currentPrice = off || reg;
+                const isDiscounted = off && off < reg;
+
+                let lineDisplay = `• ${label}: ${formatPrice(currentPrice)}`;
+
+                if (isDiscounted) {
+                    const pct = Math.round((1 - (off / reg)) * 100);
+                    lineDisplay += `  🔥 (-${pct}% OFF | Antes: ${formatPrice(reg)})`;
+                } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
+                    lineDisplay += `  (Ahorras ${formatPrice(game.precios.eshop - currentPrice)})`;
                 }
+
+                text += lineDisplay + '\n';
             };
 
             addLine('Código Digital', 'codigo_digital');

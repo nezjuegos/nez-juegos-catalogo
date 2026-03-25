@@ -311,14 +311,51 @@
             </div>
 
             <div class="form-group">
-                <label>Precios (ARS)</label>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+                    <label style="margin: 0;">Precios (ARS)</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="number" id="global_discount" placeholder="% Desc"
+                            style="width: 90px; padding: 0.4rem; font-size: 0.8rem;" min="1" max="99">
+                        <button type="button" class="btn"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: #27272a; color: white;"
+                            onclick="applyDiscount()">Aplicar</button>
+                    </div>
+                </div>
                 <div class="price-grid">
-                    <input type="number" id="precio_codigo" placeholder="Código (Ej: 115000)">
-                    <input type="number" id="precio_primaria" placeholder="Primaria (Ej: 85000)">
-                    <input type="number" id="precio_secundaria" placeholder="Secundaria (Ej: 45000)">
-                    <input type="number" id="precio_alquiler" placeholder="Alquiler (Ej: 18000)">
-                    <input type="number" id="precio_eshop" placeholder="eShop (Referencia)"
-                        style="grid-column: 1 / -1;">
+                    <div class="tier-group">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Código</div>
+                        <input type="number" id="precio_codigo" placeholder="Regular (Ej: 115000)"
+                            style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_codigo" placeholder="En Oferta (Ej: 95000)"
+                            style="border-color: #eab308;">
+                    </div>
+                    <div class="tier-group">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Primaria</div>
+                        <input type="number" id="precio_primaria" placeholder="Regular (Ej: 85000)"
+                            style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_primaria" placeholder="En Oferta (Ej: 65000)"
+                            style="border-color: #eab308;">
+                    </div>
+                    <div class="tier-group">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Secundaria</div>
+                        <input type="number" id="precio_secundaria" placeholder="Regular (Ej: 45000)"
+                            style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_secundaria" placeholder="En Oferta (Ej: 35000)"
+                            style="border-color: #eab308;">
+                    </div>
+                    <div class="tier-group">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Alquiler</div>
+                        <input type="number" id="precio_alquiler" placeholder="Regular (Ej: 18000)"
+                            style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_alquiler" placeholder="En Oferta (Ej: 12000)"
+                            style="border-color: #eab308;">
+                    </div>
+                    <div class="tier-group" style="grid-column: 1 / -1;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Referencia
+                            (Informativo)</div>
+                        <input type="number" id="precio_eshop" placeholder="Precio oficial eShop">
+                    </div>
                 </div>
             </div>
 
@@ -377,7 +414,25 @@
         const juegoIdInput = document.getElementById('juegoId');
 
         // Form Fields
-        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler', 'precio_eshop'];
+        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler', 'precio_eshop', 'oferta_codigo', 'oferta_primaria', 'oferta_secundaria', 'oferta_alquiler'];
+
+        window.applyDiscount = function () {
+            const pctVal = parseFloat(document.getElementById('global_discount').value);
+            if (isNaN(pctVal) || pctVal <= 0 || pctVal >= 100) {
+                showToast("Ingresa un porcentaje de descuento válido (1-99)", true);
+                return;
+            }
+            const mult = 1 - (pctVal / 100);
+            ['codigo', 'primaria', 'secundaria', 'alquiler'].forEach(tier => {
+                const regInput = document.getElementById('precio_' + tier);
+                const offInput = document.getElementById('oferta_' + tier);
+                const regVal = parseFloat(regInput.value);
+                if (!isNaN(regVal) && regVal > 0) {
+                    offInput.value = Math.round(regVal * mult);
+                }
+            });
+            showToast(`¡Descuento del ${pctVal}% aplicado automáticamente!`);
+        }
 
         function showToast(msg, isError = false) {
             const c = document.getElementById('toastContainer');
@@ -411,21 +466,26 @@
             filtered.forEach(game => {
                 const tr = document.createElement('tr');
                 const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://via.placeholder.com/160x90?text=S/I';
+
+                let isSale = game.oferta_codigo || game.oferta_primaria || game.oferta_secundaria || game.oferta_alquiler;
+
                 const starStyle = game.is_featured ? 'opacity:1; filter: none;' : 'opacity:0.3; filter: grayscale(1);';
 
                 tr.innerHTML = `
                     <td>
                         <div class="game-cell">
                             <img src="${cover}" alt="${game.titulo}">
-                            <strong>${game.is_featured ? '⭐ ' : ''}${game.titulo}</strong>
+                            <strong>${game.is_featured ? '⭐ ' : ''}${isSale ? '🔥 ' : ''}${game.titulo}</strong>
                         </div>
                     </td>
                     <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${game.plataforma}</span></td>
                     <td>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">
-                            Cód: ${formatPrice(game.precio_codigo)} | Pri: ${formatPrice(game.precio_primaria)}<br>
-                            Sec: ${formatPrice(game.precio_secundaria)} | Alq: ${formatPrice(game.precio_alquiler)}<br>
-                            eShop: <span style="color: #eab308;">${formatPrice(game.precio_eshop)}</span>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+                            Cód: <span style="${game.oferta_codigo ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_codigo || game.precio_codigo)}</span> | 
+                            Pri: <span style="${game.oferta_primaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_primaria || game.precio_primaria)}</span><br>
+                            Sec: <span style="${game.oferta_secundaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_secundaria || game.precio_secundaria)}</span> | 
+                            Alq: <span style="${game.oferta_alquiler ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_alquiler || game.precio_alquiler)}</span><br>
+                            eShop: <span style="color: #a1a1aa; font-style: italic;">${formatPrice(game.precio_eshop)}</span>
                         </div>
                     </td>
                     <td>
@@ -557,6 +617,7 @@
             btnSave.innerText = "Guardar Juego en Base de Datos";
             btnCancel.style.display = 'none';
             document.getElementById('is_featured').checked = false;
+            document.getElementById('global_discount').value = '';
         }
 
         function primaryScrollIntoView() {
