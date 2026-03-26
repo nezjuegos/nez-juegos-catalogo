@@ -158,6 +158,7 @@ class NintendoScraper:
         self.is_running = False
         self.telegram_connected = False
         self.db = db_instance
+        self.progress = {"status": "idle", "current": 0, "total": 0, "message": ""}
         
         self.monitor_task = None
         self.monitor_active = False
@@ -301,6 +302,7 @@ class NintendoScraper:
     async def scrape_today(self, max_scrolls=7):
         """Scan the last ~100 messages. The DB layer handles deduplication:
         packs already in the catalog are skipped, only truly new ones are inserted."""
+        self.progress = {"status": "running", "current": 0, "total": max_scrolls, "message": "Iniciando escaneo rápido..."}
         print("[SCRAPE] Starting 'Escanear Hoy' mode (last ~100 messages)...")
         await self._open_chat()
         
@@ -327,21 +329,26 @@ class NintendoScraper:
                 
             await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
+            self.progress["current"] = scroll + 1
+            self.progress["message"] = f"Scroll {scroll+1}/{max_scrolls}. Encontrados {len(packs)} packs válidos..."
             print(f"[SCRAPE] Scroll {scroll+1}/{max_scrolls}, found {len(packs)} valid packs so far")
             
         packs.reverse()  # Newest first
+        self.progress["message"] = "Guardando packs en el catálogo..."
         added = self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=True)
         print(f"[SCRAPE] Finished. Scanned {len(packs)} packs total, {added} truly new packs added.")
+        self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"Completado. {added} packs nuevos añadidos."}
         return added
 
     # --- MODE 2: Full Scrape ---
     async def scrape_full(self, message_count=1000):
+        max_scrolls = max(50, message_count // 15)
+        self.progress = {"status": "running", "current": 0, "total": max_scrolls, "message": f"Iniciando escaneo de los últimos {message_count} mensajes..."}
         print(f"[SCRAPE] Full Scrape mode: {message_count} messages...")
         await self._open_chat()
         
         all_texts = set()
         packs = []
-        max_scrolls = max(50, message_count // 15)
         
         for _ in range(max_scrolls):
             if len(all_texts) >= message_count: break
@@ -365,11 +372,15 @@ class NintendoScraper:
                 
             await self.page.keyboard.press("Home")
             await asyncio.sleep(0.5)
+            self.progress["current"] = _ + 1
+            self.progress["message"] = f"Scroll {_+1}/{max_scrolls}. Encontrados {len(packs)} packs históricos..."
             
         packs.reverse()
+        self.progress["message"] = "Reconstruyendo catálogo en base de datos..."
         # In a full scrape, we do NOT flag packs as "is_new". We just build the catalog.
         self.db.save_packs([p.to_dict() for p in packs], is_scrape_today=False)
         print(f"[SCRAPE] Full Scrape Done. Guardados {len(packs)} packs en la base de datos.")
+        self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"Escaneo histórico finalizado. {len(packs)} packs guardados."}
         return len(packs)
 
     # --- MODE 3: Verify Deleted (Sync IDs) ---

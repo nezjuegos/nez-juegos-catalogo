@@ -392,6 +392,29 @@
     </div>
 
     <script>
+        window.isTelegramConnected = false;
+
+        window.showQrModal = function () {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+            <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-lg); text-align: center; border: 1px solid var(--border);">
+                <h2 style="margin-bottom: 1rem; font-family: 'Outfit';">Escanea con Telegram</h2>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    Abre Telegram > Ajustes > Dispositivos > Vincular Dispositivo.<br>
+                    Si la imagen no carga, clica Recargar Imagen.
+                </p>
+                <img src="/qr_login.png?t=${Date.now()}" style="max-width: 300px; border-radius: 8px; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; min-height: 200px; background: white;" onerror="this.onerror=null; this.alt='El código QR aún no se ha generado.'; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div style="display: none; color: #ef4444; margin-bottom: 1.5rem;">[Imagen QR No Encontrada]</div>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button class="btn btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">Cerrar</button>
+                    <button class="btn btn-back" onclick="const btn=this; const img=btn.parentElement.previousElementSibling.previousElementSibling; const msg=img.nextElementSibling; btn.innerText='Cargando...'; fetch('/api/admin/telegram/refresh_qr', {method:'POST'}).then(r=>r.json()).then(d=>{if(d.telegram_connected){location.reload()}else{img.src='/qr_login.png?t='+Date.now(); msg.style.display='none'; img.style.display='block'; btn.innerText='Recargar Imagen';}}).catch(()=>btn.innerText='Error')">Recargar Imagen</button>
+                </div>
+            </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
         function showToast(msg, isError = false) {
             const c = document.getElementById('toastContainer');
             const t = document.createElement('div');
@@ -505,10 +528,28 @@
         });
 
         async function triggerScrape(endpoint, btn, loadingText) {
+            if (window.isTelegramConnected === false) {
+                showToast('❌ Requiere Iniciar Sesión en Telegram primero', true);
+                document.getElementById('qrModal').style.display = 'flex';
+                return;
+            }
+
             const originalText = btn.innerText;
             btn.innerText = loadingText;
             btn.disabled = true;
             btn.style.opacity = 0.7;
+
+            const progCont = document.getElementById('scrapeProgressContainer');
+            const progBar = document.getElementById('scrapeProgressBar');
+            const progPct = document.getElementById('scrapeProgressPct');
+            const progMsg = document.getElementById('scrapeProgressMsg');
+            const statusText = document.getElementById('scrapeStatusText');
+
+            progCont.style.display = 'block';
+            progBar.style.width = '0%';
+            progPct.innerText = '0%';
+            progMsg.innerText = 'Esperando conexión al bot...';
+            statusText.innerText = loadingText;
 
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
@@ -519,6 +560,7 @@
                     btn.innerText = originalText;
                     btn.disabled = false;
                     btn.style.opacity = 1;
+                    progCont.style.display = 'none';
                     return;
                 }
 
@@ -533,26 +575,48 @@
                             const statusRes = await fetch('/api/admin/scrape/status');
                             const statusData = await statusRes.json();
 
+                            // Visual Update from backend scraper.progress dict
+                            if (statusData.progress && statusData.progress.status !== 'idle') {
+                                const p = statusData.progress;
+                                const pctVal = p.total > 0 ? Math.min(100, Math.round((p.current / p.total) * 100)) : 100;
+                                progBar.style.width = pctVal + '%';
+                                progPct.innerText = p.total > 0 ?\`\${p.current} / \${p.total}\` : '';
+                                progMsg.innerText = p.message || 'Escaneando...';
+                            }
+
                             if (!statusData.running) {
                                 clearInterval(pollInterval);
                                 btn.innerText = originalText;
                                 btn.disabled = false;
                                 btn.style.opacity = 1;
+                                
+                                progBar.style.width = '100%';
+                                progPct.innerText = '100%';
+                                progMsg.innerText = statusData.progress ? statusData.progress.message : 'Terminado.';
+                                statusText.innerText = '¡Completado!';
+                                statusText.style.color = '#22c55e';
+                                progBar.style.background = '#22c55e';
+                                
+                                setTimeout(() => {
+                                    progCont.style.display = 'none';
+                                    statusText.style.color = '#a78bfa';
+                                    progBar.style.background = 'linear-gradient(90deg, #8b5cf6, #d946ef)';
+                                }, 4000);
 
                                 if (statusData.error) {
                                     showToast('Error en scrape: ' + statusData.error, true);
                                 } else {
                                     const result = statusData.result || 0;
                                     if (statusData.action === 'verify_deleted') {
-                                        showToast(`✅ Verificación completa. Packs limpiados: ${result}`);
+                                        showToast(`✅ Verificación completa.Packs limpiados: ${ result } `);
                                     } else {
-                                        showToast(`✅ Scrape completo. Packs procesados: ${result}`);
+                                        showToast(`✅ Scrape completo.Packs procesados: ${ result } `);
                                     }
                                     loadPacks();
                                 }
                             }
                         } catch (e) { /* keep polling */ }
-                    }, 3000);
+                    }, 1000); // Polling every 1s for fluid visual feedback
                 }
             } catch (err) {
                 showToast('Fallo de red al intentar ejecutar la acción.', true);
@@ -560,6 +624,7 @@
                 btn.innerText = originalText;
                 btn.disabled = false;
                 btn.style.opacity = 1;
+                progCont.style.display = 'none';
             }
         }
 
@@ -607,76 +672,58 @@
         window.toggleFeatured = async function (id, btnElement) {
             btnElement.disabled = true;
             try {
-                const res = await fetch(`/api/admin/packs/${id}/toggle_featured`, { method: 'POST' });
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    loadPacks(); // Reload to show updated styles
-                } else {
-                    showToast(data.error, true);
-                }
-            } catch (err) {
-                showToast('Error de conexión', true);
-                console.error(err);
-            } finally {
-                btnElement.disabled = false;
-            }
-        };
-
-        window.deletePack = async function (id, btnElement) {
-            if (confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {
-                // Optimistic UI hide
-                const row1 = btnElement.closest('tr');
-                row1.style.display = 'none';
-
-                fetch(`/api/admin/packs/${id}`, { method: 'DELETE' })
-                    .then(res => res.json())
-                    .catch(e => console.error("Could not delete via API", e));
-            }
-        }
-
-        // Init
-        document.addEventListener('DOMContentLoaded', () => {
-            loadPacks();
-
-            const headerH1 = document.querySelector('.header h1');
-            fetch('/api/admin/telegram/status')
-                .then(res => res.json())
-                .then(data => {
-                    const statusSpan = document.createElement('span');
-                    statusSpan.style.cssText = 'font-size: 0.8rem; margin-left: 1rem; padding: 4px 8px; border-radius: 4px; vertical-align: middle; cursor: pointer;';
-                    if (data.telegram_connected) {
-                        statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
-                        statusSpan.style.color = '#4ade80';
-                        statusSpan.innerText = '🟢 Telegram Conectado';
-                        statusSpan.style.cursor = 'default';
+                const res = await fetch(`/ api / admin / packs / ${ id }/toggle_featured`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        loadPacks(); // Reload to show updated styles
                     } else {
-                        statusSpan.style.background = 'rgba(239, 68, 68, 0.2)';
-                        statusSpan.style.color = '#f87171';
-                        statusSpan.innerText = '🔴 Requiere Iniciar Sesión (Ver QR)';
-                        statusSpan.onclick = () => {
-                            const modal = document.createElement('div');
-                            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;';
-                            modal.innerHTML = `
-                                <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-lg); text-align: center; border: 1px solid var(--border);">
-                                    <h2 style="margin-bottom: 1rem; font-family: 'Outfit';">Escanea con Telegram</h2>
-                                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-                                        Abre Telegram > Ajustes > Dispositivos > Vincular Dispositivo.<br>
-                                        Si la imagen no carga, ejecuta la tarea "Escanear Novedades" para forzar al bot a generarla.
-                                    </p>
-                                    <img src="/qr_login.png?t=${Date.now()}" style="max-width: 300px; border-radius: 8px; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; min-height: 200px; background: white;" onerror="this.onerror=null; this.alt='El código QR aún no se ha generado.'; this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                    <div style="display: none; color: #ef4444; margin-bottom: 1.5rem;">[Imagen QR No Encontrada]</div>
-                                    <div style="display: flex; gap: 1rem; justify-content: center;">
-                                        <button class="btn btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">Cerrar</button>
-                                        <button class="btn btn-back" onclick="const btn=this; const img=btn.parentElement.previousElementSibling.previousElementSibling; const msg=img.nextElementSibling; btn.innerText='Cargando...'; fetch('/api/admin/telegram/refresh_qr', {method:'POST'}).then(r=>r.json()).then(d=>{if(d.telegram_connected){location.reload()}else{img.src='/qr_login.png?t='+Date.now(); msg.style.display='none'; img.style.display='block'; btn.innerText='Recargar Imagen';}}).catch(()=>btn.innerText='Error')">Recargar Imagen</button>
-                                    </div>
-                                </div>
-                            `;
-                            document.body.appendChild(modal);
-                        };
+                        showToast(data.error, true);
                     }
-                    headerH1.appendChild(statusSpan);
-                }).catch(e => console.log(e));
-        });
+                } catch (err) {
+                    showToast('Error de conexión', true);
+                    console.error(err);
+                } finally {
+                    btnElement.disabled = false;
+                }
+            };
+
+            window.deletePack = async function (id, btnElement) {
+                if (confirm('¿Eliminar manualmente este pack de la vista? (Nunca volverá a ser agregado por el scraper)')) {
+                    // Optimistic UI hide
+                    const row1 = btnElement.closest('tr');
+                    row1.style.display = 'none';
+
+                    fetch(`/api/admin/packs/${id}`, { method: 'DELETE' })
+                        .then(res => res.json())
+                        .catch(e => console.error("Could not delete via API", e));
+                }
+            }
+
+            // Init
+            document.addEventListener('DOMContentLoaded', () => {
+                loadPacks();
+
+                const headerH1 = document.querySelector('.header h1');
+                fetch('/api/admin/telegram/status')
+                    .then(res => res.json())
+                    .then(data => {
+                        window.isTelegramConnected = data.telegram_connected;
+                        const statusSpan = document.createElement('span');
+                        statusSpan.style.cssText = 'font-size: 0.8rem; margin-left: 1rem; padding: 4px 8px; border-radius: 4px; vertical-align: middle; cursor: pointer;';
+                        if (data.telegram_connected) {
+                            statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
+                            statusSpan.style.color = '#4ade80';
+                            statusSpan.innerText = '🟢 Telegram Conectado';
+                            statusSpan.style.cursor = 'default';
+                        } else {
+                            statusSpan.style.background = 'rgba(239, 68, 68, 0.2)';
+                            statusSpan.style.color = '#f87171';
+                            statusSpan.innerText = '🔴 Requiere Iniciar Sesión (Ver QR)';
+                            statusSpan.onclick = window.showQrModal;
+                        }
+                        headerH1.appendChild(statusSpan);
+                    }).catch(e => console.log(e));
+            });
     </script>
 </body>
 

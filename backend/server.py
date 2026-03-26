@@ -208,7 +208,10 @@ def _run_scrape_bg(coro, action_name):
 @app.route('/api/admin/scrape/status', methods=['GET'])
 @admin_required
 def api_scrape_status():
-    return jsonify(scrape_status)
+    status_data = scrape_status.copy()
+    if hasattr(scraper, 'progress'):
+        status_data['progress'] = scraper.progress
+    return jsonify(status_data)
 
 @app.route('/api/admin/scrape/today', methods=['POST'])
 @admin_required
