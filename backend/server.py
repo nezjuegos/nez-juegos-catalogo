@@ -283,18 +283,19 @@ def create_manual_pack():
     
     try:
         new_id = db.insert_manual_pack(pack_data)
-        return jsonify({"status": "ok", "id": new_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/telegram/status')
-def telegram_status():
-    """Check if headless browser QR needs scanning"""
-    try:
-        logged_in = run_on_scraper_thread(scraper.ensure_telegram_login())
-        return jsonify({"telegram_connected": logged_in})
-    except:
-        return jsonify({"telegram_connected": False})
+def get_telegram_status():
+    return jsonify({"telegram_connected": getattr(scraper, 'telegram_connected', False)})
+
+@app.route('/api/admin/telegram/refresh_qr', methods=['POST'])
+@admin_required
+def api_refresh_qr():
+    # Force the background loop to take a fresh screenshot
+    success = run_on_scraper_thread(scraper.refresh_qr())
+    return jsonify({"status": "ok", "telegram_connected": success})
 
 # --- Title Tags API (Unified: juego, dlc, hot) ---
 

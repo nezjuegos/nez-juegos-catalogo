@@ -667,7 +667,7 @@
                                     <div style="display: none; color: #ef4444; margin-bottom: 1.5rem;">[Imagen QR No Encontrada]</div>
                                     <div style="display: flex; gap: 1rem; justify-content: center;">
                                         <button class="btn btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">Cerrar</button>
-                                        <button class="btn btn-back" onclick="this.parentElement.previousElementSibling.previousElementSibling.src='/qr_login.png?t=' + Date.now()">Recargar Imagen</button>
+                                        <button class="btn btn-back" onclick="const btn=this; const img=btn.parentElement.previousElementSibling.previousElementSibling; const msg=img.nextElementSibling; btn.innerText='Cargando...'; fetch('/api/admin/telegram/refresh_qr', {method:'POST'}).then(r=>r.json()).then(d=>{if(d.telegram_connected){location.reload()}else{img.src='/qr_login.png?t='+Date.now(); msg.style.display='none'; img.style.display='block'; btn.innerText='Recargar Imagen';}}).catch(()=>btn.innerText='Error')">Recargar Imagen</button>
                                     </div>
                                 </div>
                             `;
