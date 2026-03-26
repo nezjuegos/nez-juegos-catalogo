@@ -254,6 +254,29 @@ class NintendoScraper:
             self.telegram_connected = False
             return False
 
+    async def refresh_qr(self):
+        """Captures a new QR code instantly if Telegram is on the login page."""
+        if not self.is_running: await self.start()
+        qr_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'qr_login.png')
+        
+        # Check if we are already logged in
+        try:
+            if await self.page.query_selector(".chat-list"):
+                self.telegram_connected = True
+                if os.path.exists(qr_path):
+                    try: os.remove(qr_path)
+                    except: pass
+                return True
+        except: pass
+
+        # Force a fresh screenshot
+        try:
+            await self.page.screenshot(path=qr_path)
+            return False
+        except Exception as e:
+            print(f"[SCRAPER] Error refreshing QR: {e}")
+            return False
+
     async def _open_chat(self):
         is_logged_in = await self.ensure_telegram_login()
         if not is_logged_in:
