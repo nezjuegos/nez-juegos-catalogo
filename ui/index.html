@@ -133,12 +133,14 @@
         }
 
         .hero-text h1 {
-            font-size: clamp(3rem, 5vw, 4.5rem);
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
             font-weight: 800;
             line-height: 1.1;
             margin-bottom: 1.5rem;
             background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
             -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             color: transparent;
         }
 
@@ -320,7 +322,7 @@
             }
 
             .hero-btns {
-                justify-content: center;
+                justify-content: center !important;
             }
 
             .hero-visual {
@@ -378,8 +380,12 @@
             }
 
             .nav-links {
-                gap: 1rem;
-                font-size: 0.85rem;
+                gap: 0.8rem;
+                font-size: 0.8rem;
+            }
+
+            .hide-mobile {
+                display: none;
             }
         }
     </style>
@@ -390,8 +396,8 @@
     <header>
         <div class="logo">🎮 <span>Nez</span> Juegos</div>
         <nav class="nav-links">
-            <a href="/juegos">Catálogo Juegos</a>
-            <a href="/packs">Catálogo Packs</a>
+            <a href="/juegos"><span class="hide-mobile">Catálogo </span>Juegos</a>
+            <a href="/packs"><span class="hide-mobile">Catálogo </span>Packs</a>
             <!-- Admin link hidden, accessed via direct URL -->
         </nav>
     </header>
@@ -401,7 +407,7 @@
             <h1 id="hero-title">Tu próxima aventura en Nintendo Switch empieza aquí</h1>
             <p id="hero-subtitle">Descubre el catálogo más amplio de juegos digitales. Cuentas primarias, secundarias,
                 códigos canjeables y alquileres con entrega inmediata.</p>
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div class="hero-btns" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                 <a href="/juegos" class="btn-primary"
                     style="padding: 1rem 1.5rem; font-size: 1.1rem; text-align: center;">🎮 Juegos Individuales</a>
                 <a href="/packs" class="btn-primary"
@@ -437,131 +443,130 @@
                 </div>
             </div>
         </div>
-        </div> <!-- Close .hero container to prevent grid bleed -->
+    </main> <!-- Close .hero container properly -->
 
-        <section class="features">
-            <a href="/juegos" class="feature-card">
-                <div id="featureImgJuegos" class="feature-img"
-                    style="background: url('https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch') center/cover;">
-                </div>
-                <h3>Juegos Individuales <span>↗</span></h3>
-                <p>Buscá juegos específicos. Elegí entre código propio, cuenta primaria para jugar desde tu perfil,
-                    secundaria o alquiler de 30 días.</p>
-            </a>
+    <section class="features">
+        <a href="/juegos" class="feature-card">
+            <div id="featureImgJuegos" class="feature-img"
+                style="background: url('https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch') center/cover;">
+            </div>
+            <h3>Juegos Individuales <span>↗</span></h3>
+            <p>Buscá juegos específicos. Elegí entre código propio, cuenta primaria para jugar desde tu perfil,
+                secundaria o alquiler de 30 días.</p>
+        </a>
 
-            <a href="/packs" class="feature-card" style="border-color: rgba(217, 70, 239, 0.2);">
-                <div id="featureImgPacks" class="feature-img"
-                    style="background: url('https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/c_scale,w_1200/ncom/en_US/articles/2021/celebrate-mar10-day-with-savings-on-select-games/mar10-sale_1920x1080_article') center/cover;">
-                </div>
-                <h3>Packs de Juegos <span>↗</span></h3>
-                <p>Combos armados de varios juegos a precios bajos. Si buscás llevarte una biblioteca completa de golpe,
-                    este es tu lugar.</p>
-            </a>
-        </section>
+        <a href="/packs" class="feature-card" style="border-color: rgba(217, 70, 239, 0.2);">
+            <div id="featureImgPacks" class="feature-img"
+                style="background: url('https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/c_scale,w_1200/ncom/en_US/articles/2021/celebrate-mar10-day-with-savings-on-select-games/mar10-sale_1920x1080_article') center/cover;">
+            </div>
+            <h3>Packs de Juegos <span>↗</span></h3>
+            <p>Combos armados de varios juegos a precios bajos. Si buscás llevarte una biblioteca completa de golpe,
+                este es tu lugar.</p>
+        </a>
+    </section>
 
-        <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
-            id="featuredJuegosContainer">
-            <h2
-                style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                <span style="color: #eab308; font-family: 'Outfit';">⭐ Juegos Destacados</span>
-                <a href="/juegos"
-                    style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver
-                    catálogo completo ↗</a>
-            </h2>
-            <div id="featuredJuegosGrid"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;"></div>
-        </section>
+    <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
+        id="featuredJuegosContainer">
+        <h2
+            style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <span style="color: #eab308; font-family: 'Outfit';">⭐ Juegos Destacados</span>
+            <a href="/juegos"
+                style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver
+                catálogo completo ↗</a>
+        </h2>
+        <div id="featuredJuegosGrid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem;">
+        </div>
+    </section>
 
-        <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
-            id="featuredPacksContainer">
-            <h2
-                style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                <span style="color: #eab308; font-family: 'Outfit';">🔥 Packs Destacados</span>
-                <a href="/packs"
-                    style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver todos
-                    los packs ↗</a>
-            </h2>
-            <div id="featuredPacksGrid"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div>
-        </section>
+    <section class="home-destacados" style="padding: 2rem; max-width: 1200px; margin: 0 auto; display: none;"
+        id="featuredPacksContainer">
+        <h2
+            style="font-size: 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <span style="color: #eab308; font-family: 'Outfit';">🔥 Packs Destacados</span>
+            <a href="/packs"
+                style="font-size: 1rem; color: var(--primary); text-decoration: none; font-weight: 600;">Ver todos
+                los packs ↗</a>
+        </h2>
+        <div id="featuredPacksGrid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem;"></div>
+    </section>
 
-        <section class="community">
-            <h2>¡Sumate a nuestra Comunidad!</h2>
-            <p>Se parte de la mejor comunidad gamer de WhatsApp! Podés unirte libremente sin necesidad de hacer ninguna
-                compra.</p>
-            <a href="#" class="btn-wa">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
-                </svg>
-                Unirse Ahora
-            </a>
-        </section>
+    <section class="community">
+        <h2>¡Sumate a nuestra Comunidad!</h2>
+        <p>Se parte de la mejor comunidad gamer de WhatsApp! Podés unirte libremente sin necesidad de hacer ninguna
+            compra.</p>
+        <a href="#" class="btn-wa">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+            </svg>
+            Unirse Ahora
+        </a>
+    </section>
 
-        <!-- Dev Mock JS -->
-        <script>
-            // Fetch CMS data from real backend
-            fetch('/api/config')
-                .then(response => response.json())
-                .then(config => {
-                    if (config.titulo_principal) document.getElementById('hero-title').innerText = config.titulo_principal;
-                    if (config.subtitulo) document.getElementById('hero-subtitle').innerText = config.subtitulo;
-                    if (config.enlace_whatsapp) {
-                        document.querySelectorAll('.btn-wa').forEach(btn => btn.href = config.enlace_whatsapp);
-                    }
-                    if (config.hero_img_1) document.getElementById('hero-img-1').src = config.hero_img_1;
-                    if (config.hero_img_2) document.getElementById('hero-img-2').src = config.hero_img_2;
-                    if (config.hero_img_3) document.getElementById('hero-img-3').src = config.hero_img_3;
+    <!-- Dev Mock JS -->
+    <script>
+        // Fetch CMS data from real backend
+        fetch('/api/config')
+            .then(response => response.json())
+            .then(config => {
+                if (config.titulo_principal) document.getElementById('hero-title').innerText = config.titulo_principal;
+                if (config.subtitulo) document.getElementById('hero-subtitle').innerText = config.subtitulo;
+                if (config.enlace_whatsapp) {
+                    document.querySelectorAll('.btn-wa').forEach(btn => btn.href = config.enlace_whatsapp);
+                }
+                if (config.hero_img_1) document.getElementById('hero-img-1').src = config.hero_img_1;
+                if (config.hero_img_2) document.getElementById('hero-img-2').src = config.hero_img_2;
+                if (config.hero_img_3) document.getElementById('hero-img-3').src = config.hero_img_3;
 
-                    if (config.glass_card_title) document.getElementById('glass-card-title').innerText = config.glass_card_title;
-                    if (config.glass_card_price) document.getElementById('glass-card-price').innerText = config.glass_card_price;
+                if (config.glass_card_title) document.getElementById('glass-card-title').innerText = config.glass_card_title;
+                if (config.glass_card_price) document.getElementById('glass-card-price').innerText = config.glass_card_price;
 
-                    if (config.img_juegos) {
-                        document.getElementById('featureImgJuegos').style.background = `url('/uploads/${config.img_juegos}') center/cover`;
-                    }
-                    if (config.img_packs) {
-                        document.getElementById('featureImgPacks').style.background = `url('/uploads/${config.img_packs}') center/cover`;
-                    }
-                })
-                .catch(err => console.error("Error loading config:", err));
+                if (config.img_juegos) {
+                    document.getElementById('featureImgJuegos').style.background = `url('/uploads/${config.img_juegos}') center/cover`;
+                }
+                if (config.img_packs) {
+                    document.getElementById('featureImgPacks').style.background = `url('/uploads/${config.img_packs}') center/cover`;
+                }
+            })
+            .catch(err => console.error("Error loading config:", err));
 
-            // Fetch Featured Items
-            Promise.all([
-                fetch('/api/juegos?featured=true').then(r => r.json()),
-                fetch('/api/packs?featured=true').then(r => r.json())
-            ]).then(([juegosData, packsData]) => {
-                const jContainer = document.getElementById('featuredJuegosContainer');
-                const jGrid = document.getElementById('featuredJuegosGrid');
-                if (juegosData.results && juegosData.results.length > 0) {
-                    jContainer.style.display = 'block';
-                    juegosData.results.slice(0, 8).forEach(game => {
-                        const prices = [game.precios.codigo_digital, game.precios.primaria, game.precios.secundaria, game.precios.alquiler]
-                            .map(Number).filter(p => !isNaN(p) && p > 0);
-                        const min = prices.length ? Math.min(...prices) : 0;
+        // Fetch Featured Items
+        Promise.all([
+            fetch('/api/juegos?featured=true').then(r => r.json()),
+            fetch('/api/packs?featured=true').then(r => r.json())
+        ]).then(([juegosData, packsData]) => {
+            const jContainer = document.getElementById('featuredJuegosContainer');
+            const jGrid = document.getElementById('featuredJuegosGrid');
+            if (juegosData.results && juegosData.results.length > 0) {
+                jContainer.style.display = 'block';
+                juegosData.results.slice(0, 8).forEach(game => {
+                    const prices = [game.precios.codigo_digital, game.precios.primaria, game.precios.secundaria, game.precios.alquiler]
+                        .map(Number).filter(p => !isNaN(p) && p > 0);
+                    const min = prices.length ? Math.min(...prices) : 0;
 
-                        let badge = '';
-                        let maxPct = 0;
-                        ['codigo_digital', 'primaria', 'secundaria', 'alquiler'].forEach(pk => {
-                            const reg = game.precios[pk];
-                            const off = game.precios['oferta_' + pk];
-                            if (reg && off && off < reg) {
-                                const pct = Math.round((1 - (off / reg)) * 100);
-                                if (pct > maxPct) maxPct = pct;
-                            }
-                        });
-                        if (maxPct > 0) {
-                            badge = `<div style="position:absolute; top:10px; right:10px; background:#eab308; color:black; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem; z-index: 10;">🔥 -${maxPct}%</div>`;
+                    let badge = '';
+                    let maxPct = 0;
+                    ['codigo_digital', 'primaria', 'secundaria', 'alquiler'].forEach(pk => {
+                        const reg = game.precios[pk];
+                        const off = game.precios['oferta_' + pk];
+                        if (reg && off && off < reg) {
+                            const pct = Math.round((1 - (off / reg)) * 100);
+                            if (pct > maxPct) maxPct = pct;
                         }
+                    });
+                    if (maxPct > 0) {
+                        badge = `<div style="position:absolute; top:10px; right:10px; background:#eab308; color:black; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem; z-index: 10;">🔥 -${maxPct}%</div>`;
+                    }
 
-                        const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch';
+                    const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch';
 
-                        // Add title prefix logic
-                        let titlePrefix = '';
-                        if (game.is_hot) titlePrefix += '🔥 ';
-                        if (game.is_dlc) titlePrefix += '🧩 ';
+                    // Add title prefix logic
+                    let titlePrefix = '';
+                    if (game.is_hot) titlePrefix += '🔥 ';
+                    if (game.is_dlc) titlePrefix += '🧩 ';
 
-                        jGrid.innerHTML += `
-                            <a href="/juegos?q=${encodeURIComponent(game.titulo)}" style="display: block; text-decoration: none; padding: 1rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative; overflow: hidden;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                    jGrid.innerHTML += `
+                            <a href="/juegos?q=${encodeURIComponent(game.titulo)}" style="display: block; flex: 1 1 250px; max-width: 350px; text-decoration: none; padding: 1rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative; overflow: hidden;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
                                 <div style="width: 100%; height: 160px; border-radius: 8px; background: url('${cover}') center/cover; position: relative;">
                                     <span style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; color: white;">${game.plataforma}</span>
                                 </div>
@@ -570,51 +575,51 @@
                                 ${min > 0 ? `<p style="color: var(--primary); font-size: 1rem; margin-top: 0.5rem; font-weight: 600;">Desde $${min.toLocaleString('es-AR')}</p>` : `<p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Consultar precio</p>`}
                             </a>
                         `;
-                    });
-                }
+                });
+            }
 
-                const pContainer = document.getElementById('featuredPacksContainer');
-                const pGrid = document.getElementById('featuredPacksGrid');
-                if (packsData.results && packsData.results.length > 0) {
-                    pContainer.style.display = 'block';
-                    packsData.results.slice(0, 6).forEach(pack => {
-                        const isMixed = pack.games && pack.games.some(g => g.is_mixed || (g.name && g.name.includes('+') && g.is_dlc));
-                        const isStrictDlc = pack.games && pack.games.every(g => g.is_dlc && !isMixed);
-                        const isHot = pack.games && pack.games.some(g => g.is_hot);
+            const pContainer = document.getElementById('featuredPacksContainer');
+            const pGrid = document.getElementById('featuredPacksGrid');
+            if (packsData.results && packsData.results.length > 0) {
+                pContainer.style.display = 'block';
+                packsData.results.slice(0, 6).forEach(pack => {
+                    const isMixed = pack.games && pack.games.some(g => g.is_mixed || (g.name && g.name.includes('+') && g.is_dlc));
+                    const isStrictDlc = pack.games && pack.games.every(g => g.is_dlc && !isMixed);
+                    const isHot = pack.games && pack.games.some(g => g.is_hot);
 
-                        let headerBg = 'background: rgba(255, 255, 255, 0.05);';
-                        let headerText = '✨ MIX PACK';
-                        if (isStrictDlc) { headerBg = 'background: rgba(217, 70, 239, 0.15); color: #d946ef;'; headerText = '🧩 PACK DLC'; }
-                        else if (isHot) { headerBg = 'background: rgba(239, 68, 68, 0.15); color: #ef4444;'; headerText = '🔥 HOT PACK'; }
-                        else if (pack.is_new) { headerBg = 'background: rgba(34, 197, 94, 0.15); color: #22c55e;'; headerText = '🆕 NUEVO PACK'; }
+                    let headerBg = 'background: rgba(255, 255, 255, 0.05);';
+                    let headerText = '✨ MIX PACK';
+                    if (isStrictDlc) { headerBg = 'background: rgba(217, 70, 239, 0.15); color: #d946ef;'; headerText = '🧩 PACK DLC'; }
+                    else if (isHot) { headerBg = 'background: rgba(239, 68, 68, 0.15); color: #ef4444;'; headerText = '🔥 HOT PACK'; }
+                    else if (pack.is_new) { headerBg = 'background: rgba(34, 197, 94, 0.15); color: #22c55e;'; headerText = '🆕 NUEVO PACK'; }
 
-                        let imgsHtml = '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">';
-                        if (pack.manual_image_url) {
-                            imgsHtml += `<img src="${pack.manual_image_url}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
-                        } else if (pack.games) {
-                            pack.games.forEach(g => {
-                                if (g.imageUrl) {
-                                    imgsHtml += `<img src="${g.imageUrl}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
-                                }
-                            });
-                        }
-                        imgsHtml += '</div>';
-
-                        let gamesList = '';
-                        if (pack.games && pack.games.length > 0) {
-                            gamesList = '<div style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">';
-                            const limit = 4;
-                            pack.games.slice(0, limit).forEach(g => {
-                                gamesList += `<div style="color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">• ${g.name}</div>`;
-                            });
-                            if (pack.games.length > limit) {
-                                gamesList += `<div style="color: var(--primary); font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">+ ${pack.games.length - limit} juegos más</div>`;
+                    let imgsHtml = '<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">';
+                    if (pack.manual_image_url) {
+                        imgsHtml += `<img src="${pack.manual_image_url}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
+                    } else if (pack.games) {
+                        pack.games.forEach(g => {
+                            if (g.imageUrl) {
+                                imgsHtml += `<img src="${g.imageUrl}" style="width: 80px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);">`;
                             }
-                            gamesList += '</div>';
-                        }
+                        });
+                    }
+                    imgsHtml += '</div>';
 
-                        pGrid.innerHTML += `
-                            <a href="/packs?q=${pack.id}" style="display: block; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                    let gamesList = '';
+                    if (pack.games && pack.games.length > 0) {
+                        gamesList = '<div style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">';
+                        const limit = 4;
+                        pack.games.slice(0, limit).forEach(g => {
+                            gamesList += `<div style="color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">• ${g.name}</div>`;
+                        });
+                        if (pack.games.length > limit) {
+                            gamesList += `<div style="color: var(--primary); font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">+ ${pack.games.length - limit} juegos más</div>`;
+                        }
+                        gamesList += '</div>';
+                    }
+
+                    pGrid.innerHTML += `
+                            <a href="/packs?q=${pack.id}" style="display: block; flex: 1 1 280px; max-width: 400px; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
                                 <div style="${headerBg} padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-bottom: 1rem;">${headerText}</div>
                                 ${imgsHtml}
                                 <div style="font-size: 1.3rem; font-family: 'Outfit'; font-weight: 700; color: white;">Pack #${pack.id}</div>
@@ -622,10 +627,10 @@
                                 ${gamesList}
                             </a>
                         `;
-                    });
-                }
-            }).catch(err => console.error("Error loading featured items:", err));
-        </script>
+                });
+            }
+        }).catch(err => console.error("Error loading featured items:", err));
+    </script>
 </body>
 
 </html>
