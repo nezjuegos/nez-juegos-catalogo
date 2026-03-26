@@ -235,8 +235,15 @@ class NintendoScraper:
             except:
                 pass
             
-            print("[LOGIN] Sesión no detectada. Generando captura del QR...")
-            await self.page.wait_for_timeout(2500)
+            print("[LOGIN] Sesión no detectada. Esperando que el QR se renderice...")
+            try:
+                # Telegram Web uses a canvas to render the QR code
+                await self.page.wait_for_selector("canvas", timeout=15000)
+                await self.page.wait_for_timeout(1000) # extra second for drawing
+            except:
+                print("[LOGIN] Timeout esperando el canvas del QR, sacando captura de todos modos...")
+                await self.page.wait_for_timeout(2000)
+                
             await self.page.screenshot(path=qr_path)
             print(f"[LOGIN] QR guardado en {qr_path}.")
             self.telegram_connected = False
