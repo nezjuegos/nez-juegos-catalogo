@@ -580,7 +580,7 @@
                                 const p = statusData.progress;
                                 const pctVal = p.total > 0 ? Math.min(100, Math.round((p.current / p.total) * 100)) : 100;
                                 progBar.style.width = pctVal + '%';
-                                progPct.innerText = p.total > 0 ?\`\${p.current} / \${p.total}\` : '';
+                                progPct.innerText = p.total > 0 ? `${p.current} / ${p.total}` : '';
                                 progMsg.innerText = p.message || 'Escaneando...';
                             }
 
