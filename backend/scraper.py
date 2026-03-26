@@ -11,7 +11,7 @@ from playwright.async_api import async_playwright
 SOURCE_CHAT = "evAn Accounts"
 PRICE_MULTIPLIER = 3000
 RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
-USER_DATA_DIR = os.path.join(RAILWAY_VOLUME, "browser_data")
+USER_DATA_DIR = os.path.join(RAILWAY_VOLUME, "browser_data_clean")
 
 # Best-seller keywords for highlighting
 BEST_SELLERS = set([
@@ -235,8 +235,8 @@ class NintendoScraper:
             except:
                 pass
             
-            print("[LOGIN] Sesión no detectada. Esperando 10 segundos para renderizado en servidor...")
-            await self.page.wait_for_timeout(10000)
+            print("[LOGIN] Sesión no detectada. Generando captura del QR...")
+            await self.page.wait_for_timeout(2500)
             await self.page.screenshot(path=qr_path)
             print(f"[LOGIN] QR guardado en {qr_path}.")
             self.telegram_connected = False
