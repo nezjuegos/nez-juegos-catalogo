@@ -566,7 +566,7 @@
                     if (game.is_dlc) titlePrefix += '🧩 ';
 
                     jGrid.innerHTML += `
-                            <a href="/juegos?q=${encodeURIComponent(game.titulo)}" style="display: block; flex: 1 1 250px; max-width: 350px; text-decoration: none; padding: 1rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative; overflow: hidden;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                            <a href="/juegos?q=${encodeURIComponent(game.titulo)}" style="display: block; flex: 1 1 250px; max-width: 350px; min-width: 0; text-decoration: none; padding: 1rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative; overflow: hidden;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
                                 <div style="width: 100%; height: 160px; border-radius: 8px; background: url('${cover}') center/cover; position: relative;">
                                     <span style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; color: white;">${game.plataforma}</span>
                                 </div>
@@ -619,7 +619,7 @@
                     }
 
                     pGrid.innerHTML += `
-                            <a href="/packs?q=${pack.id}" style="display: block; flex: 1 1 280px; max-width: 400px; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                            <a href="/packs?q=${pack.id}" style="display: block; flex: 1 1 280px; max-width: 400px; min-width: 0; text-decoration: none; padding: 1.5rem; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: 0.3s; position: relative;" onmouseover="this.style.borderColor='rgba(139,92,246,0.5)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
                                 <div style="${headerBg} padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-bottom: 1rem;">${headerText}</div>
                                 ${imgsHtml}
                                 <div style="font-size: 1.3rem; font-family: 'Outfit'; font-weight: 700; color: white;">Pack #${pack.id}</div>
