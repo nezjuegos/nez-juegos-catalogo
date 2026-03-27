@@ -388,11 +388,14 @@ class NintendoScraper:
         """Verifies if packs have been deleted from the channel by scanning recent messages.
         Has multiple safety guards to prevent accidental mass deletion."""
         print("[VERIFY] Starting 'Verify Deleted' mode using passive scan...")
+        max_scrolls = 35
+        self.progress = {"status": "running", "current": 0, "total": max_scrolls, "message": "Abriendo canal de Telegram..."}
         await self._open_chat()
         
         db_ids = self.db.get_all_active_pack_ids()
         if not db_ids:
             print("[VERIFY] No active packs in DB. Nothing to verify.")
+            self.progress = {"status": "idle", "current": 0, "total": 0, "message": "No hay packs activos en la base de datos."}
             return 0
             
         total_db_packs = len(db_ids)
@@ -401,9 +404,8 @@ class NintendoScraper:
         # 1. Scan the last ~500 messages to collect active IDs
         active_ids_in_tg = set()
         all_texts = set()
-        max_scrolls = 35
         
-        for _ in range(max_scrolls):
+        for scroll_i in range(max_scrolls):
             elements = await self.page.locator(".message, .Message, .bubble").all()
             for el in elements:
                 try:
@@ -418,6 +420,9 @@ class NintendoScraper:
                 
             await self.page.keyboard.press("Home")
             await asyncio.sleep(1)
+            self.progress["current"] = scroll_i + 1
+            self.progress["message"] = f"Scroll {scroll_i+1}/{max_scrolls}. IDs encontrados en Telegram: {len(active_ids_in_tg)}..."
+            print(f"[VERIFY] Scroll {scroll_i+1}/{max_scrolls}, found {len(active_ids_in_tg)} IDs in Telegram so far")
         
         # ========== SAFETY GUARD 1 ==========
         # If we found very few packs in the scan, something is wrong (chat not loaded, etc.)
@@ -427,6 +432,7 @@ class NintendoScraper:
             print(f"[VERIFY] ⚠️ SAFETY ABORT: Only found {len(active_ids_in_tg)} packs in Telegram scan.")
             print(f"[VERIFY] This is below the minimum threshold of {MIN_SCAN_THRESHOLD}.")
             print(f"[VERIFY] The chat likely didn't load properly. NO packs were deleted.")
+            self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"⚠️ Abortado: solo se encontraron {len(active_ids_in_tg)} IDs (mínimo {MIN_SCAN_THRESHOLD}). El chat puede no haber cargado correctamente."}
             return 0
             
         # 2. Find which ones to delete
@@ -446,9 +452,11 @@ class NintendoScraper:
         if scraped_pack_count > 0 and len(to_delete) > scraped_pack_count * 0.6:
             print(f"[VERIFY] ⚠️ SAFETY ABORT: Would delete {len(to_delete)} of {scraped_pack_count} scraped packs (>{60}%).")
             print(f"[VERIFY] This looks like a scan error, not real deletions. NO packs were deleted.")
+            self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"⚠️ Abortado: se iban a eliminar {len(to_delete)} de {scraped_pack_count} packs (>60%). Posible error de escaneo."}
             return 0
         
         # 3. Actually delete
+        self.progress["message"] = f"Eliminando {len(to_delete)} packs caducados de la DB..."
         deleted_count = 0
         for str_id in to_delete:
             self.db.mark_pack_deleted(str_id, manual=False)
@@ -456,6 +464,7 @@ class NintendoScraper:
             print(f"[VERIFY] Pack #{str_id} no longer in recent Telegram feed. Removing from DB.")
                 
         print(f"[VERIFY] Audit Complete. Scanned {len(active_ids_in_tg)} IDs in Telegram. Packs removed: {deleted_count}")
+        self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"Verificación completa. {deleted_count} packs eliminados del catálogo."}
         return deleted_count
 
     # --- MODE 4: Live Monitor (1 Hour Loop) ---

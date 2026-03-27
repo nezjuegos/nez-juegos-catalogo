@@ -319,6 +319,18 @@
         </div>
     </div>
 
+    <!-- Scrape Progress Bar (hidden by default) -->
+    <div id="scrapeProgressContainer" style="display: none; background: var(--bg-card); border: 1px solid rgba(139,92,246,0.4); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span id="scrapeStatusText" style="font-family: 'Outfit'; font-weight: 600; color: #a78bfa;">En progreso...</span>
+            <span id="scrapeProgressPct" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+        </div>
+        <div style="background: #27272a; border-radius: 999px; height: 10px; overflow: hidden; margin-bottom: 0.75rem;">
+            <div id="scrapeProgressBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #8b5cf6, #d946ef); transition: width 0.4s ease; border-radius: 999px;"></div>
+        </div>
+        <span id="scrapeProgressMsg" style="font-size: 0.85rem; color: var(--text-muted);">Iniciando...</span>
+    </div>
+
     <!-- Admin Search Filters -->
     <div class="filters-container">
         <div class="filter-input">
@@ -530,7 +542,7 @@
         async function triggerScrape(endpoint, btn, loadingText) {
             if (window.isTelegramConnected === false) {
                 showToast('❌ Requiere Iniciar Sesión en Telegram primero', true);
-                document.getElementById('qrModal').style.display = 'flex';
+                window.showQrModal();
                 return;
             }
 
@@ -672,7 +684,7 @@
         window.toggleFeatured = async function (id, btnElement) {
             btnElement.disabled = true;
             try {
-                const res = await fetch(`/ api / admin / packs / ${ id }/toggle_featured`, { method: 'POST' });
+                const res = await fetch(`/api/admin/packs/${id}/toggle_featured`, { method: 'POST' });
                     const data = await res.json();
                     if (data.status === 'ok') {
                         loadPacks(); // Reload to show updated styles
