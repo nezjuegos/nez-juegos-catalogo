@@ -239,11 +239,36 @@ class NintendoScraper:
             print("[LOGIN] Sesión no detectada. Esperando que el QR se renderice...")
             try:
                 # Telegram Web uses a canvas to render the QR code
-                await self.page.wait_for_selector("canvas", timeout=15000)
-                await self.page.wait_for_timeout(1000) # extra second for drawing
+                await self.page.wait_for_selector("canvas", timeout=20000)
+                print("[LOGIN] Canvas detectado. Esperando que el QR se pinte...")
+                # Try up to 5 times waiting for the canvas to have actual content
+                qr_captured = False
+                for attempt in range(5):
+                    await self.page.wait_for_timeout(2000)
+                    # Check if canvas has non-trivial content via JS
+                    canvas_has_content = await self.page.evaluate("""() => {
+                        const canvas = document.querySelector('canvas');
+                        if (!canvas) return false;
+                        try {
+                            const ctx = canvas.getContext('2d');
+                            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                            // Look for non-white pixels (QR code is black/white but has black pixels)
+                            for (let i = 0; i < data.length; i += 4) {
+                                if (data[i] < 200 && data[i+1] < 200 && data[i+2] < 200) return true;
+                            }
+                            return false;
+                        } catch(e) { return true; } // cross-origin: just take the screenshot
+                    }""")
+                    if canvas_has_content:
+                        print(f"[LOGIN] QR con contenido detectado en intento {attempt+1}.")
+                        qr_captured = True
+                        break
+                    print(f"[LOGIN] Canvas aún blanco, reintentando ({attempt+1}/5)...")
+                if not qr_captured:
+                    print("[LOGIN] Canvas sigue sin contenido después de 5 intentos, capturando igual...")
             except:
                 print("[LOGIN] Timeout esperando el canvas del QR, sacando captura de todos modos...")
-                await self.page.wait_for_timeout(2000)
+                await self.page.wait_for_timeout(3000)
                 
             await self.page.screenshot(path=qr_path)
             print(f"[LOGIN] QR guardado en {qr_path}.")
@@ -270,8 +295,29 @@ class NintendoScraper:
                 return True
         except: pass
 
-        # Force a fresh screenshot
+        # Force a fresh screenshot - wait for canvas to have actual QR content
         try:
+            try:
+                await self.page.wait_for_selector("canvas", timeout=10000)
+                for attempt in range(5):
+                    await self.page.wait_for_timeout(2000)
+                    canvas_has_content = await self.page.evaluate("""() => {
+                        const canvas = document.querySelector('canvas');
+                        if (!canvas) return false;
+                        try {
+                            const ctx = canvas.getContext('2d');
+                            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                            for (let i = 0; i < data.length; i += 4) {
+                                if (data[i] < 200 && data[i+1] < 200 && data[i+2] < 200) return true;
+                            }
+                            return false;
+                        } catch(e) { return true; }
+                    }""")
+                    if canvas_has_content:
+                        break
+                    print(f"[SCRAPER] refresh_qr: canvas blanco, reintentando ({attempt+1}/5)...")
+            except:
+                await self.page.wait_for_timeout(3000)
             await self.page.screenshot(path=qr_path)
             return False
         except Exception as e:
