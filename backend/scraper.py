@@ -280,29 +280,28 @@ class NintendoScraper:
                 self.qr_base64 = None
 
     async def refresh_qr(self):
-        """Reload Telegram Web to get a fresh QR code."""
+        """Reload Telegram Web and save a fresh QR as PNG."""
         if not self.is_running: await self.start()
-        
-        # Check if we are already logged in
+        qr_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'qr_login.png')
+
         try:
             if await self.page.query_selector(".chat-list"):
                 self.telegram_connected = True
-                self.qr_base64 = None
                 return True
         except: pass
 
-        # Reload the page to force Telegram to generate a brand new QR
         try:
-            print("[SCRAPER] Recargando Telegram Web para obtener QR nuevo...")
-            await self.page.reload(wait_until="domcontentloaded")
-            await self._capture_qr()
+            print("[SCRAPER] Recargando Telegram Web para QR nuevo...")
+            await self.page.goto("https://web.telegram.org/a/", wait_until="domcontentloaded")
+            await self.page.wait_for_timeout(4000)  # wait for QR to render
+            await self.page.screenshot(path=qr_path)
+            print(f"[SCRAPER] QR guardado en {qr_path}")
             return False
         except Exception as e:
             print(f"[SCRAPER] Error refreshing QR: {e}")
             return False
-    
+
     def get_qr_base64(self):
-        """Return the current QR code as a base64 string."""
         return getattr(self, 'qr_base64', None)
 
     async def _open_chat(self):

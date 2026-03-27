@@ -4,7 +4,7 @@ import os
 import json
 import time
 from functools import wraps
-from flask import Flask, jsonify, request, send_from_directory, session, redirect
+from flask import Flask, jsonify, request, send_from_directory, session, redirect, send_file, make_response
 
 from scraper import NintendoScraper
 from database import Database
@@ -289,21 +289,26 @@ def create_manual_pack():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/ui/qr_login.png')
+def serve_qr():
+    """Serve QR with no-cache headers so browser always fetches fresh copy."""
+    qr_path = os.path.join(UI_DIR, 'qr_login.png')
+    if not os.path.exists(qr_path):
+        return '', 404
+    response = make_response(send_file(qr_path, mimetype='image/png'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
 @app.route('/api/admin/telegram/status')
 def get_telegram_status():
-    qr = scraper.get_qr_base64()
-    return jsonify({
-        "telegram_connected": getattr(scraper, 'telegram_connected', False),
-        "qr_base64": qr
-    })
+    return jsonify({"telegram_connected": getattr(scraper, 'telegram_connected', False)})
 
 @app.route('/api/admin/telegram/refresh_qr', methods=['POST'])
 @admin_required
 def api_refresh_qr():
-    # Reload Telegram Web and capture a fresh QR
     success = run_on_scraper_thread(scraper.refresh_qr())
-    qr = scraper.get_qr_base64()
-    return jsonify({"status": "ok", "telegram_connected": success, "qr_base64": qr})
+    return jsonify({"status": "ok", "telegram_connected": success})
 
 # --- Title Tags API (Unified: juego, dlc, hot) ---
 
