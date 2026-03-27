@@ -291,14 +291,19 @@ def create_manual_pack():
 
 @app.route('/api/admin/telegram/status')
 def get_telegram_status():
-    return jsonify({"telegram_connected": getattr(scraper, 'telegram_connected', False)})
+    qr = scraper.get_qr_base64()
+    return jsonify({
+        "telegram_connected": getattr(scraper, 'telegram_connected', False),
+        "qr_base64": qr
+    })
 
 @app.route('/api/admin/telegram/refresh_qr', methods=['POST'])
 @admin_required
 def api_refresh_qr():
-    # Force the background loop to take a fresh screenshot
+    # Reload Telegram Web and capture a fresh QR
     success = run_on_scraper_thread(scraper.refresh_qr())
-    return jsonify({"status": "ok", "telegram_connected": success})
+    qr = scraper.get_qr_base64()
+    return jsonify({"status": "ok", "telegram_connected": success, "qr_base64": qr})
 
 # --- Title Tags API (Unified: juego, dlc, hot) ---
 

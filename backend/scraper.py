@@ -3,6 +3,7 @@ import re
 import os
 import time
 import json
+import base64
 import threading
 from datetime import datetime
 from playwright.async_api import async_playwright
@@ -222,56 +223,18 @@ class NintendoScraper:
         if "web.telegram.org" not in self.page.url:
             await self.page.goto("https://web.telegram.org/a/")
 
-        qr_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'qr_login.png')
-
         try:
             try:
                 await self.page.wait_for_selector(".chat-list", timeout=5000)
-                if os.path.exists(qr_path):
-                    try: os.remove(qr_path)
-                    except: pass
                 print("[LOGIN] Telegram conectado exitosamente.")
                 self.telegram_connected = True
+                self.qr_base64 = None  # Clear any old QR
                 return True
             except:
                 pass
             
-            print("[LOGIN] Sesión no detectada. Esperando que el QR se renderice...")
-            try:
-                # Telegram Web uses a canvas to render the QR code
-                await self.page.wait_for_selector("canvas", timeout=20000)
-                print("[LOGIN] Canvas detectado. Esperando que el QR se pinte...")
-                # Try up to 5 times waiting for the canvas to have actual content
-                qr_captured = False
-                for attempt in range(5):
-                    await self.page.wait_for_timeout(2000)
-                    # Check if canvas has non-trivial content via JS
-                    canvas_has_content = await self.page.evaluate("""() => {
-                        const canvas = document.querySelector('canvas');
-                        if (!canvas) return false;
-                        try {
-                            const ctx = canvas.getContext('2d');
-                            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                            // Look for non-white pixels (QR code is black/white but has black pixels)
-                            for (let i = 0; i < data.length; i += 4) {
-                                if (data[i] < 200 && data[i+1] < 200 && data[i+2] < 200) return true;
-                            }
-                            return false;
-                        } catch(e) { return true; } // cross-origin: just take the screenshot
-                    }""")
-                    if canvas_has_content:
-                        print(f"[LOGIN] QR con contenido detectado en intento {attempt+1}.")
-                        qr_captured = True
-                        break
-                    print(f"[LOGIN] Canvas aún blanco, reintentando ({attempt+1}/5)...")
-                if not qr_captured:
-                    print("[LOGIN] Canvas sigue sin contenido después de 5 intentos, capturando igual...")
-            except:
-                print("[LOGIN] Timeout esperando el canvas del QR, sacando captura de todos modos...")
-                await self.page.wait_for_timeout(3000)
-                
-            await self.page.screenshot(path=qr_path)
-            print(f"[LOGIN] QR guardado en {qr_path}.")
+            print("[LOGIN] Sesión no detectada. Capturando QR...")
+            await self._capture_qr()
             self.telegram_connected = False
             return False
             
@@ -280,49 +243,67 @@ class NintendoScraper:
             self.telegram_connected = False
             return False
 
+    async def _capture_qr(self):
+        """Take a screenshot of the QR area and store as base64."""
+        try:
+            # Wait for the QR container (canvas or img) to appear
+            qr_element = None
+            try:
+                qr_element = self.page.locator("canvas").first
+                await qr_element.wait_for(timeout=10000, state="visible")
+            except:
+                # Some Telegram Web versions use an img for the QR
+                try:
+                    qr_element = self.page.locator(".qr-container img, .auth-image").first
+                    await qr_element.wait_for(timeout=5000, state="visible")
+                except:
+                    pass
+            
+            # Brief wait for rendering
+            await self.page.wait_for_timeout(1500)
+            
+            # Take screenshot of just the QR area, or full page as fallback
+            if qr_element:
+                screenshot_bytes = await qr_element.screenshot()
+            else:
+                screenshot_bytes = await self.page.screenshot()
+            
+            self.qr_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+            print(f"[LOGIN] QR capturado ({len(screenshot_bytes)} bytes)")
+        except Exception as e:
+            print(f"[LOGIN] Error capturando QR: {e}")
+            # Full page screenshot as absolute fallback
+            try:
+                screenshot_bytes = await self.page.screenshot()
+                self.qr_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+            except:
+                self.qr_base64 = None
+
     async def refresh_qr(self):
-        """Captures a new QR code instantly if Telegram is on the login page."""
+        """Reload Telegram Web to get a fresh QR code."""
         if not self.is_running: await self.start()
-        qr_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'qr_login.png')
         
         # Check if we are already logged in
         try:
             if await self.page.query_selector(".chat-list"):
                 self.telegram_connected = True
-                if os.path.exists(qr_path):
-                    try: os.remove(qr_path)
-                    except: pass
+                self.qr_base64 = None
                 return True
         except: pass
 
-        # Force a fresh screenshot - wait for canvas to have actual QR content
+        # Reload the page to force Telegram to generate a brand new QR
         try:
-            try:
-                await self.page.wait_for_selector("canvas", timeout=10000)
-                for attempt in range(5):
-                    await self.page.wait_for_timeout(2000)
-                    canvas_has_content = await self.page.evaluate("""() => {
-                        const canvas = document.querySelector('canvas');
-                        if (!canvas) return false;
-                        try {
-                            const ctx = canvas.getContext('2d');
-                            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                            for (let i = 0; i < data.length; i += 4) {
-                                if (data[i] < 200 && data[i+1] < 200 && data[i+2] < 200) return true;
-                            }
-                            return false;
-                        } catch(e) { return true; }
-                    }""")
-                    if canvas_has_content:
-                        break
-                    print(f"[SCRAPER] refresh_qr: canvas blanco, reintentando ({attempt+1}/5)...")
-            except:
-                await self.page.wait_for_timeout(3000)
-            await self.page.screenshot(path=qr_path)
+            print("[SCRAPER] Recargando Telegram Web para obtener QR nuevo...")
+            await self.page.reload(wait_until="domcontentloaded")
+            await self._capture_qr()
             return False
         except Exception as e:
             print(f"[SCRAPER] Error refreshing QR: {e}")
             return False
+    
+    def get_qr_base64(self):
+        """Return the current QR code as a base64 string."""
+        return getattr(self, 'qr_base64', None)
 
     async def _open_chat(self):
         is_logged_in = await self.ensure_telegram_login()
