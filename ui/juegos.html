@@ -766,7 +766,6 @@
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
                         ${game.precios.eshop ? `
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
-                            <span style="font-size: 1.1rem;">💀</span>
                             <div>
                                 <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${isPS ? 'PS Store con impuestos' : 'eShop con impuestos'}</div>
                                 <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
