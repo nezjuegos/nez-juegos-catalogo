@@ -16,266 +16,100 @@
             --text-main: #f8fafc;
             --text-muted: #a1a1aa;
             --border: #27272a;
+            --ps-blue: #003087;
+            --ps-light: #00439c;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            min-height: 100vh;
-            padding: 2rem;
-        }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem; }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1rem;
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        .header h1 { font-family: 'Outfit'; font-size: 2rem; }
 
-        .header h1 {
-            font-family: 'Outfit';
-            font-size: 2rem;
-        }
+        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #7c3aed; }
+        .btn-back { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-back:hover { background: #27272a; color: white; }
 
-        .btn {
-            padding: 0.8rem 1.5rem;
+        .layout { display: grid; grid-template-columns: 370px 1fr; gap: 2rem; }
+
+        .form-section { background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); }
+
+        .form-group { margin-bottom: 1.2rem; }
+
+        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
+
+        input, select { width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem; border-radius: 6px; }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        /* Platform checkboxes */
+        .platform-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .platform-check-item {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: #09090b; border: 1px solid var(--border); border-radius: 6px;
+            padding: 0.6rem 0.8rem; cursor: pointer; transition: 0.2s;
+        }
+        .platform-check-item:hover { border-color: var(--primary); background: rgba(139,92,246,0.05); }
+        .platform-check-item input[type="checkbox"] { width: auto; accent-color: var(--primary); transform: scale(1.2); flex-shrink: 0; }
+        .platform-check-item label { margin: 0; text-transform: none; font-size: 0.85rem; color: var(--text-main); cursor: pointer; font-weight: 500; }
+        .platform-check-item.ps-item input[type="checkbox"] { accent-color: #4b8ef5; }
+        .platform-check-item.ps-item label { color: #93c5fd; }
+
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .tier-group div { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
+
+        /* eShop reference price - more prominent */
+        .eshop-reference {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
             border-radius: 8px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: 0.2s;
-            text-decoration: none;
-            display: inline-block;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #7c3aed;
-        }
-
-        .btn-back {
-            background: transparent;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .btn-back:hover {
-            background: #27272a;
-            color: white;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 2rem;
-        }
-
-        .form-section {
-            background: var(--bg-card);
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-
-        .form-group {
-            margin-bottom: 1.2rem;
-        }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        input,
-        select {
-            width: 100%;
-            background: #09090b;
-            border: 1px solid var(--border);
-            color: white;
-            padding: 0.8rem;
-            border-radius: 6px;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .price-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
+        .eshop-reference label { margin: 0; color: #fca5a5; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+        .eshop-reference input { background: transparent; border: none; border-bottom: 1px solid rgba(239,68,68,0.3); border-radius: 0; padding: 0.3rem 0; font-size: 1rem; font-weight: 700; color: #f87171; width: 100%; }
+        .eshop-reference input::placeholder { color: rgba(248,113,113,0.4); font-size: 0.85rem; font-weight: 400; }
+        .eshop-reference input:focus { outline: none; border-bottom-color: #ef4444; }
 
         /* File Upload */
-        .file-upload {
-            border: 2px dashed var(--border);
-            padding: 2rem;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-bottom: 1rem;
-        }
-
-        .file-upload:hover {
-            border-color: var(--primary);
-            background: rgba(139, 92, 246, 0.05);
-        }
+        .file-upload { border: 2px dashed var(--border); padding: 2rem; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.3s; margin-bottom: 1rem; }
+        .file-upload:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.05); }
 
         /* Table */
-        .table-section {
-            background: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
+        .table-section { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #09090b; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+        tr:hover { background: rgba(255, 255, 255, 0.02); }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .game-cell { display: flex; align-items: center; gap: 1rem; }
+        .game-cell img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
 
-        th,
-        td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
+        .action-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; margin-right: 0.5rem; }
+        .action-btn:hover { opacity: 1; transform: scale(1.1); }
 
-        th {
-            background: #09090b;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            text-transform: uppercase;
-        }
-
-        tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .game-cell {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .game-cell img {
-            width: 80px;
-            height: 45px;
-            object-fit: cover;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-        }
-
-        .action-btn {
-            background: transparent;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: 0.2s;
-            margin-right: 0.5rem;
-        }
-
-        .action-btn:hover {
-            opacity: 1;
-            transform: scale(1.1);
-        }
-
-        /* Responsive Layout */
         @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .table-section {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .table-section table {
-                min-width: 600px;
-            }
-
-            .header {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: flex-start;
-            }
-
-            body {
-                padding: 1rem;
-            }
-
-            .price-grid {
-                grid-template-columns: 1fr !important;
-            }
+            .layout { grid-template-columns: 1fr; }
+            .table-section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .table-section table { min-width: 600px; }
+            .header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+            body { padding: 1rem; }
+            .price-grid { grid-template-columns: 1fr !important; }
         }
 
         /* Toast */
-        .toast-container {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
+        .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background: #1e1e2e; color: white; padding: 0.9rem 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transform: translateX(100%); animation: toastIn 0.3s ease forwards; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(100%); } }
 
-        .toast {
-            background: #1e1e2e;
-            color: white;
-            padding: 0.9rem 1.5rem;
-            border-radius: 8px;
-            border-left: 4px solid #22c55e;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-            font-size: 0.9rem;
-            font-weight: 500;
-            opacity: 0;
-            transform: translateX(100%);
-            animation: toastIn 0.3s ease forwards;
-        }
-
-        .toast.error {
-            border-left-color: #ef4444;
-        }
-
-        .toast.fade-out {
-            animation: toastOut 0.3s ease forwards;
-        }
-
-        @keyframes toastIn {
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes toastOut {
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
+        .section-divider { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0.4rem 0; border-top: 1px solid var(--border); margin-top: 0.5rem; margin-bottom: 0.25rem; }
     </style>
 </head>
 
@@ -300,12 +134,27 @@
             </div>
 
             <div class="form-group">
-                <label>Plataforma</label>
-                <select id="plataforma">
-                    <option>Nintendo Switch</option>
-                    <option>Nintendo Switch 2</option>
-                    <option>PlayStation</option>
-                </select>
+                <label>Plataformas</label>
+                <div class="platform-checks">
+                    <div class="platform-check-item">
+                        <input type="checkbox" id="plat_ns" value="Nintendo Switch">
+                        <label for="plat_ns">🎎 Nintendo Switch</label>
+                    </div>
+                    <div class="platform-check-item">
+                        <input type="checkbox" id="plat_ns2" value="Nintendo Switch 2">
+                        <label for="plat_ns2">🎎 Nintendo Switch 2</label>
+                    </div>
+                    <div class="platform-check-item ps-item">
+                        <input type="checkbox" id="plat_ps4" value="PS4">
+                        <label for="plat_ps4">🎮 PlayStation 4</label>
+                    </div>
+                    <div class="platform-check-item ps-item">
+                        <input type="checkbox" id="plat_ps5" value="PS5">
+                        <label for="plat_ps5">🎮 PlayStation 5</label>
+                    </div>
+                </div>
+                <!-- Hidden field that stores the comma-joined plataforma string -->
+                <input type="hidden" id="plataforma">
             </div>
 
             <div class="form-group"
@@ -315,18 +164,15 @@
                         style="width: auto; accent-color: #eab308; transform: scale(1.3);">
                     <label for="is_featured" style="margin-bottom: 0; cursor: pointer;">⭐ Juego Destacado</label>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;"
-                    title="1 sale primero. 0 sale al normal/al final.">
-                    <label for="orden_destacado"
-                        style="margin-bottom: 0; font-size: 0.75rem; color: #eab308;">Orden:</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;" title="1 sale primero. 0 sale al normal/al final.">
+                    <label for="orden_destacado" style="margin-bottom: 0; font-size: 0.75rem; color: #eab308;">Orden:</label>
                     <input type="number" id="orden_destacado" placeholder="0"
                         style="width: 70px; padding: 0.4rem; text-align: center; margin: 0; font-size: 0.9rem; border-color: #eab308;">
                 </div>
             </div>
 
             <div class="form-group">
-                <div
-                    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
                     <label style="margin: 0;">Precios (ARS)</label>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <input type="number" id="global_discount" placeholder="% Desc"
@@ -336,40 +182,54 @@
                             onclick="applyDiscount()">Aplicar</button>
                     </div>
                 </div>
-                <div class="price-grid">
+
+                <!-- Nintendo Price Fields -->
+                <div id="priceFieldsNintendo" class="price-grid">
                     <div class="tier-group">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Código</div>
-                        <input type="number" id="precio_codigo" placeholder="Regular (Ej: 115000)"
-                            style="margin-bottom: 6px;">
-                        <input type="number" id="oferta_codigo" placeholder="En Oferta (Ej: 95000)"
-                            style="border-color: #eab308;">
+                        <div>Código Digital</div>
+                        <input type="number" id="precio_codigo" placeholder="Regular (Ej: 115000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_codigo" placeholder="En Oferta" style="border-color: #eab308;">
                     </div>
                     <div class="tier-group">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Primaria</div>
-                        <input type="number" id="precio_primaria" placeholder="Regular (Ej: 85000)"
-                            style="margin-bottom: 6px;">
-                        <input type="number" id="oferta_primaria" placeholder="En Oferta (Ej: 65000)"
-                            style="border-color: #eab308;">
+                        <div>Primaria</div>
+                        <input type="number" id="precio_primaria" placeholder="Regular (Ej: 85000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_primaria" placeholder="En Oferta" style="border-color: #eab308;">
                     </div>
                     <div class="tier-group">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Secundaria</div>
-                        <input type="number" id="precio_secundaria" placeholder="Regular (Ej: 45000)"
-                            style="margin-bottom: 6px;">
-                        <input type="number" id="oferta_secundaria" placeholder="En Oferta (Ej: 35000)"
-                            style="border-color: #eab308;">
+                        <div>Secundaria</div>
+                        <input type="number" id="precio_secundaria" placeholder="Regular (Ej: 45000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_secundaria" placeholder="En Oferta" style="border-color: #eab308;">
                     </div>
                     <div class="tier-group">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Alquiler</div>
-                        <input type="number" id="precio_alquiler" placeholder="Regular (Ej: 18000)"
-                            style="margin-bottom: 6px;">
-                        <input type="number" id="oferta_alquiler" placeholder="En Oferta (Ej: 12000)"
-                            style="border-color: #eab308;">
+                        <div>Alquiler 30 días</div>
+                        <input type="number" id="precio_alquiler" placeholder="Regular (Ej: 18000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_alquiler" placeholder="En Oferta" style="border-color: #eab308;">
+                    </div>
+                </div>
+
+                <!-- PlayStation Price Fields -->
+                <div id="priceFieldsPS" class="price-grid" style="display: none;">
+                    <div class="tier-group">
+                        <div>Primaria PS5</div>
+                        <input type="number" id="precio_primaria_ps5" placeholder="Regular (Ej: 95000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_primaria_ps5" placeholder="En Oferta" style="border-color: #eab308;">
+                    </div>
+                    <div class="tier-group">
+                        <div>Primaria PS4</div>
+                        <input type="number" id="precio_primaria_ps4" placeholder="Regular (Ej: 80000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_primaria_ps4" placeholder="En Oferta" style="border-color: #eab308;">
                     </div>
                     <div class="tier-group" style="grid-column: 1 / -1;">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Referencia
-                            (Informativo)</div>
-                        <input type="number" id="precio_eshop" placeholder="Precio oficial eShop">
+                        <div>Secundaria PS5</div>
+                        <input type="number" id="precio_secundaria_ps5" placeholder="Regular (Ej: 50000)" style="margin-bottom: 6px;">
+                        <input type="number" id="oferta_secundaria_ps5" placeholder="En Oferta" style="border-color: #eab308;">
                     </div>
+                </div>
+
+                <!-- Store reference price (prominent) -->
+                <div class="eshop-reference" style="margin-top: 1rem;">
+                    <label id="eshopLabel">💀 eShop (Ref.)</label>
+                    <input type="number" id="precio_eshop" placeholder="Precio tienda oficial con impuestos">
                 </div>
             </div>
 
@@ -378,18 +238,15 @@
                 <input type="file" id="fileInput" accept="image/*" style="display: none;">
                 <div class="file-upload" id="dropZone">
                     <div id="previewContainer" style="display: none; margin-bottom: 1rem;">
-                        <img id="imagePreview"
-                            style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);">
+                        <img id="imagePreview" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--border);">
                     </div>
                     <span id="uploadText">📁 Haz clic para subir imagen</span>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en
-                        el servidor</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Se guardará localmente en el servidor</p>
                 </div>
             </div>
 
             <button class="btn btn-primary" id="btnSave" style="width: 100%;">Guardar Juego en Base de Datos</button>
-            <button class="btn btn-back" id="btnCancel" style="width: 100%; margin-top: 0.5rem; display: none;">Cancelar
-                Edición</button>
+            <button class="btn btn-back" id="btnCancel" style="width: 100%; margin-top: 0.5rem; display: none;">Cancelar Edición</button>
         </div>
 
         <!-- Tabla -->
@@ -402,7 +259,7 @@
                 <thead>
                     <tr>
                         <th>Juego</th>
-                        <th>Plataforma</th>
+                        <th>Plataforma(s)</th>
                         <th>Precios Registrados</th>
                         <th>Acciones</th>
                     </tr>
@@ -421,15 +278,55 @@
         const previewImg = document.getElementById('imagePreview');
         const previewContainer = document.getElementById('previewContainer');
         const uploadText = document.getElementById('uploadText');
-
         const btnSave = document.getElementById('btnSave');
         const btnCancel = document.getElementById('btnCancel');
         const formTitle = document.getElementById('formTitle');
         const juegoIdInput = document.getElementById('juegoId');
 
-        // Form Fields
-        const fields = ['titulo', 'plataforma', 'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler', 'precio_eshop', 'oferta_codigo', 'oferta_primaria', 'oferta_secundaria', 'oferta_alquiler', 'orden_destacado'];
+        // All individual field IDs we save
+        const allPriceFields = [
+            'precio_codigo', 'precio_primaria', 'precio_secundaria', 'precio_alquiler', 'precio_eshop',
+            'oferta_codigo', 'oferta_primaria', 'oferta_secundaria', 'oferta_alquiler',
+            'precio_primaria_ps5', 'precio_primaria_ps4', 'precio_secundaria_ps5',
+            'oferta_primaria_ps5', 'oferta_primaria_ps4', 'oferta_secundaria_ps5'
+        ];
+        const textFields = ['titulo', 'orden_destacado'];
+        const PLATFORM_CHECKS = ['plat_ns', 'plat_ns2', 'plat_ps4', 'plat_ps5'];
 
+        // --- Platform logic ---
+        function getPlatformsSelected() {
+            return PLATFORM_CHECKS
+                .filter(id => document.getElementById(id).checked)
+                .map(id => document.getElementById(id).value);
+        }
+
+        function isPlayStationSelected() {
+            return document.getElementById('plat_ps4').checked || document.getElementById('plat_ps5').checked;
+        }
+
+        function isNintendoSelected() {
+            return document.getElementById('plat_ns').checked || document.getElementById('plat_ns2').checked;
+        }
+
+        function updatePriceFieldsVisibility() {
+            const showPS = isPlayStationSelected();
+            const showNintendo = isNintendoSelected() || !showPS; // Default to Nintendo if nothing selected
+            document.getElementById('priceFieldsNintendo').style.display = showNintendo ? 'grid' : 'none';
+            document.getElementById('priceFieldsPS').style.display = showPS ? 'grid' : 'none';
+            // Update label
+            const label = document.getElementById('eshopLabel');
+            if (showPS && !showNintendo) {
+                label.textContent = '💀 PS Store (Ref.)';
+            } else {
+                label.textContent = '💀 eShop (Ref.)';
+            }
+        }
+
+        PLATFORM_CHECKS.forEach(id => {
+            document.getElementById(id).addEventListener('change', updatePriceFieldsVisibility);
+        });
+
+        // --- Discount apply ---
         window.applyDiscount = function () {
             const pctVal = parseFloat(document.getElementById('global_discount').value);
             if (isNaN(pctVal) || pctVal <= 0 || pctVal >= 100) {
@@ -437,16 +334,20 @@
                 return;
             }
             const mult = 1 - (pctVal / 100);
-            ['codigo', 'primaria', 'secundaria', 'alquiler'].forEach(tier => {
+            const tiers = isPlayStationSelected()
+                ? ['primaria_ps5', 'primaria_ps4', 'secundaria_ps5']
+                : ['codigo', 'primaria', 'secundaria', 'alquiler'];
+            tiers.forEach(tier => {
                 const regInput = document.getElementById('precio_' + tier);
                 const offInput = document.getElementById('oferta_' + tier);
+                if (!regInput || !offInput) return;
                 const regVal = parseFloat(regInput.value);
                 if (!isNaN(regVal) && regVal > 0) {
                     offInput.value = Math.round(regVal * mult);
                 }
             });
-            showToast(`¡Descuento del ${pctVal}% aplicado automáticamente!`);
-        }
+            showToast(`¡Descuento del ${pctVal}% aplicado!`);
+        };
 
         function showToast(msg, isError = false) {
             const c = document.getElementById('toastContainer');
@@ -480,10 +381,38 @@
             filtered.forEach(game => {
                 const tr = document.createElement('tr');
                 const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : 'https://via.placeholder.com/160x90?text=S/I';
-
-                let isSale = game.oferta_codigo || game.oferta_primaria || game.oferta_secundaria || game.oferta_alquiler;
-
+                const platforms = game.plataforma || '';
+                const isPS = platforms.includes('PS');
+                const isSale = isPS
+                    ? (game.precios.oferta_primaria_ps5 || game.precios.oferta_primaria_ps4 || game.precios.oferta_secundaria_ps5)
+                    : (game.oferta_codigo || game.oferta_primaria || game.oferta_secundaria || game.oferta_alquiler);
                 const starStyle = game.is_featured ? 'opacity:1; filter: none;' : 'opacity:0.3; filter: grayscale(1);';
+
+                // Platform badges
+                const platBadges = platforms.split(',').map(p => p.trim()).filter(Boolean)
+                    .map(p => `<span style="background:${p.includes('PS') ? '#1e3a8a' : '#27272a'}; color:${p.includes('PS') ? '#93c5fd' : 'white'}; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 3px;">${p}</span>`)
+                    .join('');
+
+                // Prices display
+                let pricesHtml = '';
+                if (isPS) {
+                    pricesHtml = `
+                        <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                            PS5-Pri: <span style="${game.precios.oferta_primaria_ps5 ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.precios.oferta_primaria_ps5 || game.precios.primaria_ps5)}</span> |
+                            PS4-Pri: <span style="${game.precios.oferta_primaria_ps4 ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.precios.oferta_primaria_ps4 || game.precios.primaria_ps4)}</span><br>
+                            PS5-Sec: <span style="${game.precios.oferta_secundaria_ps5 ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.precios.oferta_secundaria_ps5 || game.precios.secundaria_ps5)}</span>
+                            ${game.precios.eshop ? `| <span style="color:#fca5a5; font-size:0.75rem;">PS Store: ${formatPrice(game.precios.eshop)}</span>` : ''}
+                        </div>`;
+                } else {
+                    pricesHtml = `
+                        <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+                            Cód: <span style="${game.oferta_codigo ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_codigo || game.precio_codigo)}</span> |
+                            Pri: <span style="${game.oferta_primaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_primaria || game.precio_primaria)}</span><br>
+                            Sec: <span style="${game.oferta_secundaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_secundaria || game.precio_secundaria)}</span> |
+                            Alq: <span style="${game.oferta_alquiler ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_alquiler || game.precio_alquiler)}</span><br>
+                            eShop: <span style="color: #a1a1aa; font-style: italic;">${formatPrice(game.precio_eshop)}</span>
+                        </div>`;
+                }
 
                 tr.innerHTML = `
                     <td>
@@ -492,16 +421,8 @@
                             <strong>${game.is_featured ? '⭐ ' : ''}${isSale ? '🔥 ' : ''}${game.titulo}</strong>
                         </div>
                     </td>
-                    <td><span style="background:#27272a; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${game.plataforma}</span></td>
-                    <td>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-                            Cód: <span style="${game.oferta_codigo ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_codigo || game.precio_codigo)}</span> | 
-                            Pri: <span style="${game.oferta_primaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_primaria || game.precio_primaria)}</span><br>
-                            Sec: <span style="${game.oferta_secundaria ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_secundaria || game.precio_secundaria)}</span> | 
-                            Alq: <span style="${game.oferta_alquiler ? 'color:#eab308;font-weight:bold' : ''}">${formatPrice(game.oferta_alquiler || game.precio_alquiler)}</span><br>
-                            eShop: <span style="color: #a1a1aa; font-style: italic;">${formatPrice(game.precio_eshop)}</span>
-                        </div>
-                    </td>
+                    <td>${platBadges || `<span style="background:#27272a; padding: 2px 6px; border-radius: 4px; font-size:0.75rem;">${platforms}</span>`}</td>
+                    <td>${pricesHtml}</td>
                     <td>
                         <button class="action-btn" style="${starStyle}" onclick="toggleFeatured(${game.id})" title="Destacar">⭐</button>
                         <button class="action-btn" onclick="editGame(${game.id})">✏️</button>
@@ -512,7 +433,6 @@
             });
         }
 
-        // Wire up admin search
         document.getElementById('adminSearchInput').addEventListener('input', renderTable);
 
         // --- File Handling ---
@@ -532,13 +452,20 @@
 
         // --- CRUD Actions ---
         btnSave.onclick = async () => {
-            const formData = new FormData();
-            fields.forEach(f => formData.append(f, document.getElementById(f).value));
-            formData.append('is_featured', document.getElementById('is_featured').checked ? '1' : '0');
-
-            if (fileInput.files[0]) {
-                formData.append('image', fileInput.files[0]);
+            const platforms = getPlatformsSelected();
+            if (platforms.length === 0) {
+                showToast('Selecciona al menos una plataforma', true);
+                return;
             }
+            document.getElementById('plataforma').value = platforms.join(',');
+
+            const formData = new FormData();
+            [...textFields, 'plataforma', ...allPriceFields].forEach(f => {
+                const el = document.getElementById(f);
+                if (el) formData.append(f, el.value);
+            });
+            formData.append('is_featured', document.getElementById('is_featured').checked ? '1' : '0');
+            if (fileInput.files[0]) formData.append('image', fileInput.files[0]);
 
             const id = juegoIdInput.value;
             const url = id ? `/api/admin/juegos/${id}` : '/api/admin/juegos';
@@ -547,17 +474,10 @@
             try {
                 btnSave.disabled = true;
                 btnSave.innerText = "Guardando...";
-
-                // If it's a PUT but we are sending FormData, we need to handle it.
-                // Flask PUT with FormData sometimes requires POST-shimming or just handling it in the route.
-                // Our backend handles PUT with multipart/form-data now.
-                const res = await fetch(url, {
-                    method: method,
-                    body: formData
-                });
-
+                const res = await fetch(url, { method, body: formData });
                 const data = await res.json();
                 if (data.status === 'ok') {
+                    showToast('✅ Juego guardado correctamente');
                     resetForm();
                     loadGames();
                 } else {
@@ -577,8 +497,37 @@
             if (!game) return;
 
             juegoIdInput.value = game.id;
-            fields.forEach(f => {
-                document.getElementById(f).value = game[f] || '';
+            textFields.forEach(f => { document.getElementById(f).value = game[f] || ''; });
+
+            // Restore platform checkboxes
+            const platforms = (game.plataforma || '').split(',').map(p => p.trim());
+            PLATFORM_CHECKS.forEach(checkId => {
+                const val = document.getElementById(checkId).value;
+                document.getElementById(checkId).checked = platforms.includes(val);
+            });
+            updatePriceFieldsVisibility();
+
+            // Restore price fields
+            const priceMap = {
+                precio_codigo: game.precio_codigo,
+                precio_primaria: game.precio_primaria,
+                precio_secundaria: game.precio_secundaria,
+                precio_alquiler: game.precio_alquiler,
+                precio_eshop: game.precio_eshop,
+                oferta_codigo: game.oferta_codigo,
+                oferta_primaria: game.oferta_primaria,
+                oferta_secundaria: game.oferta_secundaria,
+                oferta_alquiler: game.oferta_alquiler,
+                precio_primaria_ps5: game.precio_primaria_ps5,
+                precio_primaria_ps4: game.precio_primaria_ps4,
+                precio_secundaria_ps5: game.precio_secundaria_ps5,
+                oferta_primaria_ps5: game.oferta_primaria_ps5,
+                oferta_primaria_ps4: game.oferta_primaria_ps4,
+                oferta_secundaria_ps5: game.oferta_secundaria_ps5,
+            };
+            Object.entries(priceMap).forEach(([key, val]) => {
+                const el = document.getElementById(key);
+                if (el) el.value = val || '';
             });
 
             formTitle.innerText = "Editando: " + game.titulo;
@@ -594,7 +543,7 @@
                 previewContainer.style.display = 'none';
                 uploadText.innerText = "📁 Haz clic para subir imagen";
             }
-            primaryScrollIntoView();
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
         };
 
         window.deleteGame = async (id) => {
@@ -623,7 +572,11 @@
 
         function resetForm() {
             juegoIdInput.value = '';
-            fields.forEach(f => document.getElementById(f).value = '');
+            textFields.forEach(f => document.getElementById(f).value = '');
+            allPriceFields.forEach(f => { const el = document.getElementById(f); if (el) el.value = ''; });
+            PLATFORM_CHECKS.forEach(id => document.getElementById(id).checked = false);
+            document.getElementById('plataforma').value = '';
+            updatePriceFieldsVisibility();
             fileInput.value = '';
             previewContainer.style.display = 'none';
             uploadText.innerText = "📁 Haz clic para subir imagen";
@@ -632,10 +585,6 @@
             btnCancel.style.display = 'none';
             document.getElementById('is_featured').checked = false;
             document.getElementById('global_discount').value = '';
-        }
-
-        function primaryScrollIntoView() {
-            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
         }
 
         loadGames();

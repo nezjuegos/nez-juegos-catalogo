@@ -87,6 +87,21 @@ class Database:
             except sqlite3.OperationalError:
                 pass # Columns already exist
 
+            # PlayStation-specific price columns
+            ps_cols = [
+                "ALTER TABLE juegos ADD COLUMN precio_primaria_ps5 INTEGER",
+                "ALTER TABLE juegos ADD COLUMN precio_primaria_ps4 INTEGER",
+                "ALTER TABLE juegos ADD COLUMN precio_secundaria_ps5 INTEGER",
+                "ALTER TABLE juegos ADD COLUMN oferta_primaria_ps5 INTEGER",
+                "ALTER TABLE juegos ADD COLUMN oferta_primaria_ps4 INTEGER",
+                "ALTER TABLE juegos ADD COLUMN oferta_secundaria_ps5 INTEGER",
+            ]
+            for col_sql in ps_cols:
+                try:
+                    cursor.execute(col_sql)
+                except sqlite3.OperationalError:
+                    pass  # Column already exists
+
             # Table: juegos (Individual Games CRUD)
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS juegos (
@@ -181,6 +196,13 @@ class Database:
                     'oferta_primaria': d.get('oferta_primaria'),
                     'oferta_secundaria': d.get('oferta_secundaria'),
                     'oferta_alquiler': d.get('oferta_alquiler'),
+                    # PlayStation-specific
+                    'primaria_ps5': d.get('precio_primaria_ps5'),
+                    'primaria_ps4': d.get('precio_primaria_ps4'),
+                    'secundaria_ps5': d.get('precio_secundaria_ps5'),
+                    'oferta_primaria_ps5': d.get('oferta_primaria_ps5'),
+                    'oferta_primaria_ps4': d.get('oferta_primaria_ps4'),
+                    'oferta_secundaria_ps5': d.get('oferta_secundaria_ps5'),
                 }
                 d['orden_destacado'] = d.get('orden_destacado', 0)
                 results.append(d)
@@ -197,21 +219,30 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, precio_eshop, 
-                                    oferta_codigo, oferta_primaria, oferta_secundaria, oferta_alquiler, imagen_filename, is_featured, orden_destacado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO juegos (titulo, plataforma, precio_codigo, precio_primaria, precio_secundaria, precio_alquiler, precio_eshop,
+                                    oferta_codigo, oferta_primaria, oferta_secundaria, oferta_alquiler,
+                                    precio_primaria_ps5, precio_primaria_ps4, precio_secundaria_ps5,
+                                    oferta_primaria_ps5, oferta_primaria_ps4, oferta_secundaria_ps5,
+                                    imagen_filename, is_featured, orden_destacado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data.get('titulo'),
                 data.get('plataforma', 'Nintendo Switch'),
-                data.get('precio_codigo'),
-                data.get('precio_primaria'),
-                data.get('precio_secundaria'),
-                data.get('precio_alquiler'),
-                data.get('precio_eshop'),
-                data.get('oferta_codigo'),
-                data.get('oferta_primaria'),
-                data.get('oferta_secundaria'),
-                data.get('oferta_alquiler'),
+                data.get('precio_codigo') or None,
+                data.get('precio_primaria') or None,
+                data.get('precio_secundaria') or None,
+                data.get('precio_alquiler') or None,
+                data.get('precio_eshop') or None,
+                data.get('oferta_codigo') or None,
+                data.get('oferta_primaria') or None,
+                data.get('oferta_secundaria') or None,
+                data.get('oferta_alquiler') or None,
+                data.get('precio_primaria_ps5') or None,
+                data.get('precio_primaria_ps4') or None,
+                data.get('precio_secundaria_ps5') or None,
+                data.get('oferta_primaria_ps5') or None,
+                data.get('oferta_primaria_ps4') or None,
+                data.get('oferta_secundaria_ps5') or None,
                 data.get('imagen_filename'),
                 int(data.get('is_featured', 0)),
                 int(data.get('orden_destacado') or 0)
@@ -223,22 +254,31 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                UPDATE juegos 
-                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, precio_eshop=?, 
-                    oferta_codigo=?, oferta_primaria=?, oferta_secundaria=?, oferta_alquiler=?, imagen_filename=COALESCE(?, imagen_filename), is_featured=?, orden_destacado=?
+                UPDATE juegos
+                SET titulo=?, plataforma=?, precio_codigo=?, precio_primaria=?, precio_secundaria=?, precio_alquiler=?, precio_eshop=?,
+                    oferta_codigo=?, oferta_primaria=?, oferta_secundaria=?, oferta_alquiler=?,
+                    precio_primaria_ps5=?, precio_primaria_ps4=?, precio_secundaria_ps5=?,
+                    oferta_primaria_ps5=?, oferta_primaria_ps4=?, oferta_secundaria_ps5=?,
+                    imagen_filename=COALESCE(?, imagen_filename), is_featured=?, orden_destacado=?
                 WHERE id=?
             ''', (
                 data.get('titulo'),
                 data.get('plataforma', 'Nintendo Switch'),
-                data.get('precio_codigo'),
-                data.get('precio_primaria'),
-                data.get('precio_secundaria'),
-                data.get('precio_alquiler'),
-                data.get('precio_eshop'),
-                data.get('oferta_codigo'),
-                data.get('oferta_primaria'),
-                data.get('oferta_secundaria'),
-                data.get('oferta_alquiler'),
+                data.get('precio_codigo') or None,
+                data.get('precio_primaria') or None,
+                data.get('precio_secundaria') or None,
+                data.get('precio_alquiler') or None,
+                data.get('precio_eshop') or None,
+                data.get('oferta_codigo') or None,
+                data.get('oferta_primaria') or None,
+                data.get('oferta_secundaria') or None,
+                data.get('oferta_alquiler') or None,
+                data.get('precio_primaria_ps5') or None,
+                data.get('precio_primaria_ps4') or None,
+                data.get('precio_secundaria_ps5') or None,
+                data.get('oferta_primaria_ps5') or None,
+                data.get('oferta_primaria_ps4') or None,
+                data.get('oferta_secundaria_ps5') or None,
                 data.get('imagen_filename'),
                 int(data.get('is_featured', 0)),
                 int(data.get('orden_destacado') or 0),

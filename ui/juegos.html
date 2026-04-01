@@ -616,8 +616,14 @@
             const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
             const term = normalize(searchInput.value);
 
-            // Platform match: Nintendo Switch tab includes "Nintendo Switch" and "Nintendo Switch 2"
-            const matchesPlatform = (p) => currentPlatform === 'PlayStation' ? p === 'PlayStation' : p.startsWith('Nintendo Switch');
+            // Platform match: supports comma-separated platforms (e.g. "PS4,PS5")
+            const matchesPlatform = (plataforma) => {
+                const parts = (plataforma || '').split(',').map(p => p.trim());
+                if (currentPlatform === 'PlayStation') {
+                    return parts.some(p => p === 'PlayStation' || p === 'PS4' || p === 'PS5');
+                }
+                return parts.some(p => p.startsWith('Nintendo Switch'));
+            };
 
             // Filter by platform
             const platformGames = allJuegos.filter(j => matchesPlatform(j.plataforma));
@@ -698,6 +704,12 @@
             `;
         }
 
+        // Helper: detect if a game is PS — must be defined BEFORE renderGames forEach uses it
+        function gameIsPS(game) {
+            const plat = game.plataforma || '';
+            return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
+        }
+
         function renderGames(gamesArray, containerId = 'gamesGrid') {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
@@ -709,6 +721,7 @@
 
             gamesArray.forEach(game => {
                 const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
+                const isPS = gameIsPS(game);
 
                 let titlePrefix = '';
                 if (game.is_hot) titlePrefix += '🔥 ';
@@ -716,7 +729,10 @@
 
                 // Calculate max discount
                 let maxPct = 0;
-                ['codigo_digital', 'primaria', 'secundaria', 'alquiler'].forEach(pk => {
+                const discountKeys = isPS
+                    ? ['primaria_ps5', 'primaria_ps4', 'secundaria_ps5']
+                    : ['codigo_digital', 'primaria', 'secundaria', 'alquiler'];
+                discountKeys.forEach(pk => {
                     const reg = game.precios[pk];
                     const off = game.precios['oferta_' + pk];
                     if (reg && off && off < reg) {
@@ -737,49 +753,107 @@
                     </div>
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
-                        ${game.precios.eshop ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem; padding-bottom: 0.2rem;">Precio eShop: ${formatPrice(game.precios.eshop)}</div>` : ''}
+                        ${game.precios.eshop ? `
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
+                            <span style="font-size: 1.1rem;">💀</span>
+                            <div>
+                                <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${isPS ? 'PS Store con impuestos' : 'eShop con impuestos'}</div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
+                            </div>
+                        </div>` : ''}
                     </div>
                     <div class="pricing-list">
-                        ${createPriceOption(game, 'CÓDIGO DIGITAL', 'codigo_digital', 'Canjeable en tu cuenta', true)}
-                        ${createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Jugás con tu usuario (Permanente)')}
-                        ${createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Jugás con perfil alterno (Permanente)')}
-                        ${createPriceOption(game, 'ALQUILER 30 DÍAS', 'alquiler', 'Cuenta prestada por 1 mes')}
+                        ${isPS
+                            ? createPriceOption(game, 'PRIMARIA PS5', 'primaria_ps5', 'Tu perfil principal en PS5 (Permanente)', true)
+                            + createPriceOption(game, 'PRIMARIA PS4', 'primaria_ps4', 'Tu perfil principal en PS4 (Permanente)')
+                            + createPriceOption(game, 'SECUNDARIA PS5', 'secundaria_ps5', 'Perfil alterno en PS5 (Permanente)')
+                            : createPriceOption(game, 'CÓDIGO DIGITAL', 'codigo_digital', 'Canjeable en tu cuenta', true)
+                            + createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Jugás con tu usuario (Permanente)')
+                            + createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Jugás con perfil alterno (Permanente)')
+                            + createPriceOption(game, 'ALQUILER 30 DÍAS', 'alquiler', 'Cuenta prestada por 1 mes')
+                        }
                     </div>
                     <button class="btn-share" onclick="shareGame(${JSON.stringify(game).replace(/"/g, '&quot;')})">📋 Compartir precios</button>
                 `;
                 container.appendChild(card);
             });
         }
+
+        // Helper: detect if a game is PS
+        function gameIsPS(game) {
+            const plat = game.plataforma || '';
+            return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
+        }
         window.shareGame = function (game) {
-            let text = `🎮 *${game.titulo}* — Nez Juegos\n`;
-            if (game.precios.eshop) text += `🏪 *Precio oficial eShop:* ${formatPrice(game.precios.eshop)}\n`;
+            const isPS = gameIsPS(game);
+            const storeName = isPS ? 'PS Store' : 'eShop';
+            let text = `🎮 *${game.titulo}* — _Nez Juegos_\n`;
+            if (game.precios.eshop) text += `🏪 *Precio oficial ${storeName}:* ${formatPrice(game.precios.eshop)} 💀\n`;
             text += `\n`;
 
-            const addLine = (label, priceKey) => {
-                const reg = game.precios[priceKey];
-                const off = game.precios['oferta_' + priceKey];
-
-                if (!reg && !off) return;
-
-                const currentPrice = off || reg;
-                const isDiscounted = off && off < reg;
-
-                let lineDisplay = `• ${label}: ${formatPrice(currentPrice)}`;
-
-                if (isDiscounted) {
-                    const pct = Math.round((1 - (off / reg)) * 100);
-                    lineDisplay += ` (🔥 -${pct}% OFF | Antes: ${formatPrice(reg)})`;
-                } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
-                    lineDisplay += ` (Ahorras ${formatPrice(game.precios.eshop - currentPrice)})`;
+            if (isPS) {
+                // PlayStation format
+                const addPSLine = (label, priceKey, note) => {
+                    const reg = game.precios[priceKey];
+                    const off = game.precios['oferta_' + priceKey];
+                    if (!reg && !off) return;
+                    const currentPrice = off || reg;
+                    const isDiscounted = off && off < reg;
+                    let line = `• ${label}: *${formatPrice(currentPrice)}*`;
+                    if (isDiscounted) {
+                        line += ` _(🔥 -${Math.round((1 - off/reg)*100)}% OFF | Antes: ${formatPrice(reg)})_`;
+                    } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
+                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)})_`;
+                    }
+                    if (note) line += ` ${note}`;
+                    text += line + '\n';
+                };
+                addPSLine('Primaria PS5', 'primaria_ps5', '');
+                addPSLine('Primaria PS4', 'primaria_ps4', '');
+                addPSLine('Secundaria PS5', 'secundaria_ps5', '');
+            } else {
+                // Nintendo format
+                const addLine = (label, priceKey, extraNote) => {
+                    const reg = game.precios[priceKey];
+                    const off = game.precios['oferta_' + priceKey];
+                    if (!reg && !off) return;
+                    const currentPrice = off || reg;
+                    const isDiscounted = off && off < reg;
+                    let line = `• ${label}: *${formatPrice(currentPrice)}*`;
+                    if (isDiscounted) {
+                        line += ` _(🔥 -${Math.round((1 - off/reg)*100)}% OFF | Antes: ${formatPrice(reg)})_`;
+                    } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
+                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)})_`;
+                    }
+                    if (extraNote) line += extraNote;
+                    text += line + '\n';
+                };
+                addLine('Código Digital', 'codigo_digital', '');
+                addLine('Cuenta Secundaria', 'secundaria', '');
+                // Primaria without bold price first (per user format)
+                const regPri = game.precios.primaria;
+                const offPri = game.precios.oferta_primaria;
+                if (regPri || offPri) {
+                    const curPri = offPri || regPri;
+                    let priLine = `• Cuenta Primaria: *${formatPrice(curPri)}*`;
+                    if (offPri && offPri < regPri) {
+                        priLine += ` _(🔥 -${Math.round((1 - offPri/regPri)*100)}% OFF | Antes: ${formatPrice(regPri)})_`;
+                    } else if (game.precios.eshop && game.precios.eshop > curPri) {
+                        priLine += ` _(Ahorras ${formatPrice(game.precios.eshop - curPri)})_`;
+                    }
+                    text += priLine + '\n';
                 }
-
-                text += lineDisplay + '\n';
-            };
-
-            addLine('Código Digital', 'codigo_digital');
-            addLine('Cuenta Primaria', 'primaria');
-            addLine('Cuenta Secundaria', 'secundaria');
-            addLine('Alquiler 30 días', 'alquiler');
+                const regAlq = game.precios.alquiler;
+                const offAlq = game.precios.oferta_alquiler;
+                if (regAlq || offAlq) {
+                    const curAlq = offAlq || regAlq;
+                    let alqLine = `• Alquiler Secundaria 30 días: ${formatPrice(curAlq)}`;
+                    if (game.precios.eshop && game.precios.eshop > curAlq) {
+                        alqLine += ` (Ahorras ${formatPrice(game.precios.eshop - curAlq)} y podes mejorar a secundaria permanente pagando la diferencia)`;
+                    }
+                    text += alqLine + '\n';
+                }
+            }
 
             text += `\n🛒 Ver más: nezjuegos.com/juegos`;
             navigator.clipboard.writeText(text).then(() => {
