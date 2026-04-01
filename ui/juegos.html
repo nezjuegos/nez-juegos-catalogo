@@ -96,6 +96,7 @@
         .logo span {
             background: linear-gradient(to right, var(--primary), var(--secondary));
             -webkit-background-clip: text;
+            background-clip: text;
             color: transparent;
         }
 
@@ -654,16 +655,26 @@
             const base = waNumber ? `https://wa.me/${waNumber}?text=` : '#';
             if (!waNumber) return '#';
 
+            // Make platform readable (convert CSV like "PS4,PS5" to "PS4 / PS5")
+            const platDisplay = (game.plataforma || '')
+                .split(',')
+                .map(p => p.trim())
+                .filter(Boolean)
+                .join(' / ') || game.plataforma;
+
+            const isPS = gameIsPS(game);
+            const storeName = isPS ? 'PS Store' : 'eShop';
+
             let msg = `🛒 *Pedido desde el catálogo web:*\n`;
             msg += `🎮 *Juego:* ${game.titulo}\n`;
-            msg += `🖥️ *Plataforma:* ${game.plataforma}\n`;
+            msg += `🖥️ *Plataforma:* ${platDisplay}\n`;
             msg += `🎯 *Formato:* ${type}\n`;
             msg += `💸 *Tu Precio:* ${formatPrice(currentPrice)}\n\n`;
 
             if (game.precios.eshop) {
                 const savings = game.precios.eshop - currentPrice;
                 if (savings > 0) {
-                    msg += `❌ ~Precio eShop:~ ~${formatPrice(game.precios.eshop)}~\n`;
+                    msg += `❌ ~Precio ${storeName}:~ ~${formatPrice(game.precios.eshop)}~\n`;
                     msg += `✅ *Ahorro total:* ${formatPrice(savings)}\n\n`;
                 }
             }
@@ -812,43 +823,59 @@
                 addPSLine('Primaria PS4', 'primaria_ps4', '');
                 addPSLine('Secundaria PS5', 'secundaria_ps5', '');
             } else {
-                // Nintendo format
-                const addLine = (label, priceKey, extraNote) => {
-                    const reg = game.precios[priceKey];
-                    const off = game.precios['oferta_' + priceKey];
-                    if (!reg && !off) return;
-                    const currentPrice = off || reg;
-                    const isDiscounted = off && off < reg;
-                    let line = `• ${label}: *${formatPrice(currentPrice)}*`;
-                    if (isDiscounted) {
-                        line += ` _(🔥 -${Math.round((1 - off/reg)*100)}% OFF | Antes: ${formatPrice(reg)})_`;
-                    } else if (game.precios.eshop && game.precios.eshop > currentPrice) {
-                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)})_`;
+                // Nintendo format — match exact user example:
+                // Código Digital (bold price) → Cuenta Secundaria (plain) → Cuenta Primaria (bold) → Alquiler (plain + upgrade note)
+                const regCod = game.precios.codigo_digital;
+                const offCod = game.precios.oferta_codigo_digital;
+                if (regCod || offCod) {
+                    const curCod = offCod || regCod;
+                    const isDisc = offCod && offCod < regCod;
+                    let line = `• Código Digital: *${formatPrice(curCod)}*`;
+                    if (isDisc) {
+                        line += ` _(🔥 -${Math.round((1 - offCod/regCod)*100)}% OFF | Antes: ${formatPrice(regCod)})_`;
+                    } else if (game.precios.eshop && game.precios.eshop > curCod) {
+                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - curCod)})_`;
                     }
-                    if (extraNote) line += extraNote;
                     text += line + '\n';
-                };
-                addLine('Código Digital', 'codigo_digital', '');
-                addLine('Cuenta Secundaria', 'secundaria', '');
-                // Primaria without bold price first (per user format)
+                }
+
+                const regSec = game.precios.secundaria;
+                const offSec = game.precios.oferta_secundaria;
+                if (regSec || offSec) {
+                    const curSec = offSec || regSec;
+                    const isDisc = offSec && offSec < regSec;
+                    let line = `• Cuenta Secundaria: ${formatPrice(curSec)}`;
+                    if (isDisc) {
+                        line += ` _(🔥 -${Math.round((1 - offSec/regSec)*100)}% OFF | Antes: ${formatPrice(regSec)})_`;
+                    } else if (game.precios.eshop && game.precios.eshop > curSec) {
+                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - curSec)})_`;
+                    }
+                    text += line + '\n';
+                }
+
                 const regPri = game.precios.primaria;
                 const offPri = game.precios.oferta_primaria;
                 if (regPri || offPri) {
                     const curPri = offPri || regPri;
-                    let priLine = `• Cuenta Primaria: *${formatPrice(curPri)}*`;
-                    if (offPri && offPri < regPri) {
-                        priLine += ` _(🔥 -${Math.round((1 - offPri/regPri)*100)}% OFF | Antes: ${formatPrice(regPri)})_`;
+                    const isDisc = offPri && offPri < regPri;
+                    let line = `• Cuenta Primaria: *${formatPrice(curPri)}*`;
+                    if (isDisc) {
+                        line += ` _(🔥 -${Math.round((1 - offPri/regPri)*100)}% OFF | Antes: ${formatPrice(regPri)})_`;
                     } else if (game.precios.eshop && game.precios.eshop > curPri) {
-                        priLine += ` _(Ahorras ${formatPrice(game.precios.eshop - curPri)})_`;
+                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - curPri)})_`;
                     }
-                    text += priLine + '\n';
+                    text += line + '\n';
                 }
+
                 const regAlq = game.precios.alquiler;
                 const offAlq = game.precios.oferta_alquiler;
                 if (regAlq || offAlq) {
                     const curAlq = offAlq || regAlq;
+                    const isDisc = offAlq && offAlq < regAlq;
                     let alqLine = `• Alquiler Secundaria 30 días: ${formatPrice(curAlq)}`;
-                    if (game.precios.eshop && game.precios.eshop > curAlq) {
+                    if (isDisc) {
+                        alqLine += ` (🔥 -${Math.round((1 - offAlq/regAlq)*100)}% OFF)`;
+                    } else if (game.precios.eshop && game.precios.eshop > curAlq) {
                         alqLine += ` (Ahorras ${formatPrice(game.precios.eshop - curAlq)} y podes mejorar a secundaria permanente pagando la diferencia)`;
                     }
                     text += alqLine + '\n';
