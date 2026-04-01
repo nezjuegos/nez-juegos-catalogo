@@ -799,7 +799,7 @@
             const isPS = gameIsPS(game);
             const storeName = isPS ? 'PS Store' : 'eShop';
             let text = `🎮 *${game.titulo}* — _Nez Juegos_\n`;
-            if (game.precios.eshop) text += `🏪 *Precio oficial ${storeName}:* ${formatPrice(game.precios.eshop)} 💀\n`;
+            if (game.precios.eshop) text += `🏪 *Precio oficial ${storeName}:* ${formatPrice(game.precios.eshop)}\n`;
             text += `\n`;
 
             if (isPS) {
