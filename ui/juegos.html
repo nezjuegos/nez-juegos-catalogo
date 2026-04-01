@@ -844,7 +844,7 @@
                 if (regSec || offSec) {
                     const curSec = offSec || regSec;
                     const isDisc = offSec && offSec < regSec;
-                    let line = `• Cuenta Secundaria: ${formatPrice(curSec)}`;
+                    let line = `• Cuenta Secundaria: *${formatPrice(curSec)}*`;
                     if (isDisc) {
                         line += ` _(🔥 -${Math.round((1 - offSec/regSec)*100)}% OFF | Antes: ${formatPrice(regSec)})_`;
                     } else if (game.precios.eshop && game.precios.eshop > curSec) {
@@ -872,11 +872,11 @@
                 if (regAlq || offAlq) {
                     const curAlq = offAlq || regAlq;
                     const isDisc = offAlq && offAlq < regAlq;
-                    let alqLine = `• Alquiler Secundaria 30 días: ${formatPrice(curAlq)}`;
+                    let alqLine = `• Alquiler Secundaria 30 días: *${formatPrice(curAlq)}*`;
                     if (isDisc) {
-                        alqLine += ` (🔥 -${Math.round((1 - offAlq/regAlq)*100)}% OFF)`;
+                        alqLine += ` _(🔥 -${Math.round((1 - offAlq/regAlq)*100)}% OFF)_`;
                     } else if (game.precios.eshop && game.precios.eshop > curAlq) {
-                        alqLine += ` (Ahorras ${formatPrice(game.precios.eshop - curAlq)} y podes mejorar a secundaria permanente pagando la diferencia)`;
+                        alqLine += ` _(Ahorras ${formatPrice(game.precios.eshop - curAlq)} y podes mejorar a secundaria permanente pagando la diferencia)_`;
                     }
                     text += alqLine + '\n';
                 }
