@@ -760,7 +760,7 @@
                     <div class="game-cover" style="position: relative; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}">
                         ${discountBadge}
                         ${!cover ? '🎮' : ''}
-                        <span class="platform-badge">${game.plataforma}</span>
+                        <span class="platform-badge">${(game.plataforma || '').split(',').map(p => p.trim()).filter(Boolean).join(' / ')}</span>
                     </div>
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
