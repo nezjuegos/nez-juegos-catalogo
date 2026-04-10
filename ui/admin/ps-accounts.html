@@ -124,8 +124,12 @@
             </div>
             <div style="margin-left: auto; display: flex; gap: 1.5rem;">
                 <div style="text-align: center;">
-                    <div style="font-size: 1.3rem; font-weight: 800; color: var(--success);" id="stockPrimaria">-</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Primarias</div>
+                    <div style="font-size: 1.3rem; font-weight: 800; color: var(--success);" id="stockPrimariaPS5">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Pri. PS5</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.3rem; font-weight: 800; color: #60a5fa;" id="stockPrimariaPS4">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Pri. PS4</div>
                 </div>
                 <div style="text-align: center;">
                     <div style="font-size: 1.3rem; font-weight: 800; color: var(--warning);" id="stockSecundaria">-</div>
@@ -189,7 +193,8 @@
                 const data = await resp.json();
                 const stock = data.stock_disponible || {};
                 document.getElementById('stockTotal').textContent = stock.total || 0;
-                document.getElementById('stockPrimaria').textContent = stock.primaria || 0;
+                document.getElementById('stockPrimariaPS5').textContent = stock.primaria_ps5 || 0;
+                document.getElementById('stockPrimariaPS4').textContent = stock.primaria_ps4 || 0;
                 document.getElementById('stockSecundaria').textContent = stock.secundaria || 0;
                 renderAccounts(data.accounts || []);
             } catch (e) {
@@ -244,9 +249,10 @@
                         <div class="credential-row">
                             <span><span class="label">Pass:</span> <span class="value">${acc.password}</span></span>
                         </div>
-                        <div style="display: flex; gap: 1rem; margin: 0.5rem 0; font-size: 0.8rem;">
-                            <span style="color: var(--success); font-weight: 600;">🟢 Primaria: ${acc.primaria_used || 0}/${acc.primaria_total || 1}</span>
-                            <span style="color: var(--warning); font-weight: 600;">🟡 Secundaria: ${acc.secundaria_used || 0}/${acc.secundaria_total || 2}</span>
+                        <div style="display: flex; gap: 1rem; margin: 0.5rem 0; font-size: 0.8rem; flex-wrap: wrap;">
+                            <span style="color: var(--success); font-weight: 600;">🟢 Pri PS5: ${acc.primaria_used || 0}/${acc.primaria_total || 1}</span>
+                            <span style="color: #60a5fa; font-weight: 600;">🔵 Pri PS4: ${acc.primaria_ps4_used || 0}/${acc.primaria_ps4_total || 1}</span>
+                            <span style="color: var(--warning); font-weight: 600;">🟡 Sec: ${acc.secundaria_used || 0}/${acc.secundaria_total || 2}</span>
                         </div>
                         <div class="keys-bar">${barHtml}</div>
                         <div class="keys-info">${acc.keys_used}/10 keys usadas${acc.game_titulo ? ` · 🎮 ${acc.game_titulo}` : ''}${acc.notes ? ` · ${acc.notes}` : ''}</div>
@@ -325,17 +331,18 @@
         }
 
         async function addSlots(id) {
-            const priAdd = parseInt(prompt('¿Cuántos slots de PRIMARIA agregar? (por defecto 1)', '1')) || 0;
+            const priAdd = parseInt(prompt('¿Cuántos slots de PRIMARIA PS5 agregar? (por defecto 1)', '1')) || 0;
+            const pri4Add = parseInt(prompt('¿Cuántos slots de PRIMARIA PS4 agregar? (por defecto 1)', '1')) || 0;
             const secAdd = parseInt(prompt('¿Cuántos slots de SECUNDARIA agregar? (por defecto 2)', '2')) || 0;
-            if (priAdd === 0 && secAdd === 0) return;
+            if (priAdd === 0 && pri4Add === 0 && secAdd === 0) return;
             const resp = await fetch(`/api/admin/ps-accounts/${id}/add-slots`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ primaria_add: priAdd, secundaria_add: secAdd })
+                body: JSON.stringify({ primaria_add: priAdd, primaria_ps4_add: pri4Add, secundaria_add: secAdd })
             });
             const data = await resp.json();
             if (resp.ok) {
-                showToast(`Slots agregados: +${priAdd} primaria, +${secAdd} secundaria`);
+                showToast(`Slots agregados: +${priAdd} pri PS5, +${pri4Add} pri PS4, +${secAdd} sec`);
                 loadAccounts();
             } else {
                 showToast(data.error || 'Error', true);

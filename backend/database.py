@@ -197,6 +197,8 @@ class Database:
                 game_titulo TEXT,
                 primaria_total INTEGER DEFAULT 1,
                 primaria_used INTEGER DEFAULT 0,
+                primaria_ps4_total INTEGER DEFAULT 1,
+                primaria_ps4_used INTEGER DEFAULT 0,
                 secundaria_total INTEGER DEFAULT 2,
                 secundaria_used INTEGER DEFAULT 0,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -206,6 +208,7 @@ class Database:
             # Migrations for existing DBs
             for col in ['game_id INTEGER', 'game_titulo TEXT',
                         'primaria_total INTEGER DEFAULT 1', 'primaria_used INTEGER DEFAULT 0',
+                        'primaria_ps4_total INTEGER DEFAULT 1', 'primaria_ps4_used INTEGER DEFAULT 0',
                         'secundaria_total INTEGER DEFAULT 2', 'secundaria_used INTEGER DEFAULT 0']:
                 try:
                     cursor.execute(f'ALTER TABLE ps_accounts ADD COLUMN {col}')
@@ -803,17 +806,17 @@ class Database:
 
     # --- PS ACCOUNTS CRUD ---
     def add_ps_account(self, email, password, keys_list, notes='', game_id=None, game_titulo=None,
-                       primaria_total=1, secundaria_total=2):
+                       primaria_total=1, primaria_ps4_total=1, secundaria_total=2):
         """Add a PS account with 10 activation keys, linked to a game.
-        Default: 1 primaria slot + 2 secundaria slots."""
+        Default: 1 primaria PS5 + 1 primaria PS4 + 2 secundaria = 4 slots."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO ps_accounts (email, password, activation_keys, notes, game_id, game_titulo,
-                                         primaria_total, secundaria_total)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                         primaria_total, primaria_ps4_total, secundaria_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (email, password, json.dumps(keys_list), notes, game_id, game_titulo,
-                  primaria_total, secundaria_total))
+                  primaria_total, primaria_ps4_total, secundaria_total))
             conn.commit()
             return cursor.lastrowid
 
@@ -834,14 +837,15 @@ class Database:
 
     def get_available_ps_key(self, game_id=None, sale_type='primaria'):
         """Get the next available activation key from the pool, filtered by game_id and sale type.
-        sale_type: 'primaria' or 'secundaria'.
-        Checks that the account has available slots for that sale type.
+        sale_type: 'primaria' (PS5), 'primaria_ps4', or 'secundaria'.
         Returns (account_dict, key_index, activation_key) or (None, None, None) if no stock."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             # Determine which slot columns to check
             if sale_type == 'secundaria':
                 slot_filter = 'secundaria_used < secundaria_total'
+            elif sale_type == 'primaria_ps4':
+                slot_filter = 'primaria_ps4_used < primaria_ps4_total'
             else:
                 slot_filter = 'primaria_used < primaria_total'
 
@@ -861,19 +865,23 @@ class Database:
             # Increment keys_used + slot used
             new_keys_used = key_index + 1
             if sale_type == 'secundaria':
-                new_sec = account['secundaria_used'] + 1
+                new_val = account['secundaria_used'] + 1
                 cursor.execute('UPDATE ps_accounts SET keys_used = ?, secundaria_used = ? WHERE id = ?',
-                               (new_keys_used, new_sec, account['id']))
+                               (new_keys_used, new_val, account['id']))
+            elif sale_type == 'primaria_ps4':
+                new_val = account['primaria_ps4_used'] + 1
+                cursor.execute('UPDATE ps_accounts SET keys_used = ?, primaria_ps4_used = ? WHERE id = ?',
+                               (new_keys_used, new_val, account['id']))
             else:
-                new_pri = account['primaria_used'] + 1
+                new_val = account['primaria_used'] + 1
                 cursor.execute('UPDATE ps_accounts SET keys_used = ?, primaria_used = ? WHERE id = ?',
-                               (new_keys_used, new_pri, account['id']))
+                               (new_keys_used, new_val, account['id']))
             
             # Check if account is fully exhausted (all slots filled or all keys used)
-            # Refresh to get updated values
             cursor.execute('SELECT * FROM ps_accounts WHERE id = ?', (account['id'],))
             updated = dict(cursor.fetchone())
             all_slots_full = (updated['primaria_used'] >= updated['primaria_total'] and
+                              updated.get('primaria_ps4_used', 0) >= updated.get('primaria_ps4_total', 1) and
                               updated['secundaria_used'] >= updated['secundaria_total'])
             all_keys_used = updated['keys_used'] >= 10
             if all_slots_full or all_keys_used:
@@ -891,8 +899,8 @@ class Database:
             ''', (ps_account_id, order_id, key_index, activation_key, sale_type))
             conn.commit()
 
-    def add_ps_slots(self, account_id, primaria_add=0, secundaria_add=0):
-        """Add more primaria/secundaria slots to an existing account."""
+    def add_ps_slots(self, account_id, primaria_add=0, primaria_ps4_add=0, secundaria_add=0):
+        """Add more primaria/primaria_ps4/secundaria slots to an existing account."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM ps_accounts WHERE id = ?', (account_id,))
@@ -901,13 +909,17 @@ class Database:
                 return False
             account = dict(row)
             new_pri = account['primaria_total'] + primaria_add
+            new_pri4 = account.get('primaria_ps4_total', 1) + primaria_ps4_add
             new_sec = account['secundaria_total'] + secundaria_add
             # If adding slots and account was agotada, reopen it
             new_status = account['status']
-            if (account['primaria_used'] < new_pri or account['secundaria_used'] < new_sec) and account['keys_used'] < 10:
+            has_open_slots = (account['primaria_used'] < new_pri or
+                              account.get('primaria_ps4_used', 0) < new_pri4 or
+                              account['secundaria_used'] < new_sec)
+            if has_open_slots and account['keys_used'] < 10:
                 new_status = 'disponible'
-            cursor.execute('UPDATE ps_accounts SET primaria_total = ?, secundaria_total = ?, status = ? WHERE id = ?',
-                           (new_pri, new_sec, new_status, account_id))
+            cursor.execute('UPDATE ps_accounts SET primaria_total = ?, primaria_ps4_total = ?, secundaria_total = ?, status = ? WHERE id = ?',
+                           (new_pri, new_pri4, new_sec, new_status, account_id))
             conn.commit()
             return True
 
@@ -926,14 +938,16 @@ class Database:
             return True
 
     def get_ps_stock_count(self):
-        """Count total available sales (primaria + secundaria slots) across all accounts."""
+        """Count total available sales across all accounts."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""SELECT 
-                SUM(primaria_total - primaria_used) as primaria_disp,
-                SUM(secundaria_total - secundaria_used) as secundaria_disp
+                SUM(primaria_total - primaria_used) as pri5_disp,
+                SUM(primaria_ps4_total - primaria_ps4_used) as pri4_disp,
+                SUM(secundaria_total - secundaria_used) as sec_disp
                 FROM ps_accounts WHERE status = 'disponible'""")
             row = cursor.fetchone()
-            pri = row['primaria_disp'] or 0
-            sec = row['secundaria_disp'] or 0
-            return {'primaria': pri, 'secundaria': sec, 'total': pri + sec}
+            pri5 = row['pri5_disp'] or 0
+            pri4 = row['pri4_disp'] or 0
+            sec = row['sec_disp'] or 0
+            return {'primaria_ps5': pri5, 'primaria_ps4': pri4, 'secundaria': sec, 'total': pri5 + pri4 + sec}

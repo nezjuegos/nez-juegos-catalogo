@@ -580,6 +580,8 @@ def _deliver_ps_order(order_id):
     tipo = (order.get('tipo_producto') or '').lower()
     if 'secundaria' in tipo:
         sale_type = 'secundaria'
+    elif 'primaria' in tipo and 'ps4' in tipo:
+        sale_type = 'primaria_ps4'
     else:
         sale_type = 'primaria'
     
@@ -709,10 +711,11 @@ def api_admin_add_ps_slots(account_id):
     """Add more primaria/secundaria slots to an existing account."""
     data = request.json or {}
     primaria_add = data.get('primaria_add', 0)
+    primaria_ps4_add = data.get('primaria_ps4_add', 0)
     secundaria_add = data.get('secundaria_add', 0)
-    if primaria_add == 0 and secundaria_add == 0:
+    if primaria_add == 0 and primaria_ps4_add == 0 and secundaria_add == 0:
         return jsonify({"error": "Especificá cuántos slots agregar."}), 400
-    success = db.add_ps_slots(account_id, primaria_add=primaria_add, secundaria_add=secundaria_add)
+    success = db.add_ps_slots(account_id, primaria_add=primaria_add, primaria_ps4_add=primaria_ps4_add, secundaria_add=secundaria_add)
     if success:
         return jsonify({"status": "ok"})
     return jsonify({"error": "Cuenta no encontrada."}), 404
