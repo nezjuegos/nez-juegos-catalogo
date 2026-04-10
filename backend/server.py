@@ -494,18 +494,18 @@ def api_uala_create():
             if not data.get(field):
                 return jsonify({"error": f"Campo requerido: {field}"}), 400
         
-        order_id = db.create_order(
-            game_id=data['game_id'],
-            game_titulo=data['game_titulo'],
-            game_plataforma=data.get('game_plataforma', ''),
-            tipo_producto=data['tipo_producto'],
-            buyer_email=data['buyer_email'],
-            buyer_phone=data.get('buyer_phone'),
-            payment_method='uala',
-            precio_base=data['precio_base'],
-            precio_cobrado=data['precio_cobrado'],
-            surcharge=data.get('surcharge', 0)
-        )
+        order_id = db.create_order({
+            'game_id': data['game_id'],
+            'game_titulo': data['game_titulo'],
+            'game_plataforma': data.get('game_plataforma', ''),
+            'tipo_producto': data['tipo_producto'],
+            'buyer_email': data['buyer_email'],
+            'buyer_phone': data.get('buyer_phone'),
+            'payment_method': 'uala',
+            'precio_base': data['precio_base'],
+            'precio_cobrado': data['precio_cobrado'],
+            'surcharge': data.get('surcharge', 0)
+        })
         order = db.get_order(order_id)
     
     external_ref = f"nez-{order_id}"
