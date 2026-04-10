@@ -3,11 +3,16 @@ import asyncio
 import os
 import json
 import time
+import logging
 from functools import wraps
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, send_file, make_response
 
 from scraper import NintendoScraper
 from database import Database
+from uala_bis import UalaBis, calcular_precio_con_uala
+from email_sender import send_ps_credentials
+
+logging.basicConfig(level=logging.INFO)
 
 # --- App Setup ---
 app = Flask(__name__)
@@ -383,12 +388,311 @@ def api_public_title_tags():
     return jsonify([t['keyword'] for t in tags])
 
 
+# --- Public Checkout API ---
+
+@app.route('/api/games/<slug>')
+def api_get_game_by_slug(slug):
+    """Get game data by URL slug."""
+    game = db.get_game_by_slug(slug)
+    if not game:
+        return jsonify({"error": "Juego no encontrado"}), 404
+    # Add slug to response
+    game['slug'] = db.generate_slug(game['titulo'], game.get('plataforma', ''))
+    return jsonify(game)
+
+@app.route('/api/orders', methods=['POST'])
+def api_create_order():
+    """Create a new order from checkout."""
+    data = request.json
+    if not data:
+        return jsonify({"error": "Datos requeridos"}), 400
+    
+    required = ['game_titulo', 'tipo_producto', 'buyer_email', 'payment_method', 'precio_base', 'precio_cobrado']
+    for field in required:
+        if not data.get(field):
+            return jsonify({"error": f"Campo requerido: {field}"}), 400
+    
+    # Validate payment method
+    if data['payment_method'] not in ('transferencia', 'uala'):
+        return jsonify({"error": "Método de pago inválido"}), 400
+    
+    order_id = db.create_order(data)
+    return jsonify({"status": "ok", "order_id": order_id})
+
+@app.route('/api/orders/<int:order_id>/comprobante', methods=['POST'])
+def api_upload_comprobante(order_id):
+    """Upload payment receipt (image/PDF) for a transfer order."""
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    
+    comprobante_ref = request.form.get('comprobante_ref')
+    comprobante_file = None
+    
+    file = request.files.get('comprobante')
+    if file and file.filename:
+        # Validate file size (5MB max)
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > 5 * 1024 * 1024:
+            return jsonify({"error": "Archivo demasiado grande (máx 5MB)"}), 400
+        
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ('.jpg', '.jpeg', '.png', '.pdf', '.webp'):
+            return jsonify({"error": "Formato no permitido. Usá JPG, PNG, PDF o WEBP"}), 400
+        
+        filename = f"comprobante_{order_id}_{int(time.time())}{ext}"
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        comprobante_file = filename
+    
+    if not comprobante_ref and not comprobante_file:
+        return jsonify({"error": "Debés enviar al menos un ID de comprobante o un archivo"}), 400
+    
+    db.update_order_comprobante(order_id, comprobante_ref, comprobante_file)
+    return jsonify({"status": "ok"})
+
+@app.route('/api/orders/<int:order_id>/status')
+def api_order_status(order_id):
+    """Public endpoint to check order status."""
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    return jsonify({
+        "order_id": order['id'],
+        "status": order['payment_status'],
+        "game": order['game_titulo'],
+        "tipo": order['tipo_producto'],
+        "payment_method": order['payment_method'],
+        "created_at": order['created_at']
+    })
+
+
+# --- Ualá Bis Payment API ---
+
+uala = UalaBis()
+
+@app.route('/api/uala/create', methods=['POST'])
+def api_uala_create():
+    """Create a Ualá Bis checkout and return the payment link."""
+    data = request.json
+    if not data or not data.get('order_id'):
+        return jsonify({"error": "order_id requerido"}), 400
+    
+    order = db.get_order(data['order_id'])
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    
+    external_ref = f"nez-{order['id']}"
+    base_url = request.url_root.rstrip('/')
+    # Use X-Forwarded headers if behind proxy
+    if request.headers.get('X-Forwarded-Proto') == 'https':
+        base_url = base_url.replace('http://', 'https://')
+    
+    try:
+        result = uala.create_checkout(
+            amount=order['precio_cobrado'],
+            description=f"Nez Juegos: {order['game_titulo']} ({order['tipo_producto']})",
+            external_ref=external_ref,
+            base_url=base_url
+        )
+        
+        # Save Ualá UUID in order
+        db.update_order_uala(order['id'], result.get('uuid'))
+        
+        return jsonify({
+            "status": "ok",
+            "checkout_link": result['links']['checkout_link']
+        })
+    except Exception as e:
+        logging.error(f"Ualá Bis create error: {e}")
+        return jsonify({"error": "Error al crear el pago. Intentá nuevamente."}), 500
+
+@app.route('/api/uala/webhook', methods=['POST'])
+def api_uala_webhook():
+    """Receive payment notification from Ualá Bis.
+    Expected payload: { uuid, external_reference, status, created_date, api_version }
+    Must respond 200 or Ualá retries 3 more times.
+    """
+    data = request.json
+    if not data:
+        return '', 200  # Accept but ignore malformed
+    
+    logging.info(f"Ualá webhook received: {json.dumps(data)}")
+    
+    external_ref = data.get('external_reference', '')
+    status = data.get('status', '').upper()
+    
+    order = db.find_order_by_uala_ref(external_ref)
+    if not order:
+        logging.warning(f"Ualá webhook: order not found for ref {external_ref}")
+        return '', 200
+    
+    if status == 'APPROVED':
+        # Check if PS game -> auto-deliver
+        plat = (order.get('game_plataforma') or '').upper()
+        is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
+        
+        if is_ps:
+            _deliver_ps_order(order['id'])
+        else:
+            # Nintendo or other: mark as approved, wait for manual WhatsApp contact
+            db.update_order_status(order['id'], 'aprobado')
+    elif status in ('DECLINED', 'REJECTED'):
+        db.update_order_status(order['id'], 'rechazado')
+    
+    return '', 200
+
+
+def _deliver_ps_order(order_id):
+    """Internal: Deliver PS credentials via email."""
+    order = db.get_order(order_id)
+    if not order:
+        return False
+    
+    account, key_index, activation_key = db.get_available_ps_key()
+    if not account:
+        logging.error(f"No PS stock available for order {order_id}")
+        db.update_order_status(order_id, 'error_stock')
+        return False
+    
+    success = send_ps_credentials(
+        to_email=order['buyer_email'],
+        game_name=order['game_titulo'],
+        account_email=account['email'],
+        account_password=account['password'],
+        activation_key=activation_key
+    )
+    
+    if success:
+        db.log_ps_delivery(account['id'], order_id, key_index, activation_key)
+        db.update_order_status(order_id, 'entregado')
+        return True
+    else:
+        logging.error(f"Email send failed for order {order_id}")
+        db.update_order_status(order_id, 'error_email')
+        return False
+
+
+# --- Admin: Orders ---
+
+@app.route('/api/admin/orders')
+@admin_required
+def api_admin_orders():
+    status_filter = request.args.get('status', 'todos')
+    orders = db.get_orders(status_filter=status_filter)
+    return jsonify({"orders": orders})
+
+@app.route('/api/admin/orders/<int:order_id>')
+@admin_required
+def api_admin_order_detail(order_id):
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    return jsonify(order)
+
+@app.route('/api/admin/orders/<int:order_id>/approve', methods=['POST'])
+@admin_required
+def api_admin_approve_order(order_id):
+    """Approve a transfer order. If PS, auto-deliver."""
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    if order['payment_status'] not in ('pendiente',):
+        return jsonify({"error": f"No se puede aprobar un pedido con estado '{order['payment_status']}'"}), 400
+    
+    plat = (order.get('game_plataforma') or '').upper()
+    is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
+    
+    if is_ps:
+        success = _deliver_ps_order(order_id)
+        if success:
+            return jsonify({"status": "ok", "message": "Pedido aprobado y credenciales enviadas por email."})
+        else:
+            return jsonify({"error": "Error en la entrega automática. Revisá el stock de cuentas PS."}), 500
+    else:
+        # Nintendo: mark as approved, admin contacts via WhatsApp manually
+        db.update_order_status(order_id, 'aprobado')
+        phone = order.get('buyer_phone', 'No proporcionado')
+        return jsonify({"status": "ok", "message": f"Pedido aprobado. Contactar al cliente por WhatsApp: {phone}"})
+
+@app.route('/api/admin/orders/<int:order_id>/reject', methods=['POST'])
+@admin_required
+def api_admin_reject_order(order_id):
+    db.update_order_status(order_id, 'rechazado')
+    return jsonify({"status": "ok"})
+
+@app.route('/api/admin/orders/<int:order_id>/deliver', methods=['POST'])
+@admin_required
+def api_admin_manual_deliver(order_id):
+    """Mark a Nintendo order as delivered (after WhatsApp contact)."""
+    db.update_order_status(order_id, 'entregado')
+    return jsonify({"status": "ok"})
+
+
+# --- Admin: PS Account Pool ---
+
+@app.route('/api/admin/ps-accounts', methods=['GET', 'POST'])
+@admin_required
+def api_admin_ps_accounts():
+    if request.method == 'GET':
+        accounts = db.get_ps_accounts()
+        stock = db.get_ps_stock_count()
+        return jsonify({"accounts": accounts, "stock_disponible": stock})
+    else:
+        data = request.json
+        if not data or not data.get('email') or not data.get('password') or not data.get('activation_keys'):
+            return jsonify({"error": "Email, password y activation_keys requeridos"}), 400
+        
+        keys = data['activation_keys']
+        if isinstance(keys, str):
+            # Allow newline-separated input
+            keys = [k.strip() for k in keys.split('\n') if k.strip()]
+        
+        if len(keys) != 10:
+            return jsonify({"error": f"Se requieren exactamente 10 activation keys, recibí {len(keys)}"}), 400
+        
+        new_id = db.add_ps_account(data['email'], data['password'], keys, data.get('notes', ''))
+        return jsonify({"status": "ok", "id": new_id})
+
+@app.route('/api/admin/ps-accounts/<int:account_id>', methods=['DELETE'])
+@admin_required
+def api_admin_delete_ps_account(account_id):
+    success = db.delete_ps_account(account_id)
+    if success:
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "No se puede eliminar una cuenta con keys ya usadas."}), 400
+
+
+# --- Ualá Bis Surcharge Calculator (public) ---
+
+@app.route('/api/uala/surcharge')
+def api_uala_surcharge():
+    """Calculate Ualá Bis surcharge for a given base price."""
+    precio_base = request.args.get('precio', type=int)
+    if not precio_base:
+        return jsonify({"error": "precio requerido"}), 400
+    precio_total, surcharge = calcular_precio_con_uala(precio_base)
+    return jsonify({"precio_base": precio_base, "surcharge": surcharge, "precio_total": precio_total})
+
+
 # --- Static Fallback ---
 @app.route('/')
 @app.route('/<path:path>')
 def serve_static(path=''):
     if not path or path == 'index' or path == 'index.html': 
         return send_from_directory(UI_DIR, 'index.html')
+    
+    # Clean URL routes for new pages
+    if path.startswith('juegos/') and path != 'juegos.html':
+        # Individual game page: /juegos/<slug>
+        return send_from_directory(UI_DIR, 'juego.html')
+    
+    if path == 'checkout':
+        return send_from_directory(UI_DIR, 'checkout.html')
+    
+    if path == 'terminos-y-condiciones':
+        return send_from_directory(UI_DIR, 'terminos.html')
         
     # Security: If trying to access admin views, check auth first
     if path.startswith('admin') and not path.startswith('admin/login'):

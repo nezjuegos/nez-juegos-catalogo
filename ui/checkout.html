@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Nez Juegos</title>
+    <meta name="description" content="Finalizá tu compra en Nez Juegos. Pago por transferencia bancaria o tarjeta.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #131318;
+            --primary: #8b5cf6;
+            --secondary: #d946ef;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; background-image: radial-gradient(circle at 100% 0%, rgba(139,92,246,0.05) 0%, transparent 40%); }
+
+        .nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px); background: rgba(10,10,12,0.8);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-logo {
+            font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.3rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+
+        .back-link { color: var(--primary); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 1.25rem; }
+
+        h1 { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.5rem; margin-bottom: 1.25rem; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem; }
+        .card h2 { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 600; color: var(--primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        .order-summary { display: flex; gap: 1rem; align-items: center; }
+        .order-summary img { width: 60px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+        .order-summary .placeholder { width: 60px; height: 80px; border-radius: 8px; background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .order-summary .details { flex: 1; }
+        .order-summary .game-name { font-weight: 700; font-size: 1rem; }
+        .order-summary .game-type { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem; }
+        .order-summary .game-price { font-weight: 800; font-size: 1.15rem; color: var(--primary); margin-top: 0.25rem; }
+
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem; margin-top: 0.75rem; }
+        input[type="email"], input[type="tel"], input[type="text"] {
+            width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px;
+            border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+            color: var(--text-main); font-size: 0.95rem; outline: none; transition: border 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        .payment-options { display: flex; flex-direction: column; gap: 0.75rem; }
+        .payment-option {
+            display: flex; align-items: center; gap: 0.75rem; padding: 1rem;
+            border: 2px solid var(--border); border-radius: var(--radius-sm);
+            cursor: pointer; transition: border-color 0.2s, background 0.2s;
+        }
+        .payment-option:hover { border-color: rgba(139,92,246,0.3); }
+        .payment-option.selected { border-color: var(--primary); background: rgba(139,92,246,0.05); }
+        .payment-option input[type="radio"] { display: none; }
+        .payment-option .radio-dot {
+            width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .payment-option.selected .radio-dot { border-color: var(--primary); }
+        .payment-option.selected .radio-dot::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+        .payment-option .pay-info { flex: 1; }
+        .payment-option .pay-name { font-weight: 700; font-size: 0.95rem; }
+        .payment-option .pay-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .payment-option .pay-badge { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .badge-free { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-surcharge { background: rgba(234,179,8,0.15); color: #eab308; }
+
+        .transfer-details {
+            background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.2);
+            border-radius: 8px; padding: 1rem; margin-top: 0.75rem; display: none;
+        }
+        .transfer-details .label-sm { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .transfer-details .value-mono { font-family: 'Courier New', monospace; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; word-break: break-all; }
+        .copy-btn { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--primary); border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.7rem; cursor: pointer; margin-left: 0.5rem; }
+
+        .uala-details { margin-top: 0.75rem; display: none; }
+        .surcharge-breakdown { background: rgba(234,179,8,0.05); border: 1px solid rgba(234,179,8,0.15); border-radius: 8px; padding: 0.75rem; font-size: 0.85rem; }
+        .surcharge-breakdown .total { font-weight: 800; font-size: 1.05rem; color: var(--warning); margin-top: 0.35rem; }
+
+        .comprobante-section { margin-top: 1rem; display: none; }
+        .file-upload {
+            border: 2px dashed var(--border); border-radius: 8px; padding: 1rem;
+            text-align: center; cursor: pointer; transition: border-color 0.2s;
+        }
+        .file-upload:hover { border-color: var(--primary); }
+        .file-upload input { display: none; }
+        .file-upload .label { color: var(--text-muted); font-size: 0.85rem; }
+        .file-upload .label strong { color: var(--primary); }
+        .or-divider { text-align: center; color: var(--text-muted); font-size: 0.8rm; margin: 0.5rem 0; font-weight: 600; }
+
+        .btn-submit {
+            width: 100%; padding: 0.85rem; border: none; border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white; font-size: 1rem; font-weight: 800; cursor: pointer;
+            margin-top: 1.25rem; transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(139,92,246,0.4); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .error-text { color: var(--error); font-size: 0.8rem; margin-top: 0.25rem; }
+
+        /* Confirmation screen */
+        .confirmation { text-align: center; padding: 2rem 0; }
+        .confirmation .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .confirmation h2 { font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin-bottom: 0.75rem; }
+        .confirmation p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+        .confirmation .order-id { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); border-radius: 8px; padding: 0.5rem 1rem; display: inline-block; margin: 1rem 0; font-family: 'Courier New', monospace; font-weight: 700; }
+        .confirmation .status-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; margin: 0.75rem 0; }
+        .status-pendiente { background: rgba(234,179,8,0.15); color: #eab308; }
+        .status-entregado { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .status-aprobado { background: rgba(59,130,246,0.15); color: #3b82f6; }
+
+        /* WhatsApp Float */
+        .whatsapp-float {
+            position: fixed; bottom: 1.5rem; right: 1.5rem;
+            width: 56px; height: 56px; background: #25d366; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(37,211,102,0.4);
+            z-index: 999; transition: transform 0.2s; text-decoration: none;
+        }
+        .whatsapp-float:hover { transform: scale(1.1); }
+        .whatsapp-float svg { width: 28px; height: 28px; fill: white; }
+
+        @media (max-width: 640px) {
+            .container { padding: 1rem 1rem 3rem; }
+            .nav { padding: 0.75rem 1rem; }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-logo">Nez Juegos</a>
+        <div class="nav-links">
+            <a href="/juegos">Juegos</a>
+            <a href="/packs">Packs</a>
+        </div>
+    </nav>
+
+    <div class="container" id="mainContainer">
+        <div id="checkoutForm">
+            <a href="javascript:history.back()" class="back-link">← Volver</a>
+            <h1>Finalizar compra</h1>
+
+            <!-- Order Summary -->
+            <div class="card" id="summaryCard">
+                <h2>📦 Tu pedido</h2>
+                <div class="order-summary" id="orderSummary">
+                    <div class="placeholder">🎮</div>
+                    <div class="details">
+                        <div class="game-name">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buyer Info -->
+            <div class="card">
+                <h2>👤 Tus datos</h2>
+                <label for="buyerEmail">Email *</label>
+                <input type="email" id="buyerEmail" placeholder="tu@email.com" required>
+
+                <div id="phoneField" style="display: none;">
+                    <label for="buyerPhone">WhatsApp (para entrega por WhatsApp) *</label>
+                    <input type="tel" id="buyerPhone" placeholder="+54 9 11 1234-5678">
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        Te contactaremos por WhatsApp para la entrega (horario 9AM–10PM)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="card">
+                <h2>💳 Método de pago</h2>
+                <div class="payment-options">
+                    <div class="payment-option selected" onclick="selectPayment('transferencia')">
+                        <input type="radio" name="payment" value="transferencia" checked>
+                        <div class="radio-dot"></div>
+                        <div class="pay-info">
+                            <div class="pay-name">🏦 Transferencia bancaria</div>
+                            <div class="pay-desc">CBU o Alias · Aprobación manual</div>
+                        </div>
+                        <span class="pay-badge badge-free">Sin recargo</span>
+                    </div>
+                    <div class="payment-option" onclick="selectPayment('uala')">
+                        <input type="radio" name="payment" value="uala">
+                        <div class="radio-dot"></div>
+                        <div class="pay-info">
+                            <div class="pay-name">💳 Tarjeta (Ualá Bis)</div>
+                            <div class="pay-desc">Crédito o débito · Aprobación inmediata</div>
+                        </div>
+                        <span class="pay-badge badge-surcharge">+6.3%</span>
+                    </div>
+                </div>
+
+                <!-- Transfer details -->
+                <div class="transfer-details" id="transferDetails">
+                    <div class="label-sm">CBU</div>
+                    <div class="value-mono">3840200500000040997241 <button class="copy-btn" onclick="copyText('3840200500000040997241')">Copiar</button></div>
+                    <div class="label-sm">Alias</div>
+                    <div class="value-mono">miguel.nez.uala <button class="copy-btn" onclick="copyText('miguel.nez.uala')">Copiar</button></div>
+                    <div class="label-sm">Titular</div>
+                    <div class="value-mono">Miguel Martinez Giovanardi</div>
+                </div>
+
+                <!-- Ualá details -->
+                <div class="uala-details" id="ualaDetails">
+                    <div class="surcharge-breakdown">
+                        <div>Precio base: <strong id="ualaBase">$0</strong></div>
+                        <div>Comisión procesador: <strong id="ualaSurcharge">$0</strong></div>
+                        <div class="total">Total a pagar: <span id="ualaTotal">$0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comprobante (transfer only) -->
+            <div class="card comprobante-section" id="comprobanteSection">
+                <h2>📎 Comprobante de pago</h2>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Enviá al menos uno: ID de comprobante o imagen/PDF del mismo.
+                </p>
+
+                <label for="comprobanteRef">ID de comprobante / Nro. de operación</label>
+                <input type="text" id="comprobanteRef" placeholder="Ej: OP-123456789">
+
+                <div class="or-divider">— Y/O —</div>
+
+                <div class="file-upload" onclick="document.getElementById('comprobanteFile').click()">
+                    <input type="file" id="comprobanteFile" accept=".jpg,.jpeg,.png,.pdf,.webp">
+                    <div class="label" id="fileLabel">📁 <strong>Click para subir</strong> comprobante (JPG, PNG, PDF)</div>
+                </div>
+                <div id="comprobanteError" class="error-text" style="display:none;"></div>
+            </div>
+
+            <div id="formError" class="error-text" style="display: none; text-align: center; margin-top: 0.5rem;"></div>
+            <button class="btn-submit" id="submitBtn" onclick="submitOrder()">Confirmar pedido</button>
+            <p style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
+                Al confirmar, aceptás nuestros <a href="/terminos-y-condiciones" style="color: var(--primary);">Términos y Condiciones</a>
+            </p>
+        </div>
+
+        <!-- Confirmation (hidden by default) -->
+        <div id="confirmationScreen" style="display: none;"></div>
+    </div>
+
+    <!-- WhatsApp Float -->
+    <a href="https://wa.me/5491160120337?text=Hola%2C%20tengo%20una%20consulta%20sobre%20mi%20compra" target="_blank" class="whatsapp-float" title="¿Dudas? Escribinos">
+        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+    </a>
+
+    <script>
+        let gameData = null;
+        let selectedPayment = 'transferencia';
+        let precioBase = 0;
+        let precioUala = 0;
+        let surchargeUala = 0;
+        let tipoProducto = '';
+        let isNintendo = false;
+
+        function formatPrice(val) {
+            if (!val) return '$0';
+            return '$' + val.toLocaleString('es-AR');
+        }
+
+        function gameIsPS(game) {
+            const plat = game.plataforma || '';
+            return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
+        }
+
+        // Type display names
+        const typeNames = {
+            'primaria': 'Cuenta Primaria',
+            'secundaria': 'Cuenta Secundaria',
+            'codigo_digital': 'Código Digital',
+            'alquiler': 'Alquiler 30 días',
+            'primaria_ps5': 'Primaria PS5',
+            'primaria_ps4': 'Primaria PS4',
+            'secundaria_ps5': 'Secundaria PS5'
+        };
+
+        // Parse URL params
+        const params = new URLSearchParams(window.location.search);
+        const gameSlug = params.get('game');
+        const gameType = params.get('tipo');
+        const urlStatus = params.get('status');
+        const urlRef = params.get('ref');
+
+        // If returning from Ualá Bis callback
+        if (urlStatus) {
+            document.getElementById('checkoutForm').style.display = 'none';
+            const conf = document.getElementById('confirmationScreen');
+            conf.style.display = 'block';
+            if (urlStatus === 'success') {
+                conf.innerHTML = `
+                    <div class="confirmation">
+                        <div class="icon">✅</div>
+                        <h2>¡Pago procesado!</h2>
+                        <p>Estamos procesando tu pedido. Si es un juego de PlayStation, recibirás las credenciales por email en unos minutos.</p>
+                        <p style="margin-top: 0.5rem;">Si es un juego de Nintendo, te contactaremos por WhatsApp.</p>
+                        <a href="/juegos" style="color: var(--primary); display: inline-block; margin-top: 1.5rem; font-weight: 600;">← Volver a juegos</a>
+                    </div>`;
+            } else {
+                conf.innerHTML = `
+                    <div class="confirmation">
+                        <div class="icon">❌</div>
+                        <h2>Pago no completado</h2>
+                        <p>Hubo un problema con el pago. Podés intentar nuevamente o elegir otro método de pago.</p>
+                        <a href="javascript:history.back()" style="color: var(--primary); display: inline-block; margin-top: 1.5rem; font-weight: 600;">← Intentar de nuevo</a>
+                    </div>`;
+            }
+        } else if (gameSlug && gameType) {
+            // Load game data
+            fetch(`/api/games/${gameSlug}`)
+                .then(r => r.json())
+                .then(game => {
+                    gameData = game;
+                    tipoProducto = gameType;
+                    isNintendo = !gameIsPS(game);
+
+                    // Get the price for selected type
+                    const offerKey = 'oferta_' + gameType;
+                    const reg = game.precios[gameType];
+                    const off = game.precios[offerKey];
+                    precioBase = off || reg || 0;
+
+                    // Calculate Ualá surcharge
+                    fetch(`/api/uala/surcharge?precio=${precioBase}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            precioUala = data.precio_total;
+                            surchargeUala = data.surcharge;
+                            document.getElementById('ualaBase').textContent = formatPrice(precioBase);
+                            document.getElementById('ualaSurcharge').textContent = formatPrice(surchargeUala);
+                            document.getElementById('ualaTotal').textContent = formatPrice(precioUala);
+                        });
+
+                    // Render summary
+                    const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
+                    const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
+                    document.getElementById('orderSummary').innerHTML = `
+                        ${cover ? `<img src="${cover}" alt="${game.titulo}">` : '<div class="placeholder">🎮</div>'}
+                        <div class="details">
+                            <div class="game-name">${game.titulo}</div>
+                            <div class="game-type">${platDisplay} · ${typeNames[gameType] || gameType}</div>
+                            <div class="game-price">${formatPrice(precioBase)}</div>
+                        </div>`;
+
+                    // Show phone field for Nintendo
+                    if (isNintendo) {
+                        document.getElementById('phoneField').style.display = 'block';
+                    }
+
+                    // Show transfer details by default
+                    selectPayment('transferencia');
+                })
+                .catch(() => {
+                    document.getElementById('mainContainer').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted);"><h2>Juego no encontrado</h2><a href="/juegos" style="color:var(--primary);">← Volver al catálogo</a></div>';
+                });
+        } else {
+            document.getElementById('mainContainer').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted);"><h2>Pedido inválido</h2><p>Seleccioná un juego desde el catálogo.</p><a href="/juegos" style="color:var(--primary);">← Ir al catálogo</a></div>';
+        }
+
+        function selectPayment(method) {
+            selectedPayment = method;
+            document.querySelectorAll('.payment-option').forEach(opt => {
+                const radio = opt.querySelector('input[type="radio"]');
+                if (radio.value === method) {
+                    opt.classList.add('selected');
+                    radio.checked = true;
+                } else {
+                    opt.classList.remove('selected');
+                    radio.checked = false;
+                }
+            });
+
+            document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
+            document.getElementById('ualaDetails').style.display = method === 'uala' ? 'block' : 'none';
+            document.getElementById('comprobanteSection').style.display = method === 'transferencia' ? 'block' : 'none';
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Brief visual feedback
+                event.target.textContent = '✓';
+                setTimeout(() => event.target.textContent = 'Copiar', 1500);
+            });
+        }
+
+        // File upload visual feedback
+        document.getElementById('comprobanteFile').addEventListener('change', function () {
+            const label = document.getElementById('fileLabel');
+            if (this.files.length > 0) {
+                label.innerHTML = `✅ <strong>${this.files[0].name}</strong> (${(this.files[0].size / 1024).toFixed(0)} KB)`;
+            } else {
+                label.innerHTML = '📁 <strong>Click para subir</strong> comprobante (JPG, PNG, PDF)';
+            }
+        });
+
+        async function submitOrder() {
+            const btn = document.getElementById('submitBtn');
+            const errorDiv = document.getElementById('formError');
+            errorDiv.style.display = 'none';
+
+            // Validate email
+            const email = document.getElementById('buyerEmail').value.trim();
+            if (!email || !email.includes('@')) {
+                errorDiv.textContent = 'Ingresá un email válido.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Validate phone for Nintendo
+            let phone = null;
+            if (isNintendo) {
+                phone = document.getElementById('buyerPhone').value.trim();
+                if (!phone || phone.length < 8) {
+                    errorDiv.textContent = 'Ingresá un número de WhatsApp válido para que podamos contactarte.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+            }
+
+            // Validate comprobante for transferencia
+            if (selectedPayment === 'transferencia') {
+                const ref = document.getElementById('comprobanteRef').value.trim();
+                const file = document.getElementById('comprobanteFile').files[0];
+                if (!ref && !file) {
+                    document.getElementById('comprobanteError').textContent = 'Debés enviar al menos un ID de comprobante o imagen.';
+                    document.getElementById('comprobanteError').style.display = 'block';
+                    return;
+                }
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+
+            try {
+                const precioCobrado = selectedPayment === 'uala' ? precioUala : precioBase;
+                const surcharge = selectedPayment === 'uala' ? surchargeUala : 0;
+
+                // 1. Create order
+                const orderResp = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: gameData.id,
+                        game_titulo: gameData.titulo,
+                        game_plataforma: gameData.plataforma,
+                        tipo_producto: tipoProducto,
+                        buyer_email: email,
+                        buyer_phone: phone,
+                        payment_method: selectedPayment,
+                        precio_base: precioBase,
+                        precio_cobrado: precioCobrado,
+                        surcharge: surcharge
+                    })
+                });
+                const orderData = await orderResp.json();
+                if (!orderResp.ok) throw new Error(orderData.error);
+
+                const orderId = orderData.order_id;
+
+                // 2. If transferencia, upload comprobante
+                if (selectedPayment === 'transferencia') {
+                    const formData = new FormData();
+                    const ref = document.getElementById('comprobanteRef').value.trim();
+                    const file = document.getElementById('comprobanteFile').files[0];
+                    if (ref) formData.append('comprobante_ref', ref);
+                    if (file) formData.append('comprobante', file);
+
+                    const compResp = await fetch(`/api/orders/${orderId}/comprobante`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!compResp.ok) {
+                        const err = await compResp.json();
+                        throw new Error(err.error);
+                    }
+
+                    // Show confirmation for transferencia
+                    showConfirmation(orderId, 'transferencia');
+                }
+                // 3. If Ualá, create checkout and redirect
+                else if (selectedPayment === 'uala') {
+                    const ualaResp = await fetch('/api/uala/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_id: orderId })
+                    });
+                    const ualaData = await ualaResp.json();
+                    if (!ualaResp.ok) throw new Error(ualaData.error);
+
+                    // Redirect to Ualá Bis checkout
+                    window.location.href = ualaData.checkout_link;
+                }
+
+            } catch (err) {
+                errorDiv.textContent = err.message || 'Ocurrió un error. Intentá nuevamente.';
+                errorDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirmar pedido';
+            }
+        }
+
+        function showConfirmation(orderId, method) {
+            document.getElementById('checkoutForm').style.display = 'none';
+            const conf = document.getElementById('confirmationScreen');
+            conf.style.display = 'block';
+
+            let message = '';
+            let statusClass = '';
+            let statusText = '';
+
+            if (method === 'transferencia') {
+                if (isNintendo) {
+                    message = `<p>Tu pedido fue registrado. Una vez que aprobemos tu comprobante de pago, te contactaremos por WhatsApp para la entrega.</p>
+                               <p style="margin-top:0.5rem;">Horario de atención: <strong>9AM a 10PM</strong></p>`;
+                } else {
+                    message = `<p>Tu pedido fue registrado. Una vez que aprobemos tu comprobante de pago, recibirás las credenciales por email.</p>
+                               <p style="margin-top:0.5rem;">Revisá tu bandeja de entrada y carpeta de spam.</p>`;
+                }
+                statusClass = 'status-pendiente';
+                statusText = '⏳ Pendiente de aprobación';
+            }
+
+            conf.innerHTML = `
+                <div class="confirmation">
+                    <div class="icon">✅</div>
+                    <h2>¡Pedido registrado!</h2>
+                    <div class="order-id">Pedido #${orderId}</div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    ${message}
+                    <a href="/juegos" style="color: var(--primary); display: inline-block; margin-top: 1.5rem; font-weight: 600; text-decoration: none;">← Volver al catálogo</a>
+                </div>`;
+        }
+    </script>
+</body>
+
+</html>

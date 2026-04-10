@@ -158,6 +158,59 @@ class Database:
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('numero_whatsapp', '5491160120337')")
             # If it exists but is empty, set the default number
             cursor.execute("UPDATE config SET value = '5491160120337' WHERE key = 'numero_whatsapp' AND (value IS NULL OR value = '')")
+
+            # Table: orders (Checkout orders)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id INTEGER,
+                game_titulo TEXT NOT NULL,
+                game_plataforma TEXT,
+                tipo_producto TEXT NOT NULL,
+                buyer_email TEXT NOT NULL,
+                buyer_phone TEXT,
+                payment_method TEXT NOT NULL,
+                payment_status TEXT DEFAULT 'pendiente',
+                comprobante_ref TEXT,
+                comprobante_file TEXT,
+                precio_base INTEGER NOT NULL,
+                precio_cobrado INTEGER NOT NULL,
+                surcharge INTEGER DEFAULT 0,
+                uala_order_uuid TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP,
+                delivered_at TIMESTAMP
+            )
+            ''')
+
+            # Table: ps_accounts (Pool of PlayStation accounts with 10 activation keys each)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ps_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                password TEXT NOT NULL,
+                activation_keys TEXT NOT NULL,
+                keys_used INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'disponible',
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT
+            )
+            ''')
+
+            # Table: ps_delivery_log (Tracks each individual key delivery)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ps_delivery_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ps_account_id INTEGER NOT NULL,
+                order_id INTEGER NOT NULL,
+                key_index INTEGER NOT NULL,
+                activation_key TEXT NOT NULL,
+                delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ps_account_id) REFERENCES ps_accounts(id),
+                FOREIGN KEY (order_id) REFERENCES orders(id)
+            )
+            ''')
                 
             conn.commit()
 
@@ -615,3 +668,197 @@ class Database:
         """Remove diacritics/accents from a string for accent-insensitive comparison."""
         nfkd = unicodedata.normalize('NFKD', text)
         return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+    @staticmethod
+    def generate_slug(titulo, plataforma=''):
+        """Generate a URL-friendly slug from game title + platform."""
+        import re
+        text = f"{titulo} {plataforma}".strip()
+        # Remove accents
+        nfkd = unicodedata.normalize('NFKD', text)
+        text = ''.join(c for c in nfkd if not unicodedata.combining(c))
+        text = text.lower()
+        text = re.sub(r'[^a-z0-9\s-]', '', text)
+        text = re.sub(r'[\s-]+', '-', text).strip('-')
+        return text
+
+    # --- GAME BY SLUG ---
+    def get_game_by_slug(self, slug):
+        """Find a game whose generated slug matches the provided slug."""
+        all_games = self.get_all_juegos()
+        for game in all_games:
+            game_slug = self.generate_slug(game['titulo'], game.get('plataforma', ''))
+            if game_slug == slug:
+                return game
+        return None
+
+    # --- ORDERS CRUD ---
+    def create_order(self, data):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO orders (game_id, game_titulo, game_plataforma, tipo_producto,
+                                    buyer_email, buyer_phone, payment_method, payment_status,
+                                    precio_base, precio_cobrado, surcharge, uala_order_uuid, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data.get('game_id'),
+                data['game_titulo'],
+                data.get('game_plataforma'),
+                data['tipo_producto'],
+                data['buyer_email'],
+                data.get('buyer_phone'),
+                data['payment_method'],
+                data.get('payment_status', 'pendiente'),
+                data['precio_base'],
+                data['precio_cobrado'],
+                data.get('surcharge', 0),
+                data.get('uala_order_uuid'),
+                data.get('notes')
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_order(self, order_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM orders WHERE id = ?', (order_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_orders(self, status_filter=None, limit=100):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if status_filter and status_filter != 'todos':
+                cursor.execute('SELECT * FROM orders WHERE payment_status = ? ORDER BY created_at DESC LIMIT ?', (status_filter, limit))
+            else:
+                cursor.execute('SELECT * FROM orders ORDER BY created_at DESC LIMIT ?', (limit,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_order_status(self, order_id, status):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            delivered_at = now if status == 'entregado' else None
+            cursor.execute('''
+                UPDATE orders SET payment_status = ?, updated_at = ?, delivered_at = COALESCE(?, delivered_at)
+                WHERE id = ?
+            ''', (status, now, delivered_at, order_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_order_comprobante(self, order_id, comprobante_ref=None, comprobante_file=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('''
+                UPDATE orders SET comprobante_ref = COALESCE(?, comprobante_ref),
+                                  comprobante_file = COALESCE(?, comprobante_file),
+                                  updated_at = ?
+                WHERE id = ?
+            ''', (comprobante_ref, comprobante_file, now, order_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_order_uala(self, order_id, uala_uuid):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('UPDATE orders SET uala_order_uuid = ?, updated_at = ? WHERE id = ?',
+                           (uala_uuid, now, order_id))
+            conn.commit()
+
+    def find_order_by_uala_ref(self, external_ref):
+        """Find order by external_reference (which is 'nez-{order_id}')."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # external_ref format: nez-123
+            try:
+                order_id = int(external_ref.split('-')[1])
+            except (IndexError, ValueError):
+                return None
+            cursor.execute('SELECT * FROM orders WHERE id = ?', (order_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    # --- PS ACCOUNTS CRUD ---
+    def add_ps_account(self, email, password, keys_list, notes=''):
+        """Add a PS account with 10 activation keys (list of strings)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO ps_accounts (email, password, activation_keys, notes)
+                VALUES (?, ?, ?, ?)
+            ''', (email, password, json.dumps(keys_list), notes))
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_ps_accounts(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM ps_accounts ORDER BY added_at DESC')
+            results = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                d['activation_keys_list'] = json.loads(d['activation_keys'])
+                # Get delivery log for this account
+                cursor2 = conn.cursor()
+                cursor2.execute('SELECT * FROM ps_delivery_log WHERE ps_account_id = ? ORDER BY key_index', (d['id'],))
+                d['deliveries'] = [dict(r) for r in cursor2.fetchall()]
+                results.append(d)
+            return results
+
+    def get_available_ps_key(self):
+        """Get the next available activation key from the pool.
+        Returns (account_dict, key_index, activation_key) or (None, None, None) if no stock."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 ORDER BY added_at ASC LIMIT 1")
+            row = cursor.fetchone()
+            if not row:
+                return None, None, None
+            
+            account = dict(row)
+            keys = json.loads(account['activation_keys'])
+            key_index = account['keys_used']  # 0-indexed, next unused key
+            activation_key = keys[key_index]
+            
+            # Increment keys_used, mark as agotada if all 10 used
+            new_keys_used = key_index + 1
+            new_status = 'agotada' if new_keys_used >= 10 else 'disponible'
+            cursor.execute('UPDATE ps_accounts SET keys_used = ?, status = ? WHERE id = ?',
+                           (new_keys_used, new_status, account['id']))
+            conn.commit()
+            
+            return account, key_index, activation_key
+
+    def log_ps_delivery(self, ps_account_id, order_id, key_index, activation_key):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO ps_delivery_log (ps_account_id, order_id, key_index, activation_key)
+                VALUES (?, ?, ?, ?)
+            ''', (ps_account_id, order_id, key_index, activation_key))
+            conn.commit()
+
+    def delete_ps_account(self, account_id):
+        """Delete a PS account only if no keys have been used."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT keys_used FROM ps_accounts WHERE id = ?', (account_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            if row['keys_used'] > 0:
+                return False  # Cannot delete accounts with used keys
+            cursor.execute('DELETE FROM ps_accounts WHERE id = ?', (account_id,))
+            conn.commit()
+            return True
+
+    def get_ps_stock_count(self):
+        """Count total available keys across all accounts."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT SUM(10 - keys_used) as available FROM ps_accounts WHERE status = 'disponible'")
+            row = cursor.fetchone()
+            return row['available'] or 0

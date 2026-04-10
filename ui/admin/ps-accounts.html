@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuentas PS | Admin — Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c; --bg-card: #131318; --primary: #8b5cf6;
+            --secondary: #d946ef; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --border: #27272a; --success: #22c55e; --warning: #eab308; --error: #ef4444;
+            --radius-md: 16px; --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; }
+
+        .nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: rgba(10,10,12,0.9); }
+        .nav-logo { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.3rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+        .nav-links a:hover { color: var(--text-main); }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+        h1 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 0.5rem; }
+
+        .stock-banner {
+            background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(217,70,239,0.1));
+            border: 1px solid rgba(139,92,246,0.2);
+            border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem; display: flex; align-items: center; gap: 1rem;
+        }
+        .stock-banner .num { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .stock-banner .label { font-size: 0.85rem; color: var(--text-muted); }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem; }
+        .card h2 { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 0.75rem; }
+
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem; margin-top: 0.75rem; }
+        input[type="text"], input[type="email"], input[type="password"], textarea {
+            width: 100%; padding: 0.6rem 0.85rem; border-radius: 8px;
+            border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+            color: var(--text-main); font-size: 0.9rem; outline: none; resize: vertical;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); }
+        textarea { font-family: 'Courier New', monospace; min-height: 120px; }
+
+        .btn-add {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white; border: none; border-radius: var(--radius-sm);
+            padding: 0.65rem 1.5rem; font-weight: 700; cursor: pointer;
+            margin-top: 1rem; transition: transform 0.15s;
+        }
+        .btn-add:hover { transform: translateY(-1px); }
+
+        .account-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 0.75rem;
+        }
+        .account-header { display: flex; justify-content: space-between; align-items: center; }
+        .account-header .email { font-weight: 700; font-size: 0.95rem; }
+        .account-header .status { font-size: 0.75rem; }
+        .status-disponible { color: var(--success); }
+        .status-agotada { color: var(--error); }
+
+        .keys-bar { display: flex; gap: 2px; margin: 0.75rem 0 0.5rem; height: 6px; }
+        .key-slot { flex: 1; border-radius: 3px; background: rgba(34,197,94,0.3); }
+        .key-slot.used { background: var(--error); }
+        .key-slot.available { background: var(--success); }
+
+        .keys-info { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+        .keys-detail { display: none; background: rgba(10,10,12,0.5); border-radius: 8px; padding: 0.75rem; margin-top: 0.5rem; }
+        .keys-detail.visible { display: block; }
+        .key-row { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid rgba(39,39,42,0.3); font-size: 0.8rem; }
+        .key-row .key-value { font-family: 'Courier New', monospace; color: var(--text-main); }
+        .key-row .key-status { font-weight: 600; }
+        .key-row .key-used { color: var(--error); }
+        .key-row .key-available { color: var(--success); }
+
+        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; cursor: pointer; }
+        .toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        .delete-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: var(--error); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; cursor: pointer; margin-left: 0.5rem; }
+        .delete-btn:hover { background: rgba(239,68,68,0.1); }
+
+        .credential-row { display: flex; gap: 1rem; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted); }
+        .credential-row .label { font-weight: 600; }
+        .credential-row .value { font-family: 'Courier New', monospace; color: var(--text-main); }
+
+        .empty { text-align: center; padding: 2rem; color: var(--text-muted); }
+
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
+        .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; }
+        .toast.error { border-color: var(--error); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/admin" class="nav-logo">Nez Admin</a>
+        <div class="nav-links">
+            <a href="/admin">Dashboard</a>
+            <a href="/admin/orders">Pedidos</a>
+            <a href="/admin/ps-accounts" style="color: var(--primary);">Cuentas PS</a>
+            <a href="/admin/juegos">Juegos</a>
+            <a href="/admin/packs">Packs</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>🎮 Pool de Cuentas PlayStation</h1>
+
+        <div class="stock-banner">
+            <div>
+                <div class="num" id="stockCount">-</div>
+                <div class="label">claves disponibles</div>
+            </div>
+        </div>
+
+        <!-- Add new account -->
+        <div class="card">
+            <h2>➕ Agregar cuenta</h2>
+            <label for="accEmail">Email de la cuenta PS</label>
+            <input type="email" id="accEmail" placeholder="cuenta-ps@email.com">
+
+            <label for="accPassword">Contraseña</label>
+            <input type="password" id="accPassword" placeholder="Contraseña de la cuenta">
+            <button type="button" onclick="togglePassword()" style="background:none;border:none;color:var(--text-muted);font-size:0.75rem;cursor:pointer;margin-top:0.25rem;">👁️ Mostrar/Ocultar</button>
+
+            <label for="accKeys">10 Activation Keys (una por línea)</label>
+            <textarea id="accKeys" placeholder="KEY-AAAA-BBBB-CCCC&#10;KEY-DDDD-EEEE-FFFF&#10;KEY-GGGG-HHHH-IIII&#10;... (10 líneas)"></textarea>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Exactamente 10 claves, una por línea</p>
+
+            <label for="accNotes">Notas (opcional)</label>
+            <input type="text" id="accNotes" placeholder="Ej: Cuenta comprada 2026-04-01">
+
+            <button class="btn-add" onclick="addAccount()">Agregar cuenta al pool</button>
+            <div id="addError" style="color: var(--error); font-size: 0.85rem; margin-top: 0.5rem; display: none;"></div>
+        </div>
+
+        <!-- Accounts list -->
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 1.5rem 0 0.75rem;">Cuentas en el pool</h2>
+        <div id="accountsList"><div class="empty">Cargando...</div></div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        function togglePassword() {
+            const inp = document.getElementById('accPassword');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+        }
+
+        async function loadAccounts() {
+            try {
+                const resp = await fetch('/api/admin/ps-accounts');
+                const data = await resp.json();
+                document.getElementById('stockCount').textContent = data.stock_disponible || 0;
+                renderAccounts(data.accounts || []);
+            } catch (e) {
+                document.getElementById('accountsList').innerHTML = '<div class="empty">Error al cargar cuentas</div>';
+            }
+        }
+
+        function renderAccounts(accounts) {
+            const container = document.getElementById('accountsList');
+            if (accounts.length === 0) {
+                container.innerHTML = '<div class="empty">No hay cuentas en el pool. Agregá la primera arriba ☝️</div>';
+                return;
+            }
+
+            container.innerHTML = accounts.map((acc, i) => {
+                const keys = acc.activation_keys_list || [];
+                const deliveries = acc.deliveries || [];
+                const deliveredIndexes = new Set(deliveries.map(d => d.key_index));
+
+                // Build keys bar
+                let barHtml = '';
+                for (let k = 0; k < 10; k++) {
+                    barHtml += `<div class="key-slot ${k < acc.keys_used ? 'used' : 'available'}"></div>`;
+                }
+
+                // Build keys detail
+                let keysHtml = '';
+                for (let k = 0; k < keys.length; k++) {
+                    const delivery = deliveries.find(d => d.key_index === k);
+                    keysHtml += `
+                        <div class="key-row">
+                            <span style="color:var(--text-muted);">Key ${k + 1}:</span>
+                            <span class="key-value">${keys[k]}</span>
+                            <span class="key-status ${delivery ? 'key-used' : 'key-available'}">${delivery ? `✗ Usada (Pedido #${delivery.order_id})` : '✓ Disponible'}</span>
+                        </div>`;
+                }
+
+                return `
+                    <div class="account-card">
+                        <div class="account-header">
+                            <div>
+                                <span class="email">${acc.email}</span>
+                                <span class="status-${acc.status}" style="margin-left: 0.5rem; font-size: 0.8rem; font-weight: 600;">
+                                    ${acc.status === 'disponible' ? '● Disponible' : '● Agotada'}
+                                </span>
+                            </div>
+                            <div>
+                                <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Ver keys</button>
+                                ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑 Eliminar</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="credential-row">
+                            <span><span class="label">Pass:</span> <span class="value">${acc.password}</span></span>
+                        </div>
+                        <div class="keys-bar">${barHtml}</div>
+                        <div class="keys-info">${acc.keys_used}/10 keys usadas${acc.notes ? ` · ${acc.notes}` : ''}</div>
+                        <div class="keys-detail" id="keysDetail${i}">${keysHtml}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        function toggleKeys(index) {
+            const el = document.getElementById('keysDetail' + index);
+            el.classList.toggle('visible');
+        }
+
+        async function addAccount() {
+            const email = document.getElementById('accEmail').value.trim();
+            const password = document.getElementById('accPassword').value.trim();
+            const keysText = document.getElementById('accKeys').value.trim();
+            const notes = document.getElementById('accNotes').value.trim();
+            const errorDiv = document.getElementById('addError');
+            errorDiv.style.display = 'none';
+
+            if (!email || !password || !keysText) {
+                errorDiv.textContent = 'Email, contraseña y keys son requeridos.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const keys = keysText.split('\n').map(k => k.trim()).filter(k => k);
+            if (keys.length !== 10) {
+                errorDiv.textContent = `Se necesitan exactamente 10 keys. Tenés ${keys.length}.`;
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/admin/ps-accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, activation_keys: keys, notes })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error);
+
+                showToast('Cuenta agregada al pool');
+                // Clear form
+                document.getElementById('accEmail').value = '';
+                document.getElementById('accPassword').value = '';
+                document.getElementById('accKeys').value = '';
+                document.getElementById('accNotes').value = '';
+                loadAccounts();
+            } catch (e) {
+                errorDiv.textContent = e.message || 'Error al agregar cuenta';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function deleteAccount(id) {
+            if (!confirm('¿Eliminar esta cuenta del pool?')) return;
+            const resp = await fetch(`/api/admin/ps-accounts/${id}`, { method: 'DELETE' });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Cuenta eliminada');
+                loadAccounts();
+            } else {
+                showToast(data.error || 'Error al eliminar', true);
+            }
+        }
+
+        loadAccounts();
+    </script>
+</body>
+</html>

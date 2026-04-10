@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos | Admin — Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c; --bg-card: #131318; --primary: #8b5cf6;
+            --secondary: #d946ef; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --border: #27272a; --success: #22c55e; --warning: #eab308; --error: #ef4444;
+            --radius-md: 16px; --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; }
+
+        .nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: rgba(10,10,12,0.9); }
+        .nav-logo { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.3rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+        .nav-links a:hover { color: var(--text-main); }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+        h1 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 1rem; }
+
+        .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 1rem; flex: 1; min-width: 120px; }
+        .stat .num { font-size: 1.5rem; font-weight: 800; }
+        .stat .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+        .filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .filter-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); border-radius: 20px; padding: 0.4rem 1rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+        .filter-btn:hover { border-color: var(--primary); color: var(--text-main); }
+        .filter-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+        table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); }
+        th { text-align: left; padding: 0.75rem 1rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(139,92,246,0.03); }
+        td { padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+        tr:hover td { background: rgba(139,92,246,0.03); }
+
+        .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; }
+        .badge-pendiente { background: rgba(234,179,8,0.15); color: #eab308; }
+        .badge-aprobado { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .badge-entregado { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-rechazado { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-error_stock, .badge-error_email { background: rgba(239,68,68,0.25); color: #ef4444; }
+
+        .action-btn { background: none; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.75rem; cursor: pointer; margin-right: 0.25rem; transition: all 0.15s; }
+        .action-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .action-btn.approve { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+        .action-btn.approve:hover { background: rgba(34,197,94,0.1); }
+        .action-btn.reject { border-color: rgba(239,68,68,0.3); color: #ef4444; }
+        .action-btn.reject:hover { background: rgba(239,68,68,0.1); }
+        .action-btn.deliver { border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+        .action-btn.deliver:hover { background: rgba(59,130,246,0.1); }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.5rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal h3 { font-family: 'Outfit', sans-serif; margin-bottom: 1rem; }
+        .modal .detail-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(39,39,42,0.5); font-size: 0.85rem; }
+        .modal .detail-row .label { color: var(--text-muted); }
+        .modal .close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+        .modal .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+        .empty { text-align: center; padding: 3rem; color: var(--text-muted); }
+
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
+        .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; }
+        .toast.error { border-color: var(--error); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/admin" class="nav-logo">Nez Admin</a>
+        <div class="nav-links">
+            <a href="/admin">Dashboard</a>
+            <a href="/admin/orders" style="color: var(--primary);">Pedidos</a>
+            <a href="/admin/ps-accounts">Cuentas PS</a>
+            <a href="/admin/juegos">Juegos</a>
+            <a href="/admin/packs">Packs</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📦 Pedidos</h1>
+
+        <div class="stats" id="statsRow"></div>
+
+        <div class="filters">
+            <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
+            <button class="filter-btn" onclick="setFilter('pendiente')">⏳ Pendientes</button>
+            <button class="filter-btn" onclick="setFilter('aprobado')">✓ Aprobados</button>
+            <button class="filter-btn" onclick="setFilter('entregado')">📦 Entregados</button>
+            <button class="filter-btn" onclick="setFilter('rechazado')">✗ Rechazados</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Juego</th>
+                    <th>Tipo</th>
+                    <th>Email</th>
+                    <th>Pago</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="ordersBody">
+                <tr><td colspan="8" class="empty">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeModal()">
+        <div class="modal" id="modalContent"></div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        let currentFilter = 'todos';
+        let allOrders = [];
+
+        function formatPrice(val) { return val ? '$' + val.toLocaleString('es-AR') : '$0'; }
+        function formatDate(d) { if (!d) return '-'; const dt = new Date(d); return dt.toLocaleDateString('es-AR') + ' ' + dt.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'}); }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            loadOrders();
+        }
+
+        async function loadOrders() {
+            try {
+                const resp = await fetch(`/api/admin/orders?status=${currentFilter}`);
+                const data = await resp.json();
+                allOrders = data.orders || [];
+                renderOrders();
+                renderStats();
+            } catch (e) {
+                document.getElementById('ordersBody').innerHTML = '<tr><td colspan="8" class="empty">Error al cargar pedidos</td></tr>';
+            }
+        }
+
+        function renderStats() {
+            const counts = { pendiente: 0, aprobado: 0, entregado: 0, rechazado: 0 };
+            allOrders.forEach(o => { if (counts[o.payment_status] !== undefined) counts[o.payment_status]++; });
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat"><div class="num" style="color: #eab308;">${counts.pendiente}</div><div class="label">Pendientes</div></div>
+                <div class="stat"><div class="num" style="color: #3b82f6;">${counts.aprobado}</div><div class="label">Aprobados</div></div>
+                <div class="stat"><div class="num" style="color: #22c55e;">${counts.entregado}</div><div class="label">Entregados</div></div>
+                <div class="stat"><div class="num" style="color: #ef4444;">${counts.rechazado}</div><div class="label">Rechazados</div></div>
+            `;
+        }
+
+        function renderOrders() {
+            const body = document.getElementById('ordersBody');
+            if (allOrders.length === 0) {
+                body.innerHTML = '<tr><td colspan="8" class="empty">No hay pedidos</td></tr>';
+                return;
+            }
+            body.innerHTML = allOrders.map(o => `
+                <tr>
+                    <td>#${o.id}</td>
+                    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.game_titulo}</td>
+                    <td>${o.tipo_producto}</td>
+                    <td style="font-size:0.8rem;">${o.buyer_email}</td>
+                    <td>${o.payment_method === 'transferencia' ? '🏦' : '💳'}</td>
+                    <td><span class="badge badge-${o.payment_status}">${o.payment_status}</span></td>
+                    <td style="font-size:0.8rem;">${formatDate(o.created_at)}</td>
+                    <td>
+                        <button class="action-btn" onclick="showDetail(${o.id})">👁️</button>
+                        ${o.payment_status === 'pendiente' ? `
+                            <button class="action-btn approve" onclick="approveOrder(${o.id})">✓</button>
+                            <button class="action-btn reject" onclick="rejectOrder(${o.id})">✗</button>
+                        ` : ''}
+                        ${o.payment_status === 'aprobado' ? `
+                            <button class="action-btn deliver" onclick="deliverOrder(${o.id})">📦</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function showDetail(id) {
+            const resp = await fetch(`/api/admin/orders/${id}`);
+            const o = await resp.json();
+            const modal = document.getElementById('modalContent');
+            modal.innerHTML = `
+                <h3>Pedido #${o.id}</h3>
+                <div class="detail-row"><span class="label">Juego</span><span>${o.game_titulo}</span></div>
+                <div class="detail-row"><span class="label">Plataforma</span><span>${o.game_plataforma || '-'}</span></div>
+                <div class="detail-row"><span class="label">Tipo</span><span>${o.tipo_producto}</span></div>
+                <div class="detail-row"><span class="label">Email</span><span>${o.buyer_email}</span></div>
+                ${o.buyer_phone ? `<div class="detail-row"><span class="label">WhatsApp</span><span><a href="https://wa.me/${o.buyer_phone.replace(/\D/g,'')}" target="_blank" style="color:#25d366;">${o.buyer_phone}</a></span></div>` : ''}
+                <div class="detail-row"><span class="label">Método</span><span>${o.payment_method}</span></div>
+                <div class="detail-row"><span class="label">Estado</span><span class="badge badge-${o.payment_status}">${o.payment_status}</span></div>
+                <div class="detail-row"><span class="label">Precio base</span><span>${formatPrice(o.precio_base)}</span></div>
+                ${o.surcharge > 0 ? `<div class="detail-row"><span class="label">Surcharge Ualá</span><span>${formatPrice(o.surcharge)}</span></div>` : ''}
+                <div class="detail-row"><span class="label">Total cobrado</span><span style="font-weight:700;">${formatPrice(o.precio_cobrado)}</span></div>
+                ${o.comprobante_ref ? `<div class="detail-row"><span class="label">ID Comprobante</span><span style="font-family:monospace;">${o.comprobante_ref}</span></div>` : ''}
+                ${o.comprobante_file ? `<div class="detail-row"><span class="label">Archivo</span><span><a href="/uploads/${o.comprobante_file}" target="_blank" style="color:var(--primary);">Ver comprobante</a></span></div>` : ''}
+                ${o.uala_order_uuid ? `<div class="detail-row"><span class="label">Ualá UUID</span><span style="font-size:0.75rem;font-family:monospace;">${o.uala_order_uuid}</span></div>` : ''}
+                <div class="detail-row"><span class="label">Creado</span><span>${formatDate(o.created_at)}</span></div>
+                ${o.delivered_at ? `<div class="detail-row"><span class="label">Entregado</span><span>${formatDate(o.delivered_at)}</span></div>` : ''}
+                ${o.notes ? `<div class="detail-row"><span class="label">Notas</span><span>${o.notes}</span></div>` : ''}
+                <div class="actions">
+                    ${o.payment_status === 'pendiente' ? `
+                        <button class="action-btn approve" onclick="approveOrder(${o.id});closeModal();">✓ Aprobar</button>
+                        <button class="action-btn reject" onclick="rejectOrder(${o.id});closeModal();">✗ Rechazar</button>
+                    ` : ''}
+                    ${o.payment_status === 'aprobado' ? `
+                        <button class="action-btn deliver" onclick="deliverOrder(${o.id});closeModal();">📦 Marcar entregado</button>
+                    ` : ''}
+                    <button class="action-btn" onclick="closeModal()">Cerrar</button>
+                </div>
+            `;
+            document.getElementById('detailModal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('detailModal').classList.remove('active'); }
+
+        async function approveOrder(id) {
+            if (!confirm('¿Aprobar este pedido?')) return;
+            const resp = await fetch(`/api/admin/orders/${id}/approve`, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(data.message || 'Pedido aprobado');
+            } else {
+                showToast(data.error || 'Error', true);
+            }
+            loadOrders();
+        }
+
+        async function rejectOrder(id) {
+            if (!confirm('¿Rechazar este pedido?')) return;
+            await fetch(`/api/admin/orders/${id}/reject`, { method: 'POST' });
+            showToast('Pedido rechazado');
+            loadOrders();
+        }
+
+        async function deliverOrder(id) {
+            if (!confirm('¿Marcar como entregado?')) return;
+            await fetch(`/api/admin/orders/${id}/deliver`, { method: 'POST' });
+            showToast('Pedido marcado como entregado');
+            loadOrders();
+        }
+
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // Initial load
+        loadOrders();
+    </script>
+</body>
+</html>
