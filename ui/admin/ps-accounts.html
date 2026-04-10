@@ -100,6 +100,15 @@
         .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; }
         .toast.error { border-color: var(--error); }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Edit modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 440px; }
+        .modal h3 { font-family: 'Outfit', sans-serif; margin-bottom: 1rem; color: var(--primary); }
+        .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal .btn-save { background: linear-gradient(135deg,var(--primary),var(--secondary)); color:white; border:none; border-radius:8px; padding:0.55rem 1.2rem; font-weight:700; cursor:pointer; }
+        .modal .btn-cancel { background:none; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; padding:0.55rem 1rem; cursor:pointer; }
     </style>
 </head>
 <body>
@@ -168,6 +177,24 @@
         <!-- Accounts list -->
         <h2 style="font-family: 'Outfit', sans-serif; margin: 1.5rem 0 0.75rem;">Cuentas en el pool</h2>
         <div id="accountsList"><div class="empty">Cargando...</div></div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+        <div class="modal">
+            <h3>✏️ Editar cuenta</h3>
+            <input type="hidden" id="editAccId">
+            <label for="editEmail">Email</label>
+            <input type="email" id="editEmail" placeholder="cuenta-ps@email.com">
+            <label for="editPassword">Contraseña</label>
+            <input type="text" id="editPassword" placeholder="Nueva contraseña">
+            <label for="editNotes">Notas</label>
+            <input type="text" id="editNotes" placeholder="Notas opcionales">
+            <div class="btn-row">
+                <button class="btn-save" onclick="saveEdit()">Guardar cambios</button>
+                <button class="btn-cancel" onclick="closeEditModal()">Cancelar</button>
+            </div>
+        </div>
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
@@ -243,6 +270,7 @@
                             <div>
                                 <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Ver keys</button>
                                 <button class="toggle-btn" onclick="addSlots(${acc.id})" style="margin-left:0.35rem;">➕ Ampliar</button>
+                                <button class="toggle-btn" onclick="openEditModal(${acc.id}, '${acc.email.replace(/'/g,\'\\\'\')}', '${acc.password.replace(/'/g,\'\\\'\')}', '${(acc.notes||'').replace(/'/g,\'\\\'\')}')" style="margin-left:0.35rem;">✏️ Editar</button>
                                 ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑 Eliminar</button>` : ''}
                             </div>
                         </div>
@@ -367,6 +395,36 @@
 
         loadAccounts();
         loadGames();
+
+        function openEditModal(id, email, password, notes) {
+            document.getElementById('editAccId').value = id;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editPassword').value = password;
+            document.getElementById('editNotes').value = notes;
+            document.getElementById('editModal').classList.add('active');
+        }
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+        async function saveEdit() {
+            const id = document.getElementById('editAccId').value;
+            const email = document.getElementById('editEmail').value.trim();
+            const password = document.getElementById('editPassword').value.trim();
+            const notes = document.getElementById('editNotes').value.trim();
+            const resp = await fetch(`/api/admin/ps-accounts/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, notes })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Cuenta actualizada');
+                closeEditModal();
+                loadAccounts();
+            } else {
+                showToast(data.error || 'Error', true);
+            }
+        }
     </script>
 </body>
 </html>

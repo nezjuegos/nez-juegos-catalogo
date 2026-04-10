@@ -411,10 +411,16 @@ def api_create_order():
     if not data:
         return jsonify({"error": "Datos requeridos"}), 400
     
-    required = ['game_titulo', 'tipo_producto', 'buyer_email', 'payment_method', 'precio_base', 'precio_cobrado']
+    required = ['game_titulo', 'tipo_producto', 'payment_method', 'precio_base', 'precio_cobrado']
     for field in required:
         if not data.get(field):
             return jsonify({"error": f"Campo requerido: {field}"}), 400
+    
+    # Email required only for PS (auto email delivery); Nintendo uses WhatsApp
+    plat = (data.get('game_plataforma') or '').upper()
+    is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
+    if is_ps and not data.get('buyer_email'):
+        return jsonify({"error": "El email es requerido para compras de PlayStation"}), 400
     
     # Validate payment method
     if data['payment_method'] not in ('transferencia', 'uala'):
@@ -687,6 +693,22 @@ def api_admin_retry_delivery(order_id):
         return jsonify({"error": "Aún no hay stock disponible para este juego/tipo. Agregá la cuenta primero."}), 400
 
 
+@app.route('/api/admin/orders/<int:order_id>/nintendo-account', methods=['POST'])
+@admin_required
+def api_admin_nintendo_account(order_id):
+    """Record Nintendo delivery account data on an order."""
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    data = request.json or {}
+    account_data = data.get('account_data', '').strip()
+    if not account_data:
+        return jsonify({"error": "account_data requerido"}), 400
+    db.update_order_notes(order_id, f"Cuenta Nintendo: {account_data}")
+    db.update_order_status(order_id, 'entregado')
+    return jsonify({"status": "ok"})
+
+
 # --- Admin: PS Account Pool ---
 
 @app.route('/api/admin/ps-accounts', methods=['GET', 'POST'])
@@ -717,13 +739,24 @@ def api_admin_ps_accounts():
         )
         return jsonify({"status": "ok", "id": new_id})
 
-@app.route('/api/admin/ps-accounts/<int:account_id>', methods=['DELETE'])
+@app.route('/api/admin/ps-accounts/<int:account_id>', methods=['DELETE', 'PUT'])
 @admin_required
-def api_admin_delete_ps_account(account_id):
-    success = db.delete_ps_account(account_id)
-    if success:
+def api_admin_manage_ps_account(account_id):
+    if request.method == 'DELETE':
+        success = db.delete_ps_account(account_id)
+        if success:
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "No se puede eliminar una cuenta con keys ya usadas."}), 400
+    else:  # PUT
+        data = request.json or {}
+        updates = {}
+        if data.get('email'): updates['email'] = data['email']
+        if data.get('password'): updates['password'] = data['password']
+        if 'notes' in data: updates['notes'] = data['notes']
+        if not updates:
+            return jsonify({"error": "Nada que actualizar"}), 400
+        db.update_ps_account(account_id, updates)
         return jsonify({"status": "ok"})
-    return jsonify({"error": "No se puede eliminar una cuenta con keys ya usadas."}), 400
 
 @app.route('/api/admin/ps-accounts/<int:account_id>/add-slots', methods=['POST'])
 @admin_required

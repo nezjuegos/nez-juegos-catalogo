@@ -226,6 +226,9 @@
                     ${o.payment_status === 'aprobado' ? `
                         <button class="action-btn deliver" onclick="deliverOrder(${o.id});closeModal();">📦 Marcar entregado</button>
                     ` : ''}
+                    ${(o.payment_status === 'aprobado' && o.game_plataforma && !o.game_plataforma.includes('PS')) ? `
+                        <button class="action-btn" onclick="openNintendoModal(${o.id});closeModal();" style="border-color:rgba(139,92,246,0.4);color:#a78bfa;">🎮 Registrar cuenta Nintendo</button>
+                    ` : ''}
                     ${o.payment_status === 'pendiente_stock' ? `
                         <button class="action-btn approve" onclick="retryDelivery(${o.id});closeModal();">🔄 Reintentar entrega</button>
                     ` : ''}
@@ -273,6 +276,29 @@
                 showToast(data.error || 'Error en la entrega', true);
             }
             loadOrders();
+        }
+
+        // Nintendo account modal
+        let _nintendoOrderId = null;
+        function openNintendoModal(id) {
+            _nintendoOrderId = id;
+            const acc = prompt('🎮 Ingresá los datos de la cuenta Nintendo que entregás (ej: email + contraseña):');
+            if (!acc) return;
+            recordNintendoAccount(id, acc);
+        }
+        async function recordNintendoAccount(id, accountData) {
+            const resp = await fetch(`/api/admin/orders/${id}/nintendo-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account_data: accountData })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Cuenta Nintendo registrada y pedido marcado como entregado');
+                loadOrders();
+            } else {
+                showToast(data.error || 'Error', true);
+            }
         }
 
         function showToast(msg, isError = false) {

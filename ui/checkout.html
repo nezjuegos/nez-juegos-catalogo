@@ -239,9 +239,11 @@
 
             <div class="card">
                 <h2>👤 Tus datos</h2>
-                <label for="buyerEmail">Email *</label>
-                <input type="email" id="buyerEmail" placeholder="tu@email.com" required>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">📩 Te enviaremos las credenciales de tu pedido a este email. Asegurate de que sea correcto.</p>
+                <div id="emailField">
+                    <label for="buyerEmail" id="emailLabel">Email *</label>
+                    <input type="email" id="buyerEmail" placeholder="tu@email.com">
+                    <p id="emailHint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">📩 Te enviaremos las credenciales de tu pedido a este email. Asegurate de que sea correcto.</p>
+                </div>
 
                 <div id="phoneField" style="display: none;">
                     <label for="buyerPhone">WhatsApp (para entrega por WhatsApp) *</label>
@@ -434,9 +436,10 @@
                             <div class="game-price">${formatPrice(precioBase)}</div>
                         </div>`;
 
-                    // Show phone field for Nintendo
+                    // Show phone field for Nintendo, hide email
                     if (isNintendo) {
                         document.getElementById('phoneField').style.display = 'block';
+                        document.getElementById('emailField').style.display = 'none';
                     }
 
                     // Show PS usage instructions based on type
@@ -520,10 +523,10 @@
             const errorDiv = document.getElementById('formError');
             errorDiv.style.display = 'none';
 
-            // Validate email
+            // Validate email (only required for PS)
             const email = document.getElementById('buyerEmail').value.trim();
-            if (!email || !email.includes('@')) {
-                errorDiv.textContent = 'Ingresá un email válido.';
+            if (!isNintendo && (!email || !email.includes('@'))) {
+                errorDiv.textContent = 'Ingresá un email válido para recibir tus credenciales.';
                 errorDiv.style.display = 'block';
                 return;
             }

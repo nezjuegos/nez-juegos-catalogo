@@ -937,6 +937,28 @@ class Database:
             conn.commit()
             return True
 
+    def update_ps_account(self, account_id, updates):
+        """Update email, password and/or notes of a PS account."""
+        allowed = {'email', 'password', 'notes'}
+        fields = {k: v for k, v in updates.items() if k in allowed}
+        if not fields:
+            return False
+        set_clause = ', '.join(f'{k} = ?' for k in fields)
+        values = list(fields.values()) + [account_id]
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f'UPDATE ps_accounts SET {set_clause} WHERE id = ?', values)
+            conn.commit()
+        return True
+
+    def update_order_notes(self, order_id, notes):
+        """Set notes on an order (used to store Nintendo account delivery data)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE orders SET notes = ? WHERE id = ?', (notes, order_id))
+            conn.commit()
+
+
     def get_ps_stock_count(self):
         """Count total available sales across all accounts."""
         with self.get_connection() as conn:
