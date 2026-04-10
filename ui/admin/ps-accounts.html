@@ -119,8 +119,18 @@
 
         <div class="stock-banner">
             <div>
-                <div class="num" id="stockCount">-</div>
-                <div class="label">claves disponibles</div>
+                <div class="num" id="stockTotal">-</div>
+                <div class="label">ventas disponibles</div>
+            </div>
+            <div style="margin-left: auto; display: flex; gap: 1.5rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.3rem; font-weight: 800; color: var(--success);" id="stockPrimaria">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Primarias</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.3rem; font-weight: 800; color: var(--warning);" id="stockSecundaria">-</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Secundarias</div>
+                </div>
             </div>
         </div>
 
@@ -177,7 +187,10 @@
             try {
                 const resp = await fetch('/api/admin/ps-accounts');
                 const data = await resp.json();
-                document.getElementById('stockCount').textContent = data.stock_disponible || 0;
+                const stock = data.stock_disponible || {};
+                document.getElementById('stockTotal').textContent = stock.total || 0;
+                document.getElementById('stockPrimaria').textContent = stock.primaria || 0;
+                document.getElementById('stockSecundaria').textContent = stock.secundaria || 0;
                 renderAccounts(data.accounts || []);
             } catch (e) {
                 document.getElementById('accountsList').innerHTML = '<div class="empty">Error al cargar cuentas</div>';
@@ -194,7 +207,6 @@
             container.innerHTML = accounts.map((acc, i) => {
                 const keys = acc.activation_keys_list || [];
                 const deliveries = acc.deliveries || [];
-                const deliveredIndexes = new Set(deliveries.map(d => d.key_index));
 
                 // Build keys bar
                 let barHtml = '';
@@ -225,11 +237,16 @@
                             </div>
                             <div>
                                 <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Ver keys</button>
+                                <button class="toggle-btn" onclick="addSlots(${acc.id})" style="margin-left:0.35rem;">➕ Ampliar</button>
                                 ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑 Eliminar</button>` : ''}
                             </div>
                         </div>
                         <div class="credential-row">
                             <span><span class="label">Pass:</span> <span class="value">${acc.password}</span></span>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin: 0.5rem 0; font-size: 0.8rem;">
+                            <span style="color: var(--success); font-weight: 600;">🟢 Primaria: ${acc.primaria_used || 0}/${acc.primaria_total || 1}</span>
+                            <span style="color: var(--warning); font-weight: 600;">🟡 Secundaria: ${acc.secundaria_used || 0}/${acc.secundaria_total || 2}</span>
                         </div>
                         <div class="keys-bar">${barHtml}</div>
                         <div class="keys-info">${acc.keys_used}/10 keys usadas${acc.game_titulo ? ` · 🎮 ${acc.game_titulo}` : ''}${acc.notes ? ` · ${acc.notes}` : ''}</div>
@@ -304,6 +321,24 @@
                 loadAccounts();
             } else {
                 showToast(data.error || 'Error al eliminar', true);
+            }
+        }
+
+        async function addSlots(id) {
+            const priAdd = parseInt(prompt('¿Cuántos slots de PRIMARIA agregar? (por defecto 1)', '1')) || 0;
+            const secAdd = parseInt(prompt('¿Cuántos slots de SECUNDARIA agregar? (por defecto 2)', '2')) || 0;
+            if (priAdd === 0 && secAdd === 0) return;
+            const resp = await fetch(`/api/admin/ps-accounts/${id}/add-slots`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ primaria_add: priAdd, secundaria_add: secAdd })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(`Slots agregados: +${priAdd} primaria, +${secAdd} secundaria`);
+                loadAccounts();
+            } else {
+                showToast(data.error || 'Error', true);
             }
         }
 

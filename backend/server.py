@@ -576,9 +576,18 @@ def _deliver_ps_order(order_id):
     if not order:
         return False
     
-    account, key_index, activation_key = db.get_available_ps_key(game_id=order.get('game_id'))
+    # Determine sale type from tipo_producto
+    tipo = (order.get('tipo_producto') or '').lower()
+    if 'secundaria' in tipo:
+        sale_type = 'secundaria'
+    else:
+        sale_type = 'primaria'
+    
+    account, key_index, activation_key = db.get_available_ps_key(
+        game_id=order.get('game_id'), sale_type=sale_type
+    )
     if not account:
-        logging.error(f"No PS stock available for order {order_id}")
+        logging.error(f"No PS stock available for order {order_id} (type={sale_type})")
         db.update_order_status(order_id, 'error_stock')
         return False
     
@@ -591,7 +600,7 @@ def _deliver_ps_order(order_id):
     )
     
     if success:
-        db.log_ps_delivery(account['id'], order_id, key_index, activation_key)
+        db.log_ps_delivery(account['id'], order_id, key_index, activation_key, sale_type=sale_type)
         db.update_order_status(order_id, 'entregado')
         return True
     else:
@@ -693,6 +702,20 @@ def api_admin_delete_ps_account(account_id):
     if success:
         return jsonify({"status": "ok"})
     return jsonify({"error": "No se puede eliminar una cuenta con keys ya usadas."}), 400
+
+@app.route('/api/admin/ps-accounts/<int:account_id>/add-slots', methods=['POST'])
+@admin_required
+def api_admin_add_ps_slots(account_id):
+    """Add more primaria/secundaria slots to an existing account."""
+    data = request.json or {}
+    primaria_add = data.get('primaria_add', 0)
+    secundaria_add = data.get('secundaria_add', 0)
+    if primaria_add == 0 and secundaria_add == 0:
+        return jsonify({"error": "Especificá cuántos slots agregar."}), 400
+    success = db.add_ps_slots(account_id, primaria_add=primaria_add, secundaria_add=secundaria_add)
+    if success:
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Cuenta no encontrada."}), 404
 
 
 # --- Ualá Bis Surcharge Calculator (public) ---

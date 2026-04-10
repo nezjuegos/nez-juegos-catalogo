@@ -177,7 +177,29 @@
                 </div>
             </div>
 
-            <!-- Buyer Info -->
+            <!-- PS Usage Instructions (shown dynamically) -->
+            <div class="card" id="instructionsPrimaria" style="display: none; border-color: rgba(34,197,94,0.3);">
+                <h2 style="color: var(--success);">📔 Instrucciones — Cuenta Primaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>✅ Se puede usar <strong style="color: var(--text-main);">online y offline</strong>.</li>
+                    <li>🛡️ La <strong style="color: var(--text-main);">garantía es de por vida</strong>: si perdés acceso al juego por fallo de la cuenta, se te dará soporte para recuperarlo.</li>
+                    <li>👤 Debés jugar con usuarios de <strong style="color: var(--text-main);">tu propiedad</strong> y no usar el que te vendemos.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta (contraseñas, datos de pago). Cualquier caso será penalizado y perderá la garantía.</li>
+                </ul>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">Cualquier duda que tengas, por favor hacénosla saber 🙌</p>
+            </div>
+
+            <div class="card" id="instructionsSecundaria" style="display: none; border-color: rgba(234,179,8,0.3);">
+                <h2 style="color: var(--warning);">📔 Instrucciones — Cuenta Secundaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>🌐 Debés contar con <strong style="color: var(--text-main);">internet</strong> para ejecutar el juego y desconectarte cuando comiences a jugar.</li>
+                    <li>🛡️ Contás con <strong style="color: var(--text-main);">garantía</strong>: si llegase a fallar la cuenta, se te ayudará a restablecer el acceso.</li>
+                    <li>👤 Debés jugar con el <strong style="color: var(--text-main);">usuario que te vendemos</strong>.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta (contraseñas, datos de pago). Cualquier caso será penalizado y perderá la garantía.</li>
+                </ul>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">Cualquier duda que tengas, por favor hacénosla saber 🙌</p>
+            </div>
+
             <div class="card">
                 <h2>👤 Tus datos</h2>
                 <label for="buyerEmail">Email *</label>
@@ -377,6 +399,15 @@
                     // Show phone field for Nintendo
                     if (isNintendo) {
                         document.getElementById('phoneField').style.display = 'block';
+                    }
+
+                    // Show PS usage instructions based on type
+                    if (!isNintendo) {
+                        if (gameType.includes('secundaria')) {
+                            document.getElementById('instructionsSecundaria').style.display = 'block';
+                        } else {
+                            document.getElementById('instructionsPrimaria').style.display = 'block';
+                        }
                     }
 
                     // Show transfer details by default

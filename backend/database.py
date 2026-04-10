@@ -195,19 +195,22 @@ class Database:
                 status TEXT DEFAULT 'disponible',
                 game_id INTEGER,
                 game_titulo TEXT,
+                primaria_total INTEGER DEFAULT 1,
+                primaria_used INTEGER DEFAULT 0,
+                secundaria_total INTEGER DEFAULT 2,
+                secundaria_used INTEGER DEFAULT 0,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 notes TEXT
             )
             ''')
-            # Migration: add game_id/game_titulo if table already exists without them
-            try:
-                cursor.execute('ALTER TABLE ps_accounts ADD COLUMN game_id INTEGER')
-            except Exception:
-                pass
-            try:
-                cursor.execute('ALTER TABLE ps_accounts ADD COLUMN game_titulo TEXT')
-            except Exception:
-                pass
+            # Migrations for existing DBs
+            for col in ['game_id INTEGER', 'game_titulo TEXT',
+                        'primaria_total INTEGER DEFAULT 1', 'primaria_used INTEGER DEFAULT 0',
+                        'secundaria_total INTEGER DEFAULT 2', 'secundaria_used INTEGER DEFAULT 0']:
+                try:
+                    cursor.execute(f'ALTER TABLE ps_accounts ADD COLUMN {col}')
+                except Exception:
+                    pass
 
             # Table: ps_delivery_log (Tracks each individual key delivery)
             cursor.execute('''
@@ -217,11 +220,17 @@ class Database:
                 order_id INTEGER NOT NULL,
                 key_index INTEGER NOT NULL,
                 activation_key TEXT NOT NULL,
+                sale_type TEXT DEFAULT 'primaria',
                 delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (ps_account_id) REFERENCES ps_accounts(id),
                 FOREIGN KEY (order_id) REFERENCES orders(id)
             )
             ''')
+            # Migration: add sale_type if missing
+            try:
+                cursor.execute("ALTER TABLE ps_delivery_log ADD COLUMN sale_type TEXT DEFAULT 'primaria'")
+            except Exception:
+                pass
                 
             conn.commit()
 
@@ -793,14 +802,18 @@ class Database:
             return dict(row) if row else None
 
     # --- PS ACCOUNTS CRUD ---
-    def add_ps_account(self, email, password, keys_list, notes='', game_id=None, game_titulo=None):
-        """Add a PS account with 10 activation keys (list of strings), linked to a game."""
+    def add_ps_account(self, email, password, keys_list, notes='', game_id=None, game_titulo=None,
+                       primaria_total=1, secundaria_total=2):
+        """Add a PS account with 10 activation keys, linked to a game.
+        Default: 1 primaria slot + 2 secundaria slots."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO ps_accounts (email, password, activation_keys, notes, game_id, game_titulo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (email, password, json.dumps(keys_list), notes, game_id, game_titulo))
+                INSERT INTO ps_accounts (email, password, activation_keys, notes, game_id, game_titulo,
+                                         primaria_total, secundaria_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (email, password, json.dumps(keys_list), notes, game_id, game_titulo,
+                  primaria_total, secundaria_total))
             conn.commit()
             return cursor.lastrowid
 
@@ -819,15 +832,23 @@ class Database:
                 results.append(d)
             return results
 
-    def get_available_ps_key(self, game_id=None):
-        """Get the next available activation key from the pool, filtered by game_id.
+    def get_available_ps_key(self, game_id=None, sale_type='primaria'):
+        """Get the next available activation key from the pool, filtered by game_id and sale type.
+        sale_type: 'primaria' or 'secundaria'.
+        Checks that the account has available slots for that sale type.
         Returns (account_dict, key_index, activation_key) or (None, None, None) if no stock."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if game_id:
-                cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ? ORDER BY added_at ASC LIMIT 1", (game_id,))
+            # Determine which slot columns to check
+            if sale_type == 'secundaria':
+                slot_filter = 'secundaria_used < secundaria_total'
             else:
-                cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 ORDER BY added_at ASC LIMIT 1")
+                slot_filter = 'primaria_used < primaria_total'
+
+            if game_id:
+                cursor.execute(f"SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ? AND {slot_filter} ORDER BY added_at ASC LIMIT 1", (game_id,))
+            else:
+                cursor.execute(f"SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND {slot_filter} ORDER BY added_at ASC LIMIT 1")
             row = cursor.fetchone()
             if not row:
                 return None, None, None
@@ -837,23 +858,58 @@ class Database:
             key_index = account['keys_used']  # 0-indexed, next unused key
             activation_key = keys[key_index]
             
-            # Increment keys_used, mark as agotada if all 10 used
+            # Increment keys_used + slot used
             new_keys_used = key_index + 1
-            new_status = 'agotada' if new_keys_used >= 10 else 'disponible'
-            cursor.execute('UPDATE ps_accounts SET keys_used = ?, status = ? WHERE id = ?',
-                           (new_keys_used, new_status, account['id']))
-            conn.commit()
+            if sale_type == 'secundaria':
+                new_sec = account['secundaria_used'] + 1
+                cursor.execute('UPDATE ps_accounts SET keys_used = ?, secundaria_used = ? WHERE id = ?',
+                               (new_keys_used, new_sec, account['id']))
+            else:
+                new_pri = account['primaria_used'] + 1
+                cursor.execute('UPDATE ps_accounts SET keys_used = ?, primaria_used = ? WHERE id = ?',
+                               (new_keys_used, new_pri, account['id']))
             
+            # Check if account is fully exhausted (all slots filled or all keys used)
+            # Refresh to get updated values
+            cursor.execute('SELECT * FROM ps_accounts WHERE id = ?', (account['id'],))
+            updated = dict(cursor.fetchone())
+            all_slots_full = (updated['primaria_used'] >= updated['primaria_total'] and
+                              updated['secundaria_used'] >= updated['secundaria_total'])
+            all_keys_used = updated['keys_used'] >= 10
+            if all_slots_full or all_keys_used:
+                cursor.execute("UPDATE ps_accounts SET status = 'agotada' WHERE id = ?", (account['id'],))
+            
+            conn.commit()
             return account, key_index, activation_key
 
-    def log_ps_delivery(self, ps_account_id, order_id, key_index, activation_key):
+    def log_ps_delivery(self, ps_account_id, order_id, key_index, activation_key, sale_type='primaria'):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO ps_delivery_log (ps_account_id, order_id, key_index, activation_key)
-                VALUES (?, ?, ?, ?)
-            ''', (ps_account_id, order_id, key_index, activation_key))
+                INSERT INTO ps_delivery_log (ps_account_id, order_id, key_index, activation_key, sale_type)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (ps_account_id, order_id, key_index, activation_key, sale_type))
             conn.commit()
+
+    def add_ps_slots(self, account_id, primaria_add=0, secundaria_add=0):
+        """Add more primaria/secundaria slots to an existing account."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM ps_accounts WHERE id = ?', (account_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            account = dict(row)
+            new_pri = account['primaria_total'] + primaria_add
+            new_sec = account['secundaria_total'] + secundaria_add
+            # If adding slots and account was agotada, reopen it
+            new_status = account['status']
+            if (account['primaria_used'] < new_pri or account['secundaria_used'] < new_sec) and account['keys_used'] < 10:
+                new_status = 'disponible'
+            cursor.execute('UPDATE ps_accounts SET primaria_total = ?, secundaria_total = ?, status = ? WHERE id = ?',
+                           (new_pri, new_sec, new_status, account_id))
+            conn.commit()
+            return True
 
     def delete_ps_account(self, account_id):
         """Delete a PS account only if no keys have been used."""
@@ -870,9 +926,14 @@ class Database:
             return True
 
     def get_ps_stock_count(self):
-        """Count total available keys across all accounts."""
+        """Count total available sales (primaria + secundaria slots) across all accounts."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT SUM(10 - keys_used) as available FROM ps_accounts WHERE status = 'disponible'")
+            cursor.execute("""SELECT 
+                SUM(primaria_total - primaria_used) as primaria_disp,
+                SUM(secundaria_total - secundaria_used) as secundaria_disp
+                FROM ps_accounts WHERE status = 'disponible'""")
             row = cursor.fetchone()
-            return row['available'] or 0
+            pri = row['primaria_disp'] or 0
+            sec = row['secundaria_disp'] or 0
+            return {'primaria': pri, 'secundaria': sec, 'total': pri + sec}
