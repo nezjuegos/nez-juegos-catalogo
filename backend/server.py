@@ -602,7 +602,8 @@ def _deliver_ps_order(order_id):
         game_name=order['game_titulo'],
         account_email=account['email'],
         account_password=account['password'],
-        activation_key=activation_key
+        activation_key=activation_key,
+        sale_type=sale_type
     )
     
     if success:
