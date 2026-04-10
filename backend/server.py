@@ -631,9 +631,9 @@ def api_mp_preference():
     })
     
     # Cambiamos forzando a 'iniciado' asumiendo que db.create_order devuelve pendiente, lo acomodamos despues
-    db.update_order_status(order_id, 'iniciado')
+    # Fallback to host_url for local testing, but prefer site_url from frontend for proxy safety in Railway
+    site_url = data.get('site_url', request.host_url).rstrip('/')
     
-    site_url = request.host_url.rstrip('/')
     payload = {
         "items": [{
             "id": str(data['game_id']),
