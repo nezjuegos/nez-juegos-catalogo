@@ -534,7 +534,17 @@
             const btn = document.getElementById('submitBtn');
             if (method === 'mercadopago') {
                 btn.style.display = 'none'; // MP brick has its own submt btn
-                loadMercadoPagoBrick();
+                
+                // Show a loading text while Brick initializes
+                const container = document.getElementById('cardPaymentBrick_container');
+                if (!cardPaymentBrickController) {
+                    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">Cargando formulario de pago seguro...</div>';
+                }
+                
+                loadMercadoPagoBrick().catch(e => {
+                    console.error("Error loading MP Brick", e);
+                    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--error);">Error al cargar Mercado Pago. Refresca la página o utiliza otra tarjeta provisoriamente. (Asegurate de haber configurado tu MP_PUBLIC_KEY real)</div>';
+                });
             } else {
                 btn.style.display = 'block';
                 if (method === 'uala') {
@@ -546,10 +556,22 @@
         }
         
         async function loadMercadoPagoBrick() {
+            // Wait for price calculation if it hasn't finished
+            if (precioMP <= 0) {
+                await new Promise(r => setTimeout(r, 200));
+                if (precioMP <= 0) throw new Error("Precio no cargado");
+            }
+        
             if (!mpPublicKey) {
                 const resp = await fetch('/api/config/mp');
                 const conf = await resp.json();
                 mpPublicKey = conf.public_key;
+                
+                // If it's the exact literal 'TEST-public-key' from default env, the SDK crashes immediately due to format.
+                // We inject a syntactically valid mock UUID test key just so the UI renders for development.
+                if (mpPublicKey === 'TEST-public-key') {
+                    mpPublicKey = 'TEST-12345678-abcd-1234-abcd-123456789abc';
+                }
                 mp = new MercadoPago(mpPublicKey);
             }
             if (cardPaymentBrickController) {
@@ -558,6 +580,9 @@
 
             const errorDiv = document.getElementById('formError');
             errorDiv.style.display = 'none';
+
+            // Clear the "loading" text so MP can inject its iframe properly
+            document.getElementById('cardPaymentBrick_container').innerHTML = '';
 
             const settings = {
                 initialization: {
