@@ -198,6 +198,18 @@
             .nav { padding: 0.75rem 1rem; }
             .nav-links a { font-size: 0.8rem; }
         }
+
+        /* PS info cards */
+        .ps-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1.25rem; }
+        .ps-info-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem 1.1rem; }
+        .ps-info-card.primaria { border-color: rgba(139,92,246,0.35); }
+        .ps-info-card.secundaria { border-color: rgba(217,70,239,0.35); }
+        .ps-info-card h3 { font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main); }
+        .ps-info-card ul { list-style: none; padding: 0; }
+        .ps-info-card ul li { font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; padding: 0.15rem 0; padding-left: 1rem; position: relative; }
+        .ps-info-card ul li::before { content: '•'; color: var(--primary); font-weight: 800; position: absolute; left: 0; }
+        .ps-info-card.secundaria ul li::before { color: var(--secondary); }
+        @media (max-width: 640px) { .ps-info-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 
@@ -372,6 +384,36 @@
             });
 
             html += `</div>`;
+
+            // PS account type info cards
+            if (isPS) {
+                html += `
+                    <div class="ps-info-grid">
+                        <div class="ps-info-card primaria">
+                            <h3>📔 Cuenta Primaria</h3>
+                            <ul>
+                                <li>Se puede usar online y offline</li>
+                                <li>Garantía de por vida: si perdés acceso por fallo de la cuenta, te damos soporte</li>
+                                <li>Jugá con un usuario propio, no el que te vendemos</li>
+                                <li>No cambies ninguna información de seguridad de la cuenta</li>
+                                <li>No hagas inicio de sesión activo en la cuenta que te damos</li>
+                                <li>Activá el Uso Offline en tu consola</li>
+                            </ul>
+                        </div>
+                        <div class="ps-info-card secundaria">
+                            <h3>🎮 Cuenta Secundaria</h3>
+                            <ul>
+                                <li>Solo online: necesitás conexión a internet para jugar</li>
+                                <li>Garantía de por vida por fallo de la cuenta</li>
+                                <li>Jugá con tu propio usuario (el que ya tenés)</li>
+                                <li>No cambies datos de la cuenta que te damos</li>
+                                <li>No activés el Uso Offline con esta cuenta</li>
+                                <li>No inicies sesión en la cuenta que te damos</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
 
             document.getElementById('gameContent').innerHTML = html;
         }

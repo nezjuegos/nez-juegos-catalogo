@@ -146,8 +146,24 @@
         .whatsapp-float svg { width: 28px; height: 28px; fill: white; }
 
         @media (max-width: 640px) {
-            .container { padding: 1rem 1rem 3rem; }
-            .nav { padding: 0.75rem 1rem; }
+            .container { padding: 0.75rem 0.75rem 3rem; }
+            .nav { padding: 0.6rem 1rem; }
+            h1 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+            .card { padding: 0.85rem; margin-bottom: 0.6rem; border-radius: 10px; }
+            .card h2 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+            .order-summary img, .order-summary .placeholder { width: 44px; height: 58px; }
+            .order-summary .game-name { font-size: 0.9rem; }
+            .order-summary .game-type { font-size: 0.78rem; }
+            .order-summary .game-price { font-size: 1rem; }
+            label { margin-top: 0.5rem; font-size: 0.8rem; }
+            input[type="email"], input[type="tel"], input[type="text"] { padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+            .payment-option { padding: 0.75rem; gap: 0.6rem; }
+            .payment-option .pay-name { font-size: 0.88rem; }
+            .payment-option .pay-desc { font-size: 0.75rem; }
+            /* Collapse instruction cards to be more compact */
+            #instructionsPrimaria ul, #instructionsSecundaria ul { font-size: 0.78rem; }
+            #instructionsPrimaria, #instructionsSecundaria { padding: 0.75rem; }
+            #deliveryImmediate, #deliveryQueued { padding: 0.65rem 0.85rem; }
         }
     </style>
 </head>
