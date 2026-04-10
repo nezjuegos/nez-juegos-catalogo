@@ -650,8 +650,7 @@ def api_mp_preference():
             "failure": f"{site_url}/mp/failure"
         },
         "auto_return": "approved",
-        "external_reference": f"nez-{order_id}",
-        "purpose": "wallet_purchase"
+        "external_reference": f"nez-{order_id}"
     }
     
     headers = {
@@ -665,7 +664,9 @@ def api_mp_preference():
         
         if resp.status_code >= 400:
             logging.error(f"MP Preference error: {resp.text}")
-            return jsonify({"error": "Error interno al generar preferencia"}), 400
+            # Try to extract a clean message from MP if possible, else return the raw text
+            error_msg = resp_data.get('message', resp.text)
+            return jsonify({"error": f"MP Rechazó: {error_msg}"}), 400
             
         return jsonify({"status": "ok", "preference_id": resp_data['id'], "order_id": order_id})
     except Exception as e:
