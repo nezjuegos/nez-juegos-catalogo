@@ -236,22 +236,22 @@
                 return;
             }
 
+            window._accData = {};
+
             container.innerHTML = accounts.map((acc, i) => {
+                window._accData[acc.id] = { email: acc.email, password: acc.password, notes: acc.notes || '' };
                 const keys = acc.activation_keys_list || [];
                 const deliveries = acc.deliveries || [];
 
-                // Build keys bar
                 let barHtml = '';
                 for (let k = 0; k < 10; k++) {
                     barHtml += `<div class="key-slot ${k < acc.keys_used ? 'used' : 'available'}"></div>`;
                 }
 
-                // Build keys detail
                 let keysHtml = '';
                 for (let k = 0; k < keys.length; k++) {
                     const delivery = deliveries.find(d => d.key_index === k);
-                    keysHtml += `
-                        <div class="key-row">
+                    keysHtml += `<div class="key-row">
                             <span style="color:var(--text-muted);">Key ${k + 1}:</span>
                             <span class="key-value">${keys[k]}</span>
                             <span class="key-status ${delivery ? 'key-used' : 'key-available'}">${delivery ? `✗ Usada (Pedido #${delivery.order_id})` : '✓ Disponible'}</span>
@@ -270,7 +270,7 @@
                             <div>
                                 <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Ver keys</button>
                                 <button class="toggle-btn" onclick="addSlots(${acc.id})" style="margin-left:0.35rem;">➕ Ampliar</button>
-                                <button class="toggle-btn" onclick="openEditModal(${acc.id}, '${acc.email.replace(/'/g,\'\\\'\')}', '${acc.password.replace(/'/g,\'\\\'\')}', '${(acc.notes||'').replace(/'/g,\'\\\'\')}')" style="margin-left:0.35rem;">✏️ Editar</button>
+                                <button class="toggle-btn" onclick="openEditModalFromData(${acc.id})" style="margin-left:0.35rem;">✏️ Editar</button>
                                 ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑 Eliminar</button>` : ''}
                             </div>
                         </div>
@@ -288,6 +288,7 @@
                     </div>`;
             }).join('');
         }
+
 
         function toggleKeys(index) {
             const el = document.getElementById('keysDetail' + index);
@@ -395,6 +396,11 @@
 
         loadAccounts();
         loadGames();
+
+        function openEditModalFromData(id) {
+            const data = window._accData[id];
+            if (data) openEditModal(id, data.email, data.password, data.notes);
+        }
 
         function openEditModal(id, email, password, notes) {
             document.getElementById('editAccId').value = id;
