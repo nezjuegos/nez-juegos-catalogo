@@ -398,6 +398,10 @@ def api_get_game_by_slug(slug):
         return jsonify({"error": "Juego no encontrado"}), 404
     # Add slug to response
     game['slug'] = db.generate_slug(game['titulo'], game.get('plataforma', ''))
+    # For PS games, include stock availability per sale type
+    plat = (game.get('plataforma') or '').upper()
+    if 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat:
+        game['ps_stock'] = db.check_ps_game_stock(game['id'])
     return jsonify(game)
 
 @app.route('/api/orders', methods=['POST'])
@@ -589,8 +593,8 @@ def _deliver_ps_order(order_id):
         game_id=order.get('game_id'), sale_type=sale_type
     )
     if not account:
-        logging.error(f"No PS stock available for order {order_id} (type={sale_type})")
-        db.update_order_status(order_id, 'error_stock')
+        logging.warning(f"No PS stock for order {order_id} (type={sale_type}). Queued as pendiente_stock.")
+        db.update_order_status(order_id, 'pendiente_stock')
         return False
     
     success = send_ps_credentials(
@@ -635,7 +639,7 @@ def api_admin_approve_order(order_id):
     order = db.get_order(order_id)
     if not order:
         return jsonify({"error": "Pedido no encontrado"}), 404
-    if order['payment_status'] not in ('pendiente',):
+    if order['payment_status'] not in ('pendiente', 'pendiente_stock'):
         return jsonify({"error": f"No se puede aprobar un pedido con estado '{order['payment_status']}'"}), 400
     
     plat = (order.get('game_plataforma') or '').upper()
@@ -665,6 +669,21 @@ def api_admin_manual_deliver(order_id):
     """Mark a Nintendo order as delivered (after WhatsApp contact)."""
     db.update_order_status(order_id, 'entregado')
     return jsonify({"status": "ok"})
+
+@app.route('/api/admin/orders/<int:order_id>/retry-delivery', methods=['POST'])
+@admin_required
+def api_admin_retry_delivery(order_id):
+    """Retry PS delivery for orders stuck in pendiente_stock (after admin adds account)."""
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+    if order['payment_status'] != 'pendiente_stock':
+        return jsonify({"error": f"Solo se puede reintentar pedidos con estado 'pendiente_stock', este tiene '{order['payment_status']}'"}), 400
+    success = _deliver_ps_order(order_id)
+    if success:
+        return jsonify({"status": "ok", "message": "Credenciales enviadas por email exitosamente."})
+    else:
+        return jsonify({"error": "Aún no hay stock disponible para este juego/tipo. Agregá la cuenta primero."}), 400
 
 
 # --- Admin: PS Account Pool ---

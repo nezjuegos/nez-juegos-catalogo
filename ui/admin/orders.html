@@ -41,6 +41,7 @@
 
         .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; }
         .badge-pendiente { background: rgba(234,179,8,0.15); color: #eab308; }
+        .badge-pendiente_stock { background: rgba(251,146,60,0.2); color: #fb923c; }
         .badge-aprobado { background: rgba(59,130,246,0.15); color: #3b82f6; }
         .badge-entregado { background: rgba(34,197,94,0.15); color: #22c55e; }
         .badge-rechazado { background: rgba(239,68,68,0.15); color: #ef4444; }
@@ -93,6 +94,7 @@
         <div class="filters">
             <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
             <button class="filter-btn" onclick="setFilter('pendiente')">⏳ Pendientes</button>
+            <button class="filter-btn" onclick="setFilter('pendiente_stock')">📦 Sin stock</button>
             <button class="filter-btn" onclick="setFilter('aprobado')">✓ Aprobados</button>
             <button class="filter-btn" onclick="setFilter('entregado')">📦 Entregados</button>
             <button class="filter-btn" onclick="setFilter('rechazado')">✗ Rechazados</button>
@@ -151,10 +153,11 @@
         }
 
         function renderStats() {
-            const counts = { pendiente: 0, aprobado: 0, entregado: 0, rechazado: 0 };
+            const counts = { pendiente: 0, pendiente_stock: 0, aprobado: 0, entregado: 0, rechazado: 0 };
             allOrders.forEach(o => { if (counts[o.payment_status] !== undefined) counts[o.payment_status]++; });
             document.getElementById('statsRow').innerHTML = `
                 <div class="stat"><div class="num" style="color: #eab308;">${counts.pendiente}</div><div class="label">Pendientes</div></div>
+                <div class="stat"><div class="num" style="color: #fb923c;">${counts.pendiente_stock}</div><div class="label">Sin stock</div></div>
                 <div class="stat"><div class="num" style="color: #3b82f6;">${counts.aprobado}</div><div class="label">Aprobados</div></div>
                 <div class="stat"><div class="num" style="color: #22c55e;">${counts.entregado}</div><div class="label">Entregados</div></div>
                 <div class="stat"><div class="num" style="color: #ef4444;">${counts.rechazado}</div><div class="label">Rechazados</div></div>
@@ -184,6 +187,9 @@
                         ` : ''}
                         ${o.payment_status === 'aprobado' ? `
                             <button class="action-btn deliver" onclick="deliverOrder(${o.id})">📦</button>
+                        ` : ''}
+                        ${o.payment_status === 'pendiente_stock' ? `
+                            <button class="action-btn approve" onclick="retryDelivery(${o.id})" title="Reintentar entrega">🔄</button>
                         ` : ''}
                     </td>
                 </tr>
@@ -220,6 +226,9 @@
                     ${o.payment_status === 'aprobado' ? `
                         <button class="action-btn deliver" onclick="deliverOrder(${o.id});closeModal();">📦 Marcar entregado</button>
                     ` : ''}
+                    ${o.payment_status === 'pendiente_stock' ? `
+                        <button class="action-btn approve" onclick="retryDelivery(${o.id});closeModal();">🔄 Reintentar entrega</button>
+                    ` : ''}
                     <button class="action-btn" onclick="closeModal()">Cerrar</button>
                 </div>
             `;
@@ -251,6 +260,18 @@
             if (!confirm('¿Marcar como entregado?')) return;
             await fetch(`/api/admin/orders/${id}/deliver`, { method: 'POST' });
             showToast('Pedido marcado como entregado');
+            loadOrders();
+        }
+
+        async function retryDelivery(id) {
+            if (!confirm('¿Reintentar entrega automática? Asegurate de haber cargado la cuenta PS primero.')) return;
+            const resp = await fetch(`/api/admin/orders/${id}/retry-delivery`, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(data.message || 'Entrega exitosa');
+            } else {
+                showToast(data.error || 'Error en la entrega', true);
+            }
             loadOrders();
         }
 

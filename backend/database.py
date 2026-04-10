@@ -951,3 +951,20 @@ class Database:
             pri4 = row['pri4_disp'] or 0
             sec = row['sec_disp'] or 0
             return {'primaria_ps5': pri5, 'primaria_ps4': pri4, 'secundaria': sec, 'total': pri5 + pri4 + sec}
+
+    def check_ps_game_stock(self, game_id):
+        """Check if a specific game has PS accounts with available slots.
+        Returns dict with availability per sale type."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""SELECT 
+                SUM(CASE WHEN primaria_used < primaria_total THEN 1 ELSE 0 END) as pri5,
+                SUM(CASE WHEN primaria_ps4_used < primaria_ps4_total THEN 1 ELSE 0 END) as pri4,
+                SUM(CASE WHEN secundaria_used < secundaria_total THEN 1 ELSE 0 END) as sec
+                FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ?""", (game_id,))
+            row = cursor.fetchone()
+            return {
+                'primaria': (row['pri5'] or 0) > 0,
+                'primaria_ps4': (row['pri4'] or 0) > 0,
+                'secundaria': (row['sec'] or 0) > 0
+            }

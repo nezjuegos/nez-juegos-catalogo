@@ -201,6 +201,26 @@
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">Cualquier duda que tengas, por favor hacénosla saber 🙌</p>
             </div>
 
+            <!-- Delivery Time Notice (shown dynamically for PS) -->
+            <div class="card" id="deliveryImmediate" style="display: none; border-color: rgba(34,197,94,0.3); padding: 1rem 1.25rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.5rem;">⚡</span>
+                    <div>
+                        <div style="font-weight: 700; color: var(--success); font-size: 0.95rem;">Entrega inmediata</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Recibirás las credenciales por email en cuanto se confirme el pago.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="deliveryQueued" style="display: none; border-color: rgba(234,179,8,0.3); padding: 1rem 1.25rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.5rem;">⏰</span>
+                    <div>
+                        <div style="font-weight: 700; color: var(--warning); font-size: 0.95rem;">Entrega en hasta 15 horas</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Tu pedido será procesado manualmente dentro de nuestro horario de atención (9AM – 10PM). Recibirás las credenciales por email.</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>👤 Tus datos</h2>
                 <label for="buyerEmail">Email *</label>
@@ -408,6 +428,19 @@
                             document.getElementById('instructionsSecundaria').style.display = 'block';
                         } else {
                             document.getElementById('instructionsPrimaria').style.display = 'block';
+                        }
+                        
+                        // Check stock availability for this specific type
+                        const psStock = game.ps_stock || {};
+                        let stockKey = 'primaria'; // default
+                        if (gameType.includes('secundaria')) stockKey = 'secundaria';
+                        else if (gameType.includes('ps4')) stockKey = 'primaria_ps4';
+                        
+                        const hasStock = psStock[stockKey] === true;
+                        if (hasStock) {
+                            document.getElementById('deliveryImmediate').style.display = 'block';
+                        } else {
+                            document.getElementById('deliveryQueued').style.display = 'block';
                         }
                     }
 
