@@ -346,13 +346,22 @@
                     <div class="game-meta">
                         <h1>${game.titulo}</h1>
                         <span class="platform-badge">${platDisplay}</span>
-                        ${game.precios.eshop ? `
-                        <div class="store-price">
-                            <div>
-                                <div class="label">${storeName} con impuestos</div>
-                                <div class="value">${formatPrice(game.precios.eshop)}</div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde</div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minPrice)}</div>
+                                    ${(game.precios.eshop && game.precios.eshop > minPrice) ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(game.precios.eshop - minPrice)} vs ${storeName}</div>` : ''}
+                                </div>
                             </div>
-                        </div>` : ''}
+                            ${(!isPS && game.precios.eshop) ? `
+                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${storeName} con imp.</div>
+                                    <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
+                                </div>
+                            </div>` : ''}
+                        </div>
                     </div>
                 </div>
 

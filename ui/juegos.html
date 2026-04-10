@@ -829,31 +829,30 @@
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
                         ${(() => {
-                            if (!isPS || !game.precios.eshop) return '';
-                            // Find minimum price across PS types
-                            const psPrices = ['primaria_ps5','primaria_ps4','secundaria_ps5']
+                            // Find minimum price across available platform types
+                            const saleKeys = isPS 
+                                ? ['primaria_ps5','primaria_ps4','secundaria_ps5'] 
+                                : ['codigo_digital','primaria','secundaria','alquiler'];
+                            const actualPrices = saleKeys
                                 .map(k => game.precios['oferta_'+k] || game.precios[k])
                                 .filter(Boolean);
-                            if (!psPrices.length) return '';
-                            const minP = Math.min(...psPrices);
-                            const savings = game.precios.eshop - minP;
+                            if (!actualPrices.length) return '';
+                            const minP = Math.min(...actualPrices);
+                            
+                            const storeName = isPS ? 'PS Store' : 'eShop';
+                            const baseStorePrice = isPS ? game.precios.eshop : game.precios.eshop;
+                            const savings = baseStorePrice ? baseStorePrice - minP : 0;
+                            
                             return `
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div>
                                     <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde</div>
                                     <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minP)}</div>
-                                    ${savings > 0 ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(savings)} vs PS Store</div>` : ''}
+                                    ${savings > 0 ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(savings)} vs ${storeName}</div>` : ''}
                                 </div>
                             </div>`;
                         })()
                         }
-                        ${!isPS && game.precios.eshop ? `
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
-                            <div>
-                                <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">eShop con impuestos</div>
-                                <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
-                            </div>
-                        </div>` : ''}
                     </div>
                     <div class="pricing-list">
                         ${isPS
