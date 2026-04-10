@@ -315,7 +315,7 @@
                         <div class="total">Total a pagar: <span id="mpTotal">$0</span></div>
                     </div>
                     <!-- Brick MP Container -->
-                    <div id="cardPaymentBrick_container"></div>
+                    <div id="paymentBrick_container"></div>
                 </div>
             </div>
 
@@ -373,7 +373,8 @@
         
         let mpPublicKey = null;
         let mp = null;
-        let cardPaymentBrickController = null;
+        let paymentBrickController = null;
+        let mpOrderId = null;
 
         function formatPrice(val) {
             if (!val) return '$0';
@@ -532,21 +533,18 @@
 
             // Change button visibility based on method
             const btn = document.getElementById('submitBtn');
+            btn.style.display = 'block';
+            
             if (method === 'mercadopago') {
-                btn.style.display = 'none'; // MP brick has its own submt btn
-                
-                // Show a loading text while Brick initializes
-                const container = document.getElementById('cardPaymentBrick_container');
-                if (!cardPaymentBrickController) {
-                    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">Cargando formulario de pago seguro...</div>';
-                }
-                
-                loadMercadoPagoBrick().catch(e => {
-                    console.error("Error loading MP Brick", e);
-                    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--error);">Error al cargar Mercado Pago. Refresca la página o utiliza otra tarjeta provisoriamente. (Asegurate de haber configurado tu MP_PUBLIC_KEY real)</div>';
-                });
+                btn.textContent = 'Continuar pago seguro MP';
+                // The brick container stays hidden until they click continue
+                document.getElementById('paymentBrick_container').style.display = 'none';
+                document.getElementById('buyerEmail').disabled = false;
+                document.getElementById('buyerPhone').disabled = false;
             } else {
-                btn.style.display = 'block';
+                document.getElementById('paymentBrick_container').style.display = 'none';
+                document.getElementById('buyerEmail').disabled = false;
+                document.getElementById('buyerPhone').disabled = false;
                 if (method === 'uala') {
                     btn.textContent = '💳 Pagar con tarjeta (Ualá)';
                 } else {
@@ -556,6 +554,37 @@
         }
         
         async function loadMercadoPagoBrick() {
+            const errorDiv = document.getElementById('formError');
+            errorDiv.style.display = 'none';
+
+            let email = document.getElementById('buyerEmail').value.trim();
+            let phone = isNintendo ? document.getElementById('buyerPhone').value.trim() : null;
+            
+            // Validations before generating preference
+            if (!isNintendo && (!email || !email.includes('@'))) {
+                errorDiv.textContent = 'Ingresá un email válido para recibir tu juego.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (isNintendo && (!phone || phone.length < 8)) {
+                errorDiv.textContent = 'Ingresá un número de WhatsApp válido para contactarte.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (!email) email = 'comprador@nezjuegos.com';
+
+            const btn = document.getElementById('submitBtn');
+            btn.style.display = 'none'; // Hide main button now
+            
+            const container = document.getElementById('paymentBrick_container');
+            container.style.display = 'block';
+            
+            if (!paymentBrickController) {
+                container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">Verificando datos y cargando formulario seguro...</div>';
+            }
+            
+            document.getElementById('buyerEmail').disabled = true;
+            document.getElementById('buyerPhone').disabled = true;
             // Wait for price calculation if it hasn't finished
             if (precioMP <= 0) {
                 await new Promise(r => setTimeout(r, 200));
@@ -574,65 +603,71 @@
                 }
                 mp = new MercadoPago(mpPublicKey);
             }
-            if (cardPaymentBrickController) {
-                cardPaymentBrickController.unmount();
+            if (paymentBrickController) {
+                paymentBrickController.unmount();
             }
 
-            const errorDiv = document.getElementById('formError');
-            errorDiv.style.display = 'none';
+            try {
+                // 1. Generate Preference on backend
+                const prefResp = await fetch("/api/mp/preference", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        game_id: gameData.id,
+                        game_titulo: gameData.titulo,
+                        game_plataforma: gameData.plataforma,
+                        tipo_producto: tipoProducto,
+                        buyer_email: email,
+                        buyer_phone: phone,
+                        precio_base: precioBase,
+                        precio_cobrado: precioMP,
+                        surcharge: surchargeMP
+                    })
+                });
+                const prefData = await prefResp.json();
+                if (prefData.error) throw new Error(prefData.error);
+                mpOrderId = prefData.order_id;
+                const prefId = prefData.preference_id;
 
-            // Clear the "loading" text so MP can inject its iframe properly
-            document.getElementById('cardPaymentBrick_container').innerHTML = '';
+                // Clear the "loading" text so MP can inject its iframe properly
+                document.getElementById('paymentBrick_container').innerHTML = '';
 
-            const settings = {
-                initialization: {
-                    amount: precioMP,
-                },
-                customization: {
-                   visual: {
-                       style: {
-                           theme: "dark",
-                           customVariables: {
-                               baseColor: "#8b5cf6"
+                const settings = {
+                    initialization: {
+                        amount: precioMP,
+                        preferenceId: prefId,
+                        payer: { email: email }
+                    },
+                    customization: {
+                       paymentMethods: {
+                           creditCard: "all",
+                           debitCard: "all",
+                           mercadoPago: "all"
+                       },
+                       visual: {
+                           style: {
+                               theme: "dark",
+                               customVariables: { baseColor: "#8b5cf6" }
                            }
                        }
-                   }
-                },
+                    },
                 callbacks: {
                     onReady: () => {},
                     onSubmit: (formData) => {
                         return new Promise((resolve, reject) => {
-                            let email = document.getElementById('buyerEmail').value.trim();
-                            let phone = isNintendo ? document.getElementById('buyerPhone').value.trim() : null;
-                            
-                            // Validations
-                            if (!isNintendo && (!email || !email.includes('@'))) {
-                                errorDiv.textContent = 'Ingresá un email válido.';
-                                errorDiv.style.display = 'block';
-                                reject(); return;
+                            // If they paid with wallet, it usually doesnt hit here with a token but handles via back_urls
+                            // If they paid with card, we process it securely
+                            if (!formData.token) {
+                                resolve(); return; // Handled by wallet redirect
                             }
-                            if (isNintendo && (!phone || phone.length < 8)) {
-                                errorDiv.textContent = 'Ingresá un número de WhatsApp válido.';
-                                errorDiv.style.display = 'block';
-                                reject(); return;
-                            }
-                            
-                            // Fallback email for Nintendo logic for MP API 
-                            if (!email) email = 'comprador@nezjuegos.com';
 
                             fetch("/api/mp/create", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    game_id: gameData.id,
-                                    game_titulo: gameData.titulo,
-                                    game_plataforma: gameData.plataforma,
-                                    tipo_producto: tipoProducto,
+                                    order_id: mpOrderId,
                                     buyer_email: email,
-                                    buyer_phone: phone,
-                                    precio_base: precioBase,
                                     precio_cobrado: precioMP,
-                                    surcharge: surchargeMP,
                                     mp_token: formData.token,
                                     mp_installments: formData.installments,
                                     mp_payment_method_id: formData.payment_method_id
@@ -650,7 +685,7 @@
                                 }
                             })
                             .catch(error => {
-                                errorDiv.textContent = "Error de conexión con el servidor.";
+                                errorDiv.textContent = "Error interno de procesamiento.";
                                 errorDiv.style.display = 'block';
                                 reject();
                             });
@@ -661,11 +696,19 @@
             };
             
             const bricksBuilder = mp.bricks();
-            cardPaymentBrickController = await bricksBuilder.create(
-                "cardPayment",
-                "cardPaymentBrick_container",
+            paymentBrickController = await bricksBuilder.create(
+                "payment",
+                "paymentBrick_container",
                 settings
             );
+
+            } catch (e) {
+                console.error("Error loading MP Brick", e);
+                container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--error);">Error al iniciar pago. ' + e.message + '</div>';
+                document.getElementById('buyerEmail').disabled = false;
+                document.getElementById('buyerPhone').disabled = false;
+                btn.style.display = 'block';
+            }
         }
 
         function copyText(text) {
@@ -719,6 +762,11 @@
                     document.getElementById('comprobanteError').style.display = 'block';
                     return;
                 }
+            }
+
+            if (selectedPayment === 'mercadopago') {
+                loadMercadoPagoBrick();
+                return;
             }
 
             btn.disabled = true;
