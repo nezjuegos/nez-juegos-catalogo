@@ -193,10 +193,21 @@ class Database:
                 activation_keys TEXT NOT NULL,
                 keys_used INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'disponible',
+                game_id INTEGER,
+                game_titulo TEXT,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 notes TEXT
             )
             ''')
+            # Migration: add game_id/game_titulo if table already exists without them
+            try:
+                cursor.execute('ALTER TABLE ps_accounts ADD COLUMN game_id INTEGER')
+            except Exception:
+                pass
+            try:
+                cursor.execute('ALTER TABLE ps_accounts ADD COLUMN game_titulo TEXT')
+            except Exception:
+                pass
 
             # Table: ps_delivery_log (Tracks each individual key delivery)
             cursor.execute('''
@@ -782,14 +793,14 @@ class Database:
             return dict(row) if row else None
 
     # --- PS ACCOUNTS CRUD ---
-    def add_ps_account(self, email, password, keys_list, notes=''):
-        """Add a PS account with 10 activation keys (list of strings)."""
+    def add_ps_account(self, email, password, keys_list, notes='', game_id=None, game_titulo=None):
+        """Add a PS account with 10 activation keys (list of strings), linked to a game."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO ps_accounts (email, password, activation_keys, notes)
-                VALUES (?, ?, ?, ?)
-            ''', (email, password, json.dumps(keys_list), notes))
+                INSERT INTO ps_accounts (email, password, activation_keys, notes, game_id, game_titulo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (email, password, json.dumps(keys_list), notes, game_id, game_titulo))
             conn.commit()
             return cursor.lastrowid
 
@@ -808,12 +819,15 @@ class Database:
                 results.append(d)
             return results
 
-    def get_available_ps_key(self):
-        """Get the next available activation key from the pool.
+    def get_available_ps_key(self, game_id=None):
+        """Get the next available activation key from the pool, filtered by game_id.
         Returns (account_dict, key_index, activation_key) or (None, None, None) if no stock."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 ORDER BY added_at ASC LIMIT 1")
+            if game_id:
+                cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ? ORDER BY added_at ASC LIMIT 1", (game_id,))
+            else:
+                cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 ORDER BY added_at ASC LIMIT 1")
             row = cursor.fetchone()
             if not row:
                 return None, None, None

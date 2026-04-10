@@ -256,10 +256,16 @@
             </div>
 
             <div id="formError" class="error-text" style="display: none; text-align: center; margin-top: 0.5rem;"></div>
+
+            <!-- T&C Notice -->
+            <div style="background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.15); border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.6rem;">
+                <span style="font-size: 1.2rem;">📋</span>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                    Al continuar con tu compra, aceptás nuestros <a href="/terminos-y-condiciones" target="_blank" style="color: var(--primary); font-weight: 600;">Términos y Condiciones</a>. Incluye garantía de por vida y política de reclamos.
+                </p>
+            </div>
+
             <button class="btn-submit" id="submitBtn" onclick="submitOrder()">Confirmar pedido</button>
-            <p style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">
-                Al confirmar, aceptás nuestros <a href="/terminos-y-condiciones" style="color: var(--primary);">Términos y Condiciones</a>
-            </p>
         </div>
 
         <!-- Confirmation (hidden by default) -->
@@ -399,6 +405,14 @@
             document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
             document.getElementById('ualaDetails').style.display = method === 'uala' ? 'block' : 'none';
             document.getElementById('comprobanteSection').style.display = method === 'transferencia' ? 'block' : 'none';
+
+            // Change button text based on method
+            const btn = document.getElementById('submitBtn');
+            if (method === 'uala') {
+                btn.textContent = '💳 Pagar con tarjeta';
+            } else {
+                btn.textContent = 'Confirmar pedido';
+            }
         }
 
         function copyText(text) {
@@ -458,33 +472,34 @@
             btn.textContent = 'Procesando...';
 
             try {
+                const email = document.getElementById('buyerEmail').value.trim();
+                let phone = isNintendo ? document.getElementById('buyerPhone').value.trim() : null;
                 const precioCobrado = selectedPayment === 'uala' ? precioUala : precioBase;
                 const surcharge = selectedPayment === 'uala' ? surchargeUala : 0;
 
-                // 1. Create order
-                const orderResp = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        game_id: gameData.id,
-                        game_titulo: gameData.titulo,
-                        game_plataforma: gameData.plataforma,
-                        tipo_producto: tipoProducto,
-                        buyer_email: email,
-                        buyer_phone: phone,
-                        payment_method: selectedPayment,
-                        precio_base: precioBase,
-                        precio_cobrado: precioCobrado,
-                        surcharge: surcharge
-                    })
-                });
-                const orderData = await orderResp.json();
-                if (!orderResp.ok) throw new Error(orderData.error);
-
-                const orderId = orderData.order_id;
-
-                // 2. If transferencia, upload comprobante
                 if (selectedPayment === 'transferencia') {
+                    // 1. Create order
+                    const orderResp = await fetch('/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            game_id: gameData.id,
+                            game_titulo: gameData.titulo,
+                            game_plataforma: gameData.plataforma,
+                            tipo_producto: tipoProducto,
+                            buyer_email: email,
+                            buyer_phone: phone,
+                            payment_method: 'transferencia',
+                            precio_base: precioBase,
+                            precio_cobrado: precioBase,
+                            surcharge: 0
+                        })
+                    });
+                    const orderData = await orderResp.json();
+                    if (!orderResp.ok) throw new Error(orderData.error);
+                    const orderId = orderData.order_id;
+
+                    // 2. Upload comprobante
                     const formData = new FormData();
                     const ref = document.getElementById('comprobanteRef').value.trim();
                     const file = document.getElementById('comprobanteFile').files[0];
@@ -500,15 +515,24 @@
                         throw new Error(err.error);
                     }
 
-                    // Show confirmation for transferencia
                     showConfirmation(orderId, 'transferencia');
-                }
-                // 3. If Ualá, create checkout and redirect
-                else if (selectedPayment === 'uala') {
+
+                } else if (selectedPayment === 'uala') {
+                    // Ualá: server creates order + checkout in one call
                     const ualaResp = await fetch('/api/uala/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ order_id: orderId })
+                        body: JSON.stringify({
+                            game_id: gameData.id,
+                            game_titulo: gameData.titulo,
+                            game_plataforma: gameData.plataforma,
+                            tipo_producto: tipoProducto,
+                            buyer_email: email,
+                            buyer_phone: phone,
+                            precio_base: precioBase,
+                            precio_cobrado: precioUala,
+                            surcharge: surchargeUala
+                        })
                     });
                     const ualaData = await ualaResp.json();
                     if (!ualaResp.ok) throw new Error(ualaData.error);
@@ -521,7 +545,7 @@
                 errorDiv.textContent = err.message || 'Ocurrió un error. Intentá nuevamente.';
                 errorDiv.style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = 'Confirmar pedido';
+                btn.textContent = selectedPayment === 'uala' ? '💳 Pagar con tarjeta' : 'Confirmar pedido';
             }
         }
 

@@ -42,8 +42,14 @@
             border: 1px solid var(--border); background: rgba(255,255,255,0.03);
             color: var(--text-main); font-size: 0.9rem; outline: none; resize: vertical;
         }
-        input:focus, textarea:focus { border-color: var(--primary); }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary); }
         textarea { font-family: 'Courier New', monospace; min-height: 120px; }
+        select {
+            width: 100%; padding: 0.6rem 0.85rem; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--bg-card);
+            color: var(--text-main); font-size: 0.9rem; outline: none; cursor: pointer;
+        }
+        select option { background: var(--bg-dark); color: var(--text-main); }
 
         .btn-add {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -121,6 +127,12 @@
         <!-- Add new account -->
         <div class="card">
             <h2>➕ Agregar cuenta</h2>
+            <label for="accGame">🎮 Juego asociado *</label>
+            <select id="accGame">
+                <option value="">Cargando juegos...</option>
+            </select>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Seleccioná el juego al que pertenece esta cuenta</p>
+
             <label for="accEmail">Email de la cuenta PS</label>
             <input type="email" id="accEmail" placeholder="cuenta-ps@email.com">
 
@@ -220,7 +232,7 @@
                             <span><span class="label">Pass:</span> <span class="value">${acc.password}</span></span>
                         </div>
                         <div class="keys-bar">${barHtml}</div>
-                        <div class="keys-info">${acc.keys_used}/10 keys usadas${acc.notes ? ` · ${acc.notes}` : ''}</div>
+                        <div class="keys-info">${acc.keys_used}/10 keys usadas${acc.game_titulo ? ` · 🎮 ${acc.game_titulo}` : ''}${acc.notes ? ` · ${acc.notes}` : ''}</div>
                         <div class="keys-detail" id="keysDetail${i}">${keysHtml}</div>
                     </div>`;
             }).join('');
@@ -236,8 +248,17 @@
             const password = document.getElementById('accPassword').value.trim();
             const keysText = document.getElementById('accKeys').value.trim();
             const notes = document.getElementById('accNotes').value.trim();
+            const gameSelect = document.getElementById('accGame');
+            const gameId = gameSelect.value;
+            const gameTitulo = gameSelect.options[gameSelect.selectedIndex]?.text || '';
             const errorDiv = document.getElementById('addError');
             errorDiv.style.display = 'none';
+
+            if (!gameId) {
+                errorDiv.textContent = 'Seleccioná un juego para asociar la cuenta.';
+                errorDiv.style.display = 'block';
+                return;
+            }
 
             if (!email || !password || !keysText) {
                 errorDiv.textContent = 'Email, contraseña y keys son requeridos.';
@@ -256,7 +277,7 @@
                 const resp = await fetch('/api/admin/ps-accounts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, activation_keys: keys, notes })
+                    body: JSON.stringify({ email, password, activation_keys: keys, notes, game_id: parseInt(gameId), game_titulo: gameTitulo })
                 });
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error);
@@ -286,7 +307,24 @@
             }
         }
 
+        // Load PS games for the dropdown
+        async function loadGames() {
+            try {
+                const resp = await fetch('/api/juegos?plataforma=PlayStation');
+                const data = await resp.json();
+                const select = document.getElementById('accGame');
+                select.innerHTML = '<option value="">— Seleccioná un juego —</option>';
+                (data.results || []).forEach(game => {
+                    const plat = (game.plataforma || '').replace(/,/g, ' / ');
+                    select.innerHTML += `<option value="${game.id}">${game.titulo} (${plat})</option>`;
+                });
+            } catch (e) {
+                console.error('Error loading games:', e);
+            }
+        }
+
         loadAccounts();
+        loadGames();
     </script>
 </body>
 </html>

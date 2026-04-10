@@ -474,16 +474,41 @@ uala = UalaBis()
 
 @app.route('/api/uala/create', methods=['POST'])
 def api_uala_create():
-    """Create a Ualá Bis checkout and return the payment link."""
+    """Create a Ualá Bis checkout. Creates the order and returns the payment link.
+    Frontend sends game data + buyer info, and gets back a redirect link.
+    Order is created here so no phantom orders exist before payment."""
     data = request.json
-    if not data or not data.get('order_id'):
-        return jsonify({"error": "order_id requerido"}), 400
+    if not data:
+        return jsonify({"error": "Datos requeridos"}), 400
     
-    order = db.get_order(data['order_id'])
-    if not order:
-        return jsonify({"error": "Pedido no encontrado"}), 404
+    # Accept either an existing order_id OR full order data
+    if data.get('order_id'):
+        order = db.get_order(data['order_id'])
+        if not order:
+            return jsonify({"error": "Pedido no encontrado"}), 404
+        order_id = order['id']
+    else:
+        # Create order from submitted data
+        required = ['game_id', 'game_titulo', 'tipo_producto', 'buyer_email', 'precio_base', 'precio_cobrado']
+        for field in required:
+            if not data.get(field):
+                return jsonify({"error": f"Campo requerido: {field}"}), 400
+        
+        order_id = db.create_order(
+            game_id=data['game_id'],
+            game_titulo=data['game_titulo'],
+            game_plataforma=data.get('game_plataforma', ''),
+            tipo_producto=data['tipo_producto'],
+            buyer_email=data['buyer_email'],
+            buyer_phone=data.get('buyer_phone'),
+            payment_method='uala',
+            precio_base=data['precio_base'],
+            precio_cobrado=data['precio_cobrado'],
+            surcharge=data.get('surcharge', 0)
+        )
+        order = db.get_order(order_id)
     
-    external_ref = f"nez-{order['id']}"
+    external_ref = f"nez-{order_id}"
     base_url = request.url_root.rstrip('/')
     # Use X-Forwarded headers if behind proxy
     if request.headers.get('X-Forwarded-Proto') == 'https':
@@ -498,10 +523,11 @@ def api_uala_create():
         )
         
         # Save Ualá UUID in order
-        db.update_order_uala(order['id'], result.get('uuid'))
+        db.update_order_uala(order_id, result.get('uuid'))
         
         return jsonify({
             "status": "ok",
+            "order_id": order_id,
             "checkout_link": result['links']['checkout_link']
         })
     except Exception as e:
@@ -550,7 +576,7 @@ def _deliver_ps_order(order_id):
     if not order:
         return False
     
-    account, key_index, activation_key = db.get_available_ps_key()
+    account, key_index, activation_key = db.get_available_ps_key(game_id=order.get('game_id'))
     if not account:
         logging.error(f"No PS stock available for order {order_id}")
         db.update_order_status(order_id, 'error_stock')
@@ -652,7 +678,12 @@ def api_admin_ps_accounts():
         if len(keys) != 10:
             return jsonify({"error": f"Se requieren exactamente 10 activation keys, recibí {len(keys)}"}), 400
         
-        new_id = db.add_ps_account(data['email'], data['password'], keys, data.get('notes', ''))
+        new_id = db.add_ps_account(
+            data['email'], data['password'], keys,
+            data.get('notes', ''),
+            game_id=data.get('game_id'),
+            game_titulo=data.get('game_titulo')
+        )
         return jsonify({"status": "ok", "id": new_id})
 
 @app.route('/api/admin/ps-accounts/<int:account_id>', methods=['DELETE'])
