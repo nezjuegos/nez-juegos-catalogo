@@ -354,7 +354,7 @@
                                     ${(game.precios.eshop && game.precios.eshop > minPrice) ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(game.precios.eshop - minPrice)} vs ${storeName}</div>` : ''}
                                 </div>
                             </div>
-                            ${(!isPS && game.precios.eshop) ? `
+                            ${(game.precios.eshop) ? `
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div>
                                     <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${storeName} con imp.</div>
