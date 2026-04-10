@@ -11,6 +11,10 @@ from scraper import NintendoScraper
 from database import Database
 from uala_bis import UalaBis, calcular_precio_con_uala
 from email_sender import send_ps_credentials
+import requests
+import uuid
+import hmac
+import hashlib
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +38,12 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 # Init Database & Scraper
 db = Database()
 scraper = NintendoScraper(db)
+
+# MP Config
+MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN', 'APP_USR-test')
+MP_PUBLIC_KEY = os.getenv('MP_PUBLIC_KEY', 'TEST-public-key')
+MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', 'test-secret')
+MP_SURCHARGE_PCT = float(os.getenv('MP_SURCHARGE_PCT', '0.075'))
 
 # --- Asyncio Bridge ---
 # Playwright needs its own loop in a background thread
@@ -94,6 +104,10 @@ def logout():
 def get_config():
     """Return CMS homepage configuration"""
     return jsonify(db.get_all_config())
+
+@app.route('/api/config/mp')
+def api_config_mp():
+    return jsonify({"public_key": MP_PUBLIC_KEY})
 
 @app.route('/api/packs')
 def search_packs():
@@ -423,7 +437,7 @@ def api_create_order():
         return jsonify({"error": "El email es requerido para compras de PlayStation"}), 400
     
     # Validate payment method
-    if data['payment_method'] not in ('transferencia', 'uala'):
+    if data['payment_method'] not in ('transferencia', 'uala', 'mercadopago'):
         return jsonify({"error": "Método de pago inválido"}), 400
     
     order_id = db.create_order(data)
@@ -578,6 +592,142 @@ def api_uala_webhook():
         db.update_order_status(order['id'], 'rechazado')
     
     return '', 200
+
+# --- Mercado Pago Payment API ---
+
+@app.route('/api/mp/surcharge')
+def api_mp_surcharge():
+    """Calculate Mercado Pago surcharge for a given base price."""
+    precio_base = request.args.get('precio', type=int)
+    if not precio_base:
+        return jsonify({"error": "precio requerido"}), 400
+    surcharge = int(precio_base * MP_SURCHARGE_PCT)
+    precio_total = precio_base + surcharge
+    return jsonify({"precio_base": precio_base, "surcharge": surcharge, "precio_total": precio_total})
+
+@app.route('/api/mp/create', methods=['POST'])
+def api_mp_create():
+    data = request.json
+    if not data:
+        return jsonify({"error": "Datos requeridos"}), 400
+    
+    # Mismo modelo de orden unificada
+    required = ['game_id', 'game_titulo', 'tipo_producto', 'buyer_email', 'precio_base', 'precio_cobrado', 'mp_token', 'mp_installments', 'mp_payment_method_id']
+    for field in required:
+        if not data.get(field):
+            return jsonify({"error": f"Campo requerido: {field}"}), 400
+            
+    order_id = db.create_order({
+        'game_id': data['game_id'],
+        'game_titulo': data['game_titulo'],
+        'game_plataforma': data.get('game_plataforma', ''),
+        'tipo_producto': data['tipo_producto'],
+        'buyer_email': data['buyer_email'],
+        'buyer_phone': data.get('buyer_phone'),
+        'payment_method': 'mercadopago',
+        'precio_base': data['precio_base'],
+        'precio_cobrado': data['precio_cobrado'],
+        'surcharge': data.get('surcharge', 0)
+    })
+    
+    payload = {
+      "type": "online",
+      "processing_mode": "automatic",
+      "total_amount": str(data['precio_cobrado']),
+      "external_reference": f"nez-{order_id}",
+      "payer": { "email": data['buyer_email'] },
+      "transactions": {
+        "payments": [{
+          "amount": str(data['precio_cobrado']),
+          "payment_method": {
+            "id": data['mp_payment_method_id'],
+            "type": "credit_card",
+            "token": data['mp_token'],
+            "installments": int(data['mp_installments'])
+          }
+        }]
+      }
+    }
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': str(uuid.uuid4()),
+        'Authorization': f'Bearer {MP_ACCESS_TOKEN}'
+    }
+    
+    try:
+        resp = requests.post('https://api.mercadopago.com/v1/orders', json=payload, headers=headers, timeout=15)
+        resp_data = resp.json()
+        
+        if resp.status_code >= 400:
+            logging.error(f"MP Order error: {resp.text}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": "Error interno al procesar el pago con MP"}), 400
+            
+        mp_order_id = resp_data.get('id')
+        db.update_order_notes(order_id, f"MP_ORDER_V2:{mp_order_id}")
+        
+        txs = resp_data.get('transactions', {}).get('payments', [])
+        payment_status = txs[0].get('status') if txs else 'unknown'
+        
+        return jsonify({"status": "ok", "order_id": order_id, "mp_status": payment_status})
+        
+    except Exception as e:
+        logging.error(f"Failed to call MP: {e}")
+        return jsonify({"error": "Error de conexión con procesador de pagos"}), 500
+
+@app.route('/api/mp/webhook', methods=['POST'])
+def api_mp_webhook():
+    # 1. Parse Query and Header
+    data_id = request.args.get('data.id', '')
+    if not data_id:
+        return 'OK', 200
+        
+    x_request_id = request.headers.get('x-request-id', '')
+    x_signature = request.headers.get('x-signature', '')
+    
+    if x_signature and MP_WEBHOOK_SECRET != 'test-secret':
+        try:
+            parts = x_signature.split(',')
+            ts = parts[0].split('=')[1]
+            hash_val = parts[1].split('=')[1]
+            manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+            mi_firma = hmac.new(MP_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+            if mi_firma != hash_val:
+                logging.warning("MP Webhook: Firma HMAC inválida")
+                return 'Forbidden', 403
+        except Exception as e:
+            logging.error(f"Error en x-signature validation: {e}")
+            
+    # Consultar Orden de MP
+    headers = {'Authorization': f'Bearer {MP_ACCESS_TOKEN}'}
+    try:
+        resp = requests.get(f'https://api.mercadopago.com/v1/orders/{data_id}', headers=headers, timeout=10)
+        if resp.status_code == 200:
+            mp_order = resp.json()
+            ext_ref = mp_order.get('external_reference', '')
+            if ext_ref.startswith('nez-'):
+                order_id_str = ext_ref.split('-')[1]
+                order_id = int(order_id_str)
+                order = db.get_order(order_id)
+                if order and order['payment_status'] not in ('entregado', 'aprobado'):
+                    txs = mp_order.get('transactions', {}).get('payments', [])
+                    if txs:
+                        pay_status = txs[0].get('status', '').upper()
+                        if pay_status == 'APPROVED':
+                            plat = (order.get('game_plataforma') or '').upper()
+                            is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
+                            if is_ps:
+                                _deliver_ps_order(order_id)
+                            else:
+                                db.update_order_status(order_id, 'aprobado')
+                        elif pay_status in ('REJECTED', 'CANCELLED'):
+                            db.update_order_status(order_id, 'rechazado')
+    except Exception as e:
+        logging.error(f"Error consultando mp order webhook: {e}")
+            
+    return 'OK', 200
 
 
 def _deliver_ps_order(order_id):

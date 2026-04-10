@@ -7,6 +7,7 @@
     <title>Checkout | Nez Juegos</title>
     <meta name="description" content="Finalizá tu compra en Nez Juegos. Pago por transferencia bancaria o tarjeta.">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         :root {
             --bg-dark: #0a0a0c;
@@ -272,9 +273,18 @@
                         <div class="radio-dot"></div>
                         <div class="pay-info">
                             <div class="pay-name">💳 Tarjeta (Ualá Bis)</div>
-                            <div class="pay-desc">Crédito o débito · Aprobación inmediata</div>
+                            <div class="pay-desc">Hasta 3 cuotas sin interés</div>
                         </div>
                         <span class="pay-badge badge-surcharge">+6.3%</span>
+                    </div>
+                    <div class="payment-option" onclick="selectPayment('mercadopago')">
+                        <input type="radio" name="payment" value="mercadopago">
+                        <div class="radio-dot"></div>
+                        <div class="pay-info">
+                            <div class="pay-name">💳 Tarjeta / Saldo (Mercado Pago)</div>
+                            <div class="pay-desc">Hasta 3 cuotas sin interés</div>
+                        </div>
+                        <span class="pay-badge badge-surcharge">+7.5%</span>
                     </div>
                 </div>
 
@@ -295,6 +305,17 @@
                         <div>Comisión procesador: <strong id="ualaSurcharge">$0</strong></div>
                         <div class="total">Total a pagar: <span id="ualaTotal">$0</span></div>
                     </div>
+                </div>
+
+                <!-- MercadoPago details -->
+                <div class="uala-details" id="mpDetails">
+                    <div class="surcharge-breakdown" style="margin-bottom: 1rem;">
+                        <div>Precio base: <strong id="mpBase">$0</strong></div>
+                        <div>Comisión procesador (MP): <strong id="mpSurcharge">$0</strong></div>
+                        <div class="total">Total a pagar: <span id="mpTotal">$0</span></div>
+                    </div>
+                    <!-- Brick MP Container -->
+                    <div id="cardPaymentBrick_container"></div>
                 </div>
             </div>
 
@@ -345,8 +366,14 @@
         let precioBase = 0;
         let precioUala = 0;
         let surchargeUala = 0;
+        let precioMP = 0;
+        let surchargeMP = 0;
         let tipoProducto = '';
         let isNintendo = false;
+        
+        let mpPublicKey = null;
+        let mp = null;
+        let cardPaymentBrickController = null;
 
         function formatPrice(val) {
             if (!val) return '$0';
@@ -425,6 +452,17 @@
                             document.getElementById('ualaTotal').textContent = formatPrice(precioUala);
                         });
 
+                    // Calculate MP surcharge
+                    fetch(`/api/mp/surcharge?precio=${precioBase}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            precioMP = data.precio_total;
+                            surchargeMP = data.surcharge;
+                            document.getElementById('mpBase').textContent = formatPrice(precioBase);
+                            document.getElementById('mpSurcharge').textContent = formatPrice(surchargeMP);
+                            document.getElementById('mpTotal').textContent = formatPrice(precioMP);
+                        });
+
                     // Render summary
                     const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
                     const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
@@ -489,15 +527,120 @@
 
             document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
             document.getElementById('ualaDetails').style.display = method === 'uala' ? 'block' : 'none';
+            document.getElementById('mpDetails').style.display = method === 'mercadopago' ? 'block' : 'none';
             document.getElementById('comprobanteSection').style.display = method === 'transferencia' ? 'block' : 'none';
 
-            // Change button text based on method
+            // Change button visibility based on method
             const btn = document.getElementById('submitBtn');
-            if (method === 'uala') {
-                btn.textContent = '💳 Pagar con tarjeta';
+            if (method === 'mercadopago') {
+                btn.style.display = 'none'; // MP brick has its own submt btn
+                loadMercadoPagoBrick();
             } else {
-                btn.textContent = 'Confirmar pedido';
+                btn.style.display = 'block';
+                if (method === 'uala') {
+                    btn.textContent = '💳 Pagar con tarjeta (Ualá)';
+                } else {
+                    btn.textContent = 'Confirmar pedido';
+                }
             }
+        }
+        
+        async function loadMercadoPagoBrick() {
+            if (!mpPublicKey) {
+                const resp = await fetch('/api/config/mp');
+                const conf = await resp.json();
+                mpPublicKey = conf.public_key;
+                mp = new MercadoPago(mpPublicKey);
+            }
+            if (cardPaymentBrickController) {
+                cardPaymentBrickController.unmount();
+            }
+
+            const errorDiv = document.getElementById('formError');
+            errorDiv.style.display = 'none';
+
+            const settings = {
+                initialization: {
+                    amount: precioMP,
+                },
+                customization: {
+                   visual: {
+                       style: {
+                           theme: "dark",
+                           customVariables: {
+                               baseColor: "#8b5cf6"
+                           }
+                       }
+                   }
+                },
+                callbacks: {
+                    onReady: () => {},
+                    onSubmit: (formData) => {
+                        return new Promise((resolve, reject) => {
+                            let email = document.getElementById('buyerEmail').value.trim();
+                            let phone = isNintendo ? document.getElementById('buyerPhone').value.trim() : null;
+                            
+                            // Validations
+                            if (!isNintendo && (!email || !email.includes('@'))) {
+                                errorDiv.textContent = 'Ingresá un email válido.';
+                                errorDiv.style.display = 'block';
+                                reject(); return;
+                            }
+                            if (isNintendo && (!phone || phone.length < 8)) {
+                                errorDiv.textContent = 'Ingresá un número de WhatsApp válido.';
+                                errorDiv.style.display = 'block';
+                                reject(); return;
+                            }
+                            
+                            // Fallback email for Nintendo logic for MP API 
+                            if (!email) email = 'comprador@nezjuegos.com';
+
+                            fetch("/api/mp/create", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    game_id: gameData.id,
+                                    game_titulo: gameData.titulo,
+                                    game_plataforma: gameData.plataforma,
+                                    tipo_producto: tipoProducto,
+                                    buyer_email: email,
+                                    buyer_phone: phone,
+                                    precio_base: precioBase,
+                                    precio_cobrado: precioMP,
+                                    surcharge: surchargeMP,
+                                    mp_token: formData.token,
+                                    mp_installments: formData.installments,
+                                    mp_payment_method_id: formData.payment_method_id
+                                }),
+                            })
+                            .then(response => response.json())
+                            .then(result => {
+                                if (result.error) {
+                                    errorDiv.textContent = result.error;
+                                    errorDiv.style.display = 'block';
+                                    reject();
+                                } else {
+                                    resolve();
+                                    showConfirmation(result.order_id, 'mercadopago');
+                                }
+                            })
+                            .catch(error => {
+                                errorDiv.textContent = "Error de conexión con el servidor.";
+                                errorDiv.style.display = 'block';
+                                reject();
+                            });
+                        });
+                    },
+                    onError: (error) => { console.error(error); },
+                },
+            };
+            
+            const bricksBuilder = mp.bricks();
+            cardPaymentBrickController = await bricksBuilder.create(
+                "cardPayment",
+                "cardPaymentBrick_container",
+                settings
+            );
         }
 
         function copyText(text) {
@@ -652,7 +795,17 @@
                                <p style="margin-top:0.5rem;">Revisá tu bandeja de entrada y carpeta de spam.</p>`;
                 }
                 statusClass = 'status-pendiente';
-                statusText = '⏳ Pendiente de aprobación';
+                statusText = '⏳ Pendiente de aprobación manual';
+            } else if (method === 'mercadopago') {
+                if (isNintendo) {
+                    message = `<p>Tu pago se está procesando o fue aprobado. Te contactaremos en breve por WhatsApp para la entrega.</p>
+                               <p style="margin-top:0.5rem;">Horario de atención: <strong>9AM a 10PM</strong></p>`;
+                } else {
+                    message = `<p>Tu pago se está procesando. En breve recibirás las credenciales en tu email de forma automática.</p>
+                               <p style="margin-top:0.5rem;">Revisá tu bandeja de entrada y carpeta de spam.</p>`;
+                }
+                statusClass = 'status-aprobado';
+                statusText = '💳 Procesando por Mercado Pago';
             }
 
             conf.innerHTML = `
