@@ -139,6 +139,12 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
+@app.route('/gtm.js')
+def serve_gtm():
+    """Serve GTM initialization script"""
+    return send_from_directory(UI_DIR, 'gtm.js')
+
+
 # --- Admin API Routes (CMS config) ---
 @app.route('/api/admin/config', methods=['POST'])
 @admin_required
@@ -1103,25 +1109,39 @@ def api_uala_surcharge():
 
 
 # --- Static Fallback ---
+
+def inject_gtm_script(html_content):
+    """Inject GTM script into HTML if not already present"""
+    gtm_script = f'<script src="/gtm.js"></script>'
+    # Insert GTM script right before closing </head> tag
+    if '</head>' in html_content and 'gtm.js' not in html_content:
+        html_content = html_content.replace('</head>', f'{gtm_script}\n</head>')
+    return html_content
+
 @app.route('/')
 @app.route('/<path:path>')
 def serve_static(path=''):
+    # Helper to read and inject GTM
+    def get_html_with_gtm(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            html = f.read()
+        return inject_gtm_script(html)
+    
     if not path or path == 'index' or path == 'index.html': 
-        return send_from_directory(UI_DIR, 'index.html')
+        return get_html_with_gtm(os.path.join(UI_DIR, 'index.html'))
     
     # Clean URL routes for new pages
     if path.startswith('juegos/') and path != 'juegos.html':
-        # Individual game page: /juegos/<slug>
-        return send_from_directory(UI_DIR, 'juego.html')
+        return get_html_with_gtm(os.path.join(UI_DIR, 'juego.html'))
     
     if path == 'checkout':
-        return send_from_directory(UI_DIR, 'checkout.html')
+        return get_html_with_gtm(os.path.join(UI_DIR, 'checkout.html'))
     
     if path == 'terminos-y-condiciones':
-        return send_from_directory(UI_DIR, 'terminos.html')
+        return get_html_with_gtm(os.path.join(UI_DIR, 'terminos.html'))
         
     if path in ['success', 'mp/success', 'mp/failure', 'mp/pending', 'uala/success', 'uala/failure']:
-        return send_from_directory(UI_DIR, 'success.html')
+        return get_html_with_gtm(os.path.join(UI_DIR, 'success.html'))
 
     # Security: If trying to access admin views, check auth first
     if path.startswith('admin') and not path.startswith('admin/login'):
@@ -1133,17 +1153,24 @@ def serve_static(path=''):
         if not page or page == 'index': page = 'index'
         
         # Try finding the exact file or adding .html
+        admin_file = None
         if os.path.exists(os.path.join(UI_ADMIN_DIR, page)):
-            return send_from_directory(UI_ADMIN_DIR, page)
+            admin_file = os.path.join(UI_ADMIN_DIR, page)
         elif os.path.exists(os.path.join(UI_ADMIN_DIR, f"{page}.html")):
-            return send_from_directory(UI_ADMIN_DIR, f"{page}.html")
+            admin_file = os.path.join(UI_ADMIN_DIR, f"{page}.html")
+        
+        if admin_file:
+            return get_html_with_gtm(admin_file)
         return "Not Found", 404
 
     # Public paths
     if os.path.exists(os.path.join(UI_DIR, path)):
+        # If it's an HTML file, inject GTM; otherwise serve as-is
+        if path.endswith('.html'):
+            return get_html_with_gtm(os.path.join(UI_DIR, path))
         return send_from_directory(UI_DIR, path)
     elif os.path.exists(os.path.join(UI_DIR, f"{path}.html")):
-        return send_from_directory(UI_DIR, f"{path}.html")
+        return get_html_with_gtm(os.path.join(UI_DIR, f"{path}.html"))
         
     return "Not Found", 404
 
