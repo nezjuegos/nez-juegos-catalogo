@@ -14,20 +14,6 @@ PRICE_MULTIPLIER = 3000
 RAILWAY_VOLUME = os.getenv('RAILWAY_VOLUME_MOUNT_PATH', os.getcwd())
 USER_DATA_DIR = os.path.join(RAILWAY_VOLUME, "browser_data_clean")
 
-# Best-seller keywords for highlighting
-BEST_SELLERS = set([
-    "mario kart", "mario odyssey", "mario bros", "mario party", "mario maker", "mario",
-    "zelda", "breath of the wild", "tears of the kingdom", "link's awakening",
-    "pokemon", "pokémon",
-    "animal crossing",
-    "smash bros", "super smash",
-    "splatoon",
-    "kirby",
-    "metroid",
-    "fire emblem",
-    "luigi's mansion", "pikmin", "xenoblade", "bayonetta",
-])
-
 # DLC Keywords for classification
 DLC_KEYWORDS = ["only dlc", "expansion pass", "dlc", "upgrade pack", "season pass"]
 
@@ -162,7 +148,6 @@ class NintendoScraper:
         self.progress = {"status": "idle", "current": 0, "total": 0, "message": ""}
         
         self.monitor_task = None
-        self.monitor_active = False
 
     async def start(self):
         if self.is_running: return
@@ -493,43 +478,9 @@ class NintendoScraper:
         self.progress = {"status": "idle", "current": 0, "total": 0, "message": f"Verificación completa. {deleted_count} packs eliminados del catálogo."}
         return deleted_count
 
-    # --- MODE 4: Live Monitor (1 Hour Loop) ---
-    async def _live_monitor_loop(self):
-        print("[MONITOR] Started 60-minute live monitoring on Telegram.")
-        self.monitor_active = True
-        end_time = time.time() + 3600 # 1 hour
-        
-        try:
-            while time.time() < end_time and self.monitor_active:
-                # 1. Do a single silent 'scrape_today' pass under the hood
-                await self.scrape_today(max_scrolls=10)
-                
-                # 2. Look for deletions specifically among the 'is_new' items
-                # (This prevents having to scroll back 50 pages just to check if today's packs died)
-                await asyncio.sleep(60) # Wait 60 seconds before next heartbeat
-                
-        except Exception as e:
-            print(f"[MONITOR] Error monitoring: {e}")
-        finally:
-            self.monitor_active = False
-            print("[MONITOR] Live tracking finished or stopped.")
-
-    def start_live_monitor(self):
-        """Starts the 60 min loop in the asyncio background thread without blocking"""
-        if self.monitor_active:
-            return False
-            
-        self.monitor_task = asyncio.create_task(self._live_monitor_loop())
-        return True
-        
-    def stop_live_monitor(self):
-        self.monitor_active = False
-        if self.monitor_task:
-            self.monitor_task.cancel()
-        return True
+    # --- MODE 4: (removed) ---
 
     async def close(self):
-        self.stop_live_monitor()
         if self.browser_context:
             await self.browser_context.close()
         if self.playwright:

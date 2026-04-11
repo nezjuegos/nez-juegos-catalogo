@@ -6,6 +6,7 @@ Docs: https://developers.ualabis.com.ar/v2
 import requests
 import os
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,12 @@ class UalaBis:
         self.client_id = os.getenv('UALA_CLIENT_ID', '')
         self.client_secret = os.getenv('UALA_CLIENT_SECRET', '')
         self._token = None
+        self._token_expiry = 0
 
     def get_token(self):
-        """Get OAuth2 access token (client_credentials grant)."""
+        """Get OAuth2 access token. Reuses cached token if still valid."""
+        if self._token and time.time() < self._token_expiry - 60:
+            return self._token
         try:
             resp = requests.post(self.auth_url, json={
                 "username": self.username,
@@ -53,6 +57,8 @@ class UalaBis:
             resp.raise_for_status()
             data = resp.json()
             self._token = data['access_token']
+            expires_in = data.get('expires_in', 3600)
+            self._token_expiry = time.time() + expires_in
             return self._token
         except Exception as e:
             logger.error(f"Ualá Bis auth error: {e}")

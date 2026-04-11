@@ -482,11 +482,13 @@ class Database:
             results = []
             query_parts = [q.lower().strip() for q in query.split() if q.strip()]
             exclude_parts = [e.lower().strip() for e in exclude.split() if e.strip()]
-            
+            # Load tags once for the entire loop (avoids N+1 DB queries)
+            tags = self.get_title_tags()
+
             for row in all_packs:
                 pack_dict = dict(row)
                 games = json.loads(pack_dict['games_json']) if pack_dict['games_json'] else []
-                games = self.apply_title_tags(games)
+                games = self._apply_tags(games, tags)
                 pack_dict['games'] = games # parsed list for the UI
                 pack_dict['manual_image_url'] = pack_dict.get('manual_image_url')
                 
@@ -661,6 +663,10 @@ class Database:
     def apply_title_tags(self, games_list):
         """Override is_dlc and add is_hot based on title_tags keywords."""
         tags = self.get_title_tags()
+        return self._apply_tags(games_list, tags)
+
+    def _apply_tags(self, games_list, tags):
+        """Apply pre-loaded title tags to a list of games (avoids repeated DB queries)."""
         dlc_keywords = [t['keyword'] for t in tags if t['tag'] == 'dlc']
         hot_keywords = [t['keyword'] for t in tags if t['tag'] == 'hot']
         juego_keywords = [t['keyword'] for t in tags if t['tag'] == 'juego']
@@ -669,7 +675,6 @@ class Database:
             name_lower = game.get('name', game.get('titulo', '')).lower()
             name_norm = self._strip_accents(name_lower)
 
-            # Check for explicit "juego" tag first (overrides DLC)
             forced_juego = any(self._strip_accents(kw.lower()) in name_norm for kw in juego_keywords)
             matched_dlc = any(self._strip_accents(kw.lower()) in name_norm for kw in dlc_keywords)
             matched_hot = any(self._strip_accents(kw.lower()) in name_norm for kw in hot_keywords)
@@ -679,7 +684,6 @@ class Database:
                 game['is_mixed'] = False
             elif matched_dlc:
                 game['is_dlc'] = True
-                # Keep is_mixed if it has "+" in the name
                 game['is_mixed'] = '+' in name_lower and game.get('is_dlc', False)
 
             game['is_hot'] = matched_hot
@@ -707,12 +711,18 @@ class Database:
 
     # --- GAME BY SLUG ---
     def get_game_by_slug(self, slug):
-        """Find a game whose generated slug matches the provided slug."""
-        all_games = self.get_all_juegos()
-        for game in all_games:
-            game_slug = self.generate_slug(game['titulo'], game.get('plataforma', ''))
-            if game_slug == slug:
-                return game
+        """Find a game whose generated slug matches the provided slug.
+        
+        Optimized: only fetches titulo + plataforma for all games to generate slugs,
+        then fetches the full game data only for the matching row.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, titulo, plataforma FROM juegos')
+            rows = cursor.fetchall()
+        for row in rows:
+            if self.generate_slug(row['titulo'], row.get('plataforma', '')) == slug:
+                return self.get_juego(row['id'])
         return None
 
     # --- ORDERS CRUD ---

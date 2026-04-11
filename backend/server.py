@@ -45,6 +45,7 @@ MP_PUBLIC_KEY = os.getenv('MP_PUBLIC_KEY', 'TEST-public-key')
 MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', 'test-secret')
 MP_SURCHARGE_PCT = float(os.getenv('MP_SURCHARGE_PCT', '0.075'))
 
+
 # --- Asyncio Bridge ---
 # Playwright needs its own loop in a background thread
 loop = asyncio.new_event_loop()
@@ -133,6 +134,8 @@ def get_juegos():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
+    if filename.startswith('comprobante_') and not session.get('is_admin'):
+        return jsonify({"error": "Unauthorized"}), 401
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
@@ -305,6 +308,7 @@ def create_manual_pack():
     
     try:
         new_id = db.insert_manual_pack(pack_data)
+        return jsonify({"status": "ok", "id": new_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -563,34 +567,53 @@ def api_uala_webhook():
     """Receive payment notification from Ualá Bis.
     Expected payload: { uuid, external_reference, status, created_date, api_version }
     Must respond 200 or Ualá retries 3 more times.
+    
+    Ualá Bis does not provide a webhook secret, so we verify the payment
+    by querying the Ualá Bis API directly with the UUID before processing.
     """
     data = request.json
     if not data:
-        return '', 200  # Accept but ignore malformed
-    
+        return '', 200
+
     logging.info(f"Ualá webhook received: {json.dumps(data)}")
-    
+
+    uala_uuid = data.get('uuid', '')
     external_ref = data.get('external_reference', '')
-    status = data.get('status', '').upper()
-    
+    status_from_payload = data.get('status', '').upper()
+
     order = db.find_order_by_uala_ref(external_ref)
     if not order:
         logging.warning(f"Ualá webhook: order not found for ref {external_ref}")
         return '', 200
-    
-    if status == 'APPROVED':
-        # Check if PS game -> auto-deliver
+
+    # Verify payment by querying Ualá Bis API directly (don't trust payload alone)
+    verified_status = status_from_payload
+    if uala_uuid:
+        try:
+            token = uala.get_token()
+            resp = requests.get(
+                f"{uala.checkout_url}/{uala_uuid}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                verified_status = resp.json().get('status', '').upper()
+                logging.info(f"Ualá webhook: verified status={verified_status} for uuid={uala_uuid}")
+            else:
+                logging.warning(f"Ualá webhook: could not verify UUID {uala_uuid}, using payload status")
+        except Exception as e:
+            logging.warning(f"Ualá webhook: verification request failed ({e}), using payload status")
+
+    if verified_status == 'APPROVED':
         plat = (order.get('game_plataforma') or '').upper()
         is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
-        
         if is_ps:
             _deliver_ps_order(order['id'])
         else:
-            # Nintendo or other: mark as approved, wait for manual WhatsApp contact
             db.update_order_status(order['id'], 'aprobado')
-    elif status in ('DECLINED', 'REJECTED'):
+    elif verified_status in ('DECLINED', 'REJECTED'):
         db.update_order_status(order['id'], 'rechazado')
-    
+
     return '', 200
 
 # --- Mercado Pago Payment API ---
@@ -752,7 +775,7 @@ def api_mp_webhook():
     x_request_id = request.headers.get('x-request-id', '')
     x_signature = request.headers.get('x-signature', '')
     
-    if x_signature and MP_WEBHOOK_SECRET != 'test-secret':
+    if x_signature:
         try:
             parts = x_signature.split(',')
             ts = parts[0].split('=')[1]
@@ -764,6 +787,7 @@ def api_mp_webhook():
                 return 'Forbidden', 403
         except Exception as e:
             logging.error(f"Error en x-signature validation: {e}")
+            return 'Bad Request', 400
             
     # Consultar Orden de MP
     headers = {'Authorization': f'Bearer {MP_ACCESS_TOKEN}'}
@@ -823,11 +847,53 @@ def api_mp_success():
 
 @app.route('/mp/pending')
 def api_mp_pending():
-    return "Pago pendiente o en revisión por Mercado Pago. Te contactaremos cuando se apruebe. <a href='/'>Volver al Inicio</a>"
+    return """
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+            body { background: #0a0a0c; color: #fff; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+            .card { background: #16161a; padding: 3rem; border-radius: 12px; border: 1px solid #eab308; max-width: 400px; }
+            h1 { color: #eab308; margin-top: 0; }
+            a { display: inline-block; background: #8b5cf6; color: #fff; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; margin-top: 1.5rem; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>⏳ Pago Pendiente</h1>
+            <p>Tu pago está en revisión por Mercado Pago.</p>
+            <p>Te contactaremos por WhatsApp cuando se confirme. Puede tardar unos minutos.</p>
+            <a href="/">Volver al Inicio</a>
+        </div>
+    </body>
+    </html>
+    """
 
 @app.route('/mp/failure')
 def api_mp_failure():
-    return "El pago por Mercado Pago fue rechazado o cancelado. <a href='/'>Volver al Inicio</a>"
+    return """
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+            body { background: #0a0a0c; color: #fff; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+            .card { background: #16161a; padding: 3rem; border-radius: 12px; border: 1px solid #ef4444; max-width: 400px; }
+            h1 { color: #ef4444; margin-top: 0; }
+            a { display: inline-block; background: #8b5cf6; color: #fff; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; margin-top: 1.5rem; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>❌ Pago Rechazado</h1>
+            <p>El pago fue rechazado o cancelado por Mercado Pago.</p>
+            <p>Podés intentarlo de nuevo o contactarnos por WhatsApp si necesitás ayuda.</p>
+            <a href="/">Volver al Inicio</a>
+        </div>
+    </body>
+    </html>
+    """
 
 
 def _deliver_ps_order(order_id):
