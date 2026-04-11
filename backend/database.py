@@ -711,17 +711,13 @@ class Database:
 
     # --- GAME BY SLUG ---
     def get_game_by_slug(self, slug):
-        """Find a game whose generated slug matches the provided slug.
-        
-        Optimized: only fetches titulo + plataforma for all games to generate slugs,
-        then fetches the full game data only for the matching row.
-        """
+        """Find a game whose generated slug matches the provided slug."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT id, titulo, plataforma FROM juegos')
             rows = cursor.fetchall()
         for row in rows:
-            if self.generate_slug(row['titulo'], row.get('plataforma', '')) == slug:
+            if self.generate_slug(row['titulo'], row['plataforma'] or '') == slug:
                 return self.get_juego(row['id'])
         return None
 
