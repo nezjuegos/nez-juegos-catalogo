@@ -531,7 +531,6 @@
                     selectPayment('transferencia');
 
                     // GTM Event: begin_checkout
-                    const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push({ ecommerce: null });
                     window.dataLayer.push({
