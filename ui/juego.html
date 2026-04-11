@@ -412,7 +412,7 @@
                             ${isDiscounted ? `<div class="old-price">${formatPrice(opt.regular)}</div>` : ''}
                             <div class="current-price ${isDiscounted ? 'offer-price' : ''}">${formatPrice(opt.currentPrice)}</div>
                         </div>
-                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}" class="btn-buy">
+                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}" class="btn-buy" onclick="trackBuyClick(event, this, '${opt.name}', ${opt.currentPrice})">
                             🛒 Comprar
                         </a>
                     </div>
@@ -452,6 +452,22 @@
             }
 
             document.getElementById('gameContent').innerHTML = html;
+        }
+
+        function trackBuyClick(ev, el, typeName, price) {
+            ev.preventDefault();
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: "click_buy",
+                buy_type: typeName,
+                buy_price: price,
+                game_slug: (typeof gameData !== 'undefined' ? gameData.slug : '')
+            });
+            
+            // Give GTM 200ms to catch the tag before navigating away
+            setTimeout(() => {
+                window.location.href = el.href;
+            }, 200);
         }
     </script>
 </body>

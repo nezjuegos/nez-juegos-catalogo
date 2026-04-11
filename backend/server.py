@@ -1054,6 +1054,9 @@ def serve_static(path=''):
     if path == 'terminos-y-condiciones':
         return send_from_directory(UI_DIR, 'terminos.html')
         
+    if path in ['success', 'mp/success', 'mp/failure', 'mp/pending', 'uala/success', 'uala/failure']:
+        return send_from_directory(UI_DIR, 'success.html')
+
     # Security: If trying to access admin views, check auth first
     if path.startswith('admin') and not path.startswith('admin/login'):
         if not session.get('is_admin'):

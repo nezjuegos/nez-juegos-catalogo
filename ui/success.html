@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Pago Exitoso! - Nez Juegos</title>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-KRBGTMQ4');</script>
+    <!-- End Google Tag Manager -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KRBGTMQ4"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <div class="checkout-container" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background: var(--bg-color);">
+        <div class="confirmation" style="background: var(--card-bg); padding: 3rem; border-radius: 12px; text-align: center; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
+            <div class="icon" style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+            <h2 style="font-family: var(--font-heading); color: var(--text-color); margin-bottom: 1rem;">¡Pago procesado con éxito!</h2>
+            <div class="order-id" id="displayRef" style="color: var(--primary); font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;"></div>
+            <span class="status-badge status-aprobado" style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(34,197,94,0.15); color: #4ade80; border-radius: 9999px; font-weight: 600; font-size: 0.85rem; margin-bottom: 1.5rem;">Aprobado por Billetera Digital</span>
+            
+            <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 0.5rem;" id="msgBody">
+                Tu pago ingresó exitosamente. Si fue un juego de PlayStation, nuestro sistema te enviará las credenciales por email en breve (Revisá la carpeta de Spam).
+            </p>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Si elegiste transferencia o compraste para Nintendo, te estaremos escribiendo por WhatsApp en nuestro horario de atención.
+            </p>
+            
+            <a href="/juegos" style="display: inline-block; margin-top: 2rem; color: var(--primary); font-weight: 600; text-decoration: none;">← Volver al catálogo</a>
+        </div>
+    </div>
+
+    <script>
+        // Parse the URL params to get the external reference or id.
+        const params = new URLSearchParams(window.location.search);
+        let extRef = params.get('external_reference') || params.get('collection_id') || params.get('ref') || params.get('payment_id');
+        let orderId = extRef ? extRef.replace('nez-', '') : 'Desconocido';
+        
+        document.getElementById('displayRef').textContent = "Referencia: " + orderId;
+
+        // Fire the GA4 Purchase Event immediately for this funnel branch
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ ecommerce: null });
+        window.dataLayer.push({
+            event: "purchase",
+            ecommerce: {
+                transaction_id: extRef || Math.random().toString(36).substring(7),
+                currency: "ARS",
+                value: 0, // Fallback, could be dynamically fetched via api/orders/extRef later if needed
+                items: []
+            }
+        });
+    </script>
+</body>
+</html>
