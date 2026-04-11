@@ -429,6 +429,19 @@
                         <p style="margin-top: 0.5rem;">Si es un juego de Nintendo, te contactaremos por WhatsApp.</p>
                         <a href="/juegos" style="color: var(--primary); display: inline-block; margin-top: 1.5rem; font-weight: 600;">← Volver a juegos</a>
                     </div>`;
+
+                // GTM Event: purchase (from external redirection)
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({ ecommerce: null });
+                window.dataLayer.push({
+                    event: "purchase",
+                    ecommerce: {
+                        transaction_id: urlRef || Math.random().toString(36).substring(7),
+                        currency: "ARS",
+                        value: 0, // In redirection without session we can't easily know price, but tracking the conversion is key
+                        items: []
+                    }
+                });
             } else {
                 conf.innerHTML = `
                     <div class="confirmation">
@@ -516,6 +529,25 @@
 
                     // Show transfer details by default
                     selectPayment('transferencia');
+
+                    // GTM Event: begin_checkout
+                    const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
+                    window.dataLayer = window.dataLayer || [];
+                    window.dataLayer.push({ ecommerce: null });
+                    window.dataLayer.push({
+                        event: "begin_checkout",
+                        ecommerce: {
+                            currency: "ARS",
+                            value: precioBase,
+                            items: [{
+                                item_name: \`\${game.titulo} \${platDisplay}\`,
+                                item_id: game.id.toString(),
+                                price: precioBase,
+                                item_brand: "Nez Juegos",
+                                item_category: platDisplay
+                            }]
+                        }
+                    });
                 })
                 .catch(() => {
                     document.getElementById('mainContainer').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted);"><h2>Juego no encontrado</h2><a href="/juegos" style="color:var(--primary);">← Volver al catálogo</a></div>';
@@ -902,6 +934,27 @@
                     ${message}
                     <a href="/juegos" style="color: var(--primary); display: inline-block; margin-top: 1.5rem; font-weight: 600; text-decoration: none;">← Volver al catálogo</a>
                 </div>`;
+
+            // GTM Event: purchase (native)
+            const platDisplay = (gameData.plataforma || '').split(',').map(p => p.trim()).join(' / ');
+            const finalPrice = method === 'mercadopago' ? precioMP : (method === 'uala' ? precioUala : precioBase);
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+                event: "purchase",
+                ecommerce: {
+                    transaction_id: orderId.toString(),
+                    currency: "ARS",
+                    value: finalPrice,
+                    items: [{
+                        item_name: \`\${gameData.titulo} \${platDisplay}\`,
+                        item_id: gameData.id.toString(),
+                        price: finalPrice,
+                        item_brand: "Nez Juegos",
+                        item_category: platDisplay
+                    }]
+                }
+            });
         }
     </script>
 </body>

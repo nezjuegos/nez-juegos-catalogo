@@ -348,6 +348,22 @@
                 }
             });
 
+            // GTM Event: view_item
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+                event: "view_item",
+                ecommerce: {
+                    items: [{
+                        item_name: `${game.titulo} ${platDisplay}`,
+                        item_id: game.id.toString(),
+                        price: minPrice,
+                        item_brand: "Nez Juegos",
+                        item_category: platDisplay
+                    }]
+                }
+            });
+
             // Build HTML
             let html = `
                 <div class="game-header">
