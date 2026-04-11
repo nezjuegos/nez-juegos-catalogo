@@ -3,8 +3,8 @@
  * This script initializes GTM on all pages without modifying HTML directly
  */
 
-// GTM Container ID (replace with your actual ID)
-const GTM_ID = 'GTM-XXXXXX'; // ← UPDATE THIS WITH YOUR GTM CONTAINER ID
+// GTM Container ID
+const GTM_ID = 'GTM-KRBGTMQ4';
 
 // Initialize dataLayer if not already present
 window.dataLayer = window.dataLayer || [];
