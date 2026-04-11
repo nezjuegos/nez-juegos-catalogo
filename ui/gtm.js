@@ -106,4 +106,52 @@ window.trackFormSubmit = function(formName, additionalData = {}) {
   });
 };
 
+// Track game page view (called when viewing individual game)
+window.trackGameView = function(gameName, gamePrice, gamePlatform = '') {
+  window.dataLayer.push({
+    event: 'view_item',
+    game_name: gameName,
+    game_price: gamePrice,
+    game_platform: gamePlatform
+  });
+  window.gtag('event', 'view_item', {
+    items: [{
+      item_id: gameName,
+      item_name: gameName,
+      item_category: gamePlatform,
+      price: gamePrice
+    }]
+  });
+};
+
+// Track checkout initiation (when clicking Buy button)
+window.trackCheckoutStart = function(gameName, gamePrice) {
+  window.dataLayer.push({
+    event: 'begin_checkout',
+    game_name: gameName,
+    game_price: gamePrice
+  });
+  window.gtag('event', 'begin_checkout', {
+    currency: 'ARS',
+    value: gamePrice,
+    items: [{
+      item_name: gameName,
+      price: gamePrice
+    }]
+  });
+};
+
+// Track lead (WhatsApp inquiry)
+window.trackLead = function(gameName, leadType = 'whatsapp') {
+  window.dataLayer.push({
+    event: 'generate_lead',
+    game_name: gameName,
+    lead_type: leadType
+  });
+  window.gtag('event', 'generate_lead', {
+    lead_type: leadType,
+    game_name: gameName
+  });
+};
+
 console.log('✅ Google Tag Manager initialized with ID:', GTM_ID);
