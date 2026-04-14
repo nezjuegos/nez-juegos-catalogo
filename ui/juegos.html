@@ -805,11 +805,14 @@
                     </a>`;
             }
 
+            const transferPrice = Math.round(currentPrice * (1 - DESCUENTO_TRANSFER));
+
             return `
                 <div class="price-row">
                     <div class="price-details">
                         <span class="price-type">${typeName}</span>
                         <div>${amountHtml}</div>
+                        <div style="font-size:0.72rem; color:#86efac; margin-top:0.15rem;">🏦 Transferencia: <strong>${formatPrice(transferPrice)}</strong></div>
                         <span class="price-desc">${desc}</span>
                     </div>
                     <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0;">
