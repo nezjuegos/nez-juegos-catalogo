@@ -179,17 +179,20 @@
 
         .platform-badge {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(10, 10, 12, 0.8);
-            backdrop-filter: blur(4px);
-            border: 1px solid var(--border);
-            color: white;
-            padding: 0.3rem 0.8rem;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.25rem 0.65rem;
             border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 700;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
+        .plat-ps5  { background: #fff; color: #000; }
+        .plat-ps4  { background: #003087; color: #fff; }
+        .plat-nsw  { background: #e4000f; color: #fff; }
+        .plat-nsw2 { background: #000; color: #e4000f; border: 1px solid #e4000f; }
+        .plat-mix  { background: rgba(10,10,12,0.82); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
 
         .game-info {
             padding: 1.5rem;
@@ -816,10 +819,22 @@
             `;
         }
 
-        // Helper: detect if a game is PS — must be defined BEFORE renderGames forEach uses it
         function gameIsPS(game) {
             const plat = game.plataforma || '';
             return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
+        }
+
+        function platformBadgeHtml(plataforma) {
+            const parts = (plataforma || '').split(',').map(p => p.trim()).filter(Boolean);
+            if (parts.length > 1) {
+                return `<span class="platform-badge plat-mix">${parts.join(' / ')}</span>`;
+            }
+            const p = parts[0] || '';
+            if (p === 'PS5' || p.includes('PS5'))            return `<span class="platform-badge plat-ps5">PS5</span>`;
+            if (p === 'PS4' || p.includes('PS4'))            return `<span class="platform-badge plat-ps4">PS4</span>`;
+            if (p.includes('Switch 2'))                      return `<span class="platform-badge plat-nsw2">Switch 2</span>`;
+            if (p.includes('Nintendo Switch') || p.includes('Switch')) return `<span class="platform-badge plat-nsw">Switch</span>`;
+            return `<span class="platform-badge plat-mix">${p}</span>`;
         }
 
         function renderGames(gamesArray, containerId = 'gamesGrid') {
@@ -861,7 +876,7 @@
                     <div class="game-cover" style="position: relative; cursor: pointer; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}" onclick="window.location.href='/juegos/${generateSlug(game.titulo, game.plataforma)}'">
                         ${discountBadge}
                         ${!cover ? '🎮' : ''}
-                        <span class="platform-badge">${(game.plataforma || '').split(',').map(p => p.trim()).filter(Boolean).join(' / ')}</span>
+                        ${platformBadgeHtml(game.plataforma)}
                     </div>
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
@@ -913,66 +928,49 @@
         window.shareGame = function (game) {
             const isPS = gameIsPS(game);
             const storeName = isPS ? 'PS Store' : 'eShop';
-            
-            // Revisa si hay al menos una oferta activa en alguna categoría
+
             const hasOferta = (
                 game.precios.oferta_primaria || game.precios.oferta_secundaria || game.precios.oferta_codigo_digital || game.precios.oferta_alquiler ||
                 game.precios.oferta_primaria_ps5 || game.precios.oferta_primaria_ps4 || game.precios.oferta_secundaria_ps5
             );
 
             let text = '';
-            if (hasOferta) {
-                text += `🚨 *OFERTA ESPECIAL* 🚨\n`;
-            }
+            if (hasOferta) text += `🚨 *OFERTA ESPECIAL* 🚨\n`;
             text += `🎮 *${game.titulo}* — _Nez Juegos_\n`;
             if (game.precios.eshop) text += `🏪 *Precio oficial ${storeName}:* ${formatPrice(game.precios.eshop)}\n`;
             text += `\n`;
 
-            if (isPS) {
-                // PlayStation format
-                const addPSLine = (label, priceKey) => {
-                    const reg = game.precios[priceKey];
-                    const off = game.precios['oferta_' + priceKey];
-                    if (!reg && !off) return;
-                    
-                    const currentPrice = off || reg;
-                    let line = `• ${label}: *${formatPrice(currentPrice)}*`;
-                    
-                    if (game.precios.eshop && game.precios.eshop > currentPrice) {
-                        line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)})_`;
-                    }
-                    text += line + '\n';
-                };
-                addPSLine('Primaria PS5', 'primaria_ps5');
-                addPSLine('Primaria PS4', 'primaria_ps4');
-                addPSLine('Secundaria PS5', 'secundaria_ps5');
-            } else {
-                // Nintendo format en orden jerárquico: Primaria -> Secundaria -> Digital -> Alquiler
-                const addNintendoLine = (label, priceKey, isAlquiler = false) => {
-                    const reg = game.precios[priceKey];
-                    const off = game.precios['oferta_' + priceKey];
-                    if (!reg && !off) return;
-                    
-                    const currentPrice = off || reg;
-                    let line = `• ${label}: *${formatPrice(currentPrice)}*`;
-                    
-                    if (game.precios.eshop && game.precios.eshop > currentPrice) {
-                        if (isAlquiler) {
-                            line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)} y podes mejorar a secundaria permanente pagando la diferencia)_`;
-                        } else {
-                            line += ` _(Ahorras ${formatPrice(game.precios.eshop - currentPrice)})_`;
-                        }
-                    }
-                    text += line + '\n';
-                };
+            // For each modality, show 3 price tiers
+            const addPriceLine = (label, priceKey) => {
+                const reg = game.precios[priceKey];
+                const off = game.precios['oferta_' + priceKey];
+                if (!reg && !off) return;
+                const basePrice = off || reg;
+                const transferPrice = Math.round(basePrice * (1 - DESCUENTO_TRANSFER));
+                const saldoPrice = Math.round(basePrice * (1 - DESCUENTO_SALDO));
 
-                addNintendoLine('Cuenta Primaria', 'primaria');
-                addNintendoLine('Cuenta Secundaria', 'secundaria');
-                addNintendoLine('Código Digital', 'codigo_digital');
-                addNintendoLine('Alquiler Secundaria 30 días', 'alquiler', true);
+                text += `*${label}*\n`;
+                text += `  🏦 Transferencia: *${formatPrice(transferPrice)}* _(−32%)_\n`;
+                text += `  💰 MercadoPago saldo: *${formatPrice(saldoPrice)}* _(−26%)_\n`;
+                text += `  💳 Tarjeta Ualá Bis: *${formatPrice(basePrice)}* _(hasta 6 cuotas sin interés)_\n`;
+                if (game.precios.eshop && game.precios.eshop > transferPrice) {
+                    text += `  ✅ _Ahorrás hasta ${formatPrice(game.precios.eshop - transferPrice)} vs ${storeName}_\n`;
+                }
+                text += '\n';
+            };
+
+            if (isPS) {
+                addPriceLine('Primaria PS5', 'primaria_ps5');
+                addPriceLine('Primaria PS4', 'primaria_ps4');
+                addPriceLine('Secundaria PS5', 'secundaria_ps5');
+            } else {
+                addPriceLine('Cuenta Primaria', 'primaria');
+                addPriceLine('Cuenta Secundaria', 'secundaria');
+                addPriceLine('Código Digital', 'codigo_digital');
+                addPriceLine('Alquiler 30 días', 'alquiler');
             }
 
-            text += `\n🛒 Ver más: nezjuegos.com/juegos/${generateSlug(game.titulo, game.plataforma)}`;
+            text += `🛒 Ver más: nezjuegos.com/juegos/${generateSlug(game.titulo, game.plataforma)}`;
             navigator.clipboard.writeText(text).then(() => {
                 showToast('¡Precios copiados al portapapeles!');
             }).catch(err => console.error('Error:', err));

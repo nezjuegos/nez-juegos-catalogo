@@ -92,15 +92,19 @@
 
         .platform-badge {
             display: inline-block;
-            background: rgba(139, 92, 246, 0.15);
-            border: 1px solid rgba(139, 92, 246, 0.3);
             border-radius: 6px;
-            padding: 0.25rem 0.6rem;
+            padding: 0.25rem 0.65rem;
             font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
             margin-bottom: 0.75rem;
         }
+        .plat-ps5  { background: #fff; color: #000; }
+        .plat-ps4  { background: #003087; color: #fff; }
+        .plat-nsw  { background: #e4000f; color: #fff; }
+        .plat-nsw2 { background: #000; color: #e4000f; border: 1px solid #e4000f; }
+        .plat-mix  { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--primary); }
 
         .store-price {
             display: flex; align-items: center; gap: 0.5rem;
@@ -383,6 +387,17 @@
         const DESCUENTO_SALDO = 0.26;
         const DESCUENTO_TRANSFER = 0.32;
 
+        function platformBadgeHtml(plataforma) {
+            const parts = (plataforma || '').split(',').map(p => p.trim()).filter(Boolean);
+            if (parts.length > 1) return `<span class="platform-badge plat-mix">${parts.join(' / ')}</span>`;
+            const p = parts[0] || '';
+            if (p.includes('PS5'))    return `<span class="platform-badge plat-ps5">PS5</span>`;
+            if (p.includes('PS4'))    return `<span class="platform-badge plat-ps4">PS4</span>`;
+            if (p.includes('Switch 2')) return `<span class="platform-badge plat-nsw2">Switch 2</span>`;
+            if (p.includes('Switch') || p.includes('Nintendo')) return `<span class="platform-badge plat-nsw">Switch</span>`;
+            return `<span class="platform-badge plat-mix">${p}</span>`;
+        }
+
         function renderGame(game) {
             const isPS = gameIsPS(game);
             const storeName = isPS ? 'PS Store' : 'eShop';
@@ -449,7 +464,7 @@
                     <div class="game-cover">${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}</div>
                     <div class="game-meta">
                         <h1>${game.titulo}</h1>
-                        <span class="platform-badge">${platDisplay}</span>
+                        ${platformBadgeHtml(game.plataforma)}
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
                             <div style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>

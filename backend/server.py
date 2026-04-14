@@ -1112,18 +1112,27 @@ DEFAULT_OG = {
 }
 
 def inject_head_tags(html_content, og_overrides=None):
-    """Inject GTM script, favicon and OG meta tags into HTML."""
+    """Inject favicon and OG meta tags into HTML. Always runs regardless of GTM presence."""
+    if '</head>' not in html_content:
+        return html_content
+
     og = {**DEFAULT_OG, **(og_overrides or {})}
-    tags = f'<script src="/gtm.js"></script>\n'
-    tags += f'<link rel="icon" type="image/jpeg" href="/nez-logo.jpg">\n'
+    tags = ''
+
+    # Always inject favicon if not present
+    if 'rel="icon"' not in html_content:
+        tags += '<link rel="icon" type="image/jpeg" href="/nez-logo.jpg">\n'
+
+    # Inject OG tags if not present
     if 'og:title' not in html_content:
         tags += f'<meta property="og:title" content="{og["title"]}">\n'
         tags += f'<meta property="og:description" content="{og["description"]}">\n'
         tags += f'<meta property="og:image" content="{og["image"]}">\n'
         tags += f'<meta property="og:type" content="website">\n'
         tags += f'<meta name="twitter:card" content="summary_large_image">\n'
-    if '</head>' in html_content and 'gtm.js' not in html_content:
-        html_content = html_content.replace('</head>', f'{tags}</head>')
+
+    if tags:
+        html_content = html_content.replace('</head>', f'{tags}</head>', 1)
     return html_content
 
 @app.route('/')
