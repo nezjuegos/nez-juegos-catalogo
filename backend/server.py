@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, redirec
 
 from scraper import NintendoScraper
 from database import Database
-from uala_bis import UalaBis, calcular_precio_con_uala
+from uala_bis import UalaBis
 from email_sender import send_ps_credentials
 import requests
 import uuid
@@ -43,7 +43,8 @@ scraper = NintendoScraper(db)
 MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN', 'APP_USR-test')
 MP_PUBLIC_KEY = os.getenv('MP_PUBLIC_KEY', 'TEST-public-key')
 MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', 'test-secret')
-MP_SURCHARGE_PCT = float(os.getenv('MP_SURCHARGE_PCT', '0.075'))
+DESCUENTO_SALDO_MP = float(os.getenv('DESCUENTO_SALDO_MP', '0.26'))
+DESCUENTO_TRANSFERENCIA = float(os.getenv('DESCUENTO_TRANSFERENCIA', '0.32'))
 
 
 # --- Asyncio Bridge ---
@@ -624,15 +625,19 @@ def api_uala_webhook():
 
 # --- Mercado Pago Payment API ---
 
-@app.route('/api/mp/surcharge')
-def api_mp_surcharge():
-    """Calculate Mercado Pago surcharge for a given base price."""
+@app.route('/api/pricing')
+def api_pricing():
+    """Calculate all price tiers from the base (card) price stored in DB."""
     precio_base = request.args.get('precio', type=int)
     if not precio_base:
         return jsonify({"error": "precio requerido"}), 400
-    surcharge = int(precio_base * MP_SURCHARGE_PCT)
-    precio_total = precio_base + surcharge
-    return jsonify({"precio_base": precio_base, "surcharge": surcharge, "precio_total": precio_total})
+    return jsonify({
+        "precio_tarjeta": precio_base,
+        "precio_saldo_mp": int(precio_base * (1 - DESCUENTO_SALDO_MP)),
+        "precio_transferencia": int(precio_base * (1 - DESCUENTO_TRANSFERENCIA)),
+        "descuento_saldo_pct": int(DESCUENTO_SALDO_MP * 100),
+        "descuento_transfer_pct": int(DESCUENTO_TRANSFERENCIA * 100)
+    })
 
 @app.route('/api/mp/preference', methods=['POST'])
 def api_mp_preference():
@@ -1096,82 +1101,97 @@ def api_admin_add_ps_slots(account_id):
     return jsonify({"error": "Cuenta no encontrada."}), 404
 
 
-# --- Ualá Bis Surcharge Calculator (public) ---
-
-@app.route('/api/uala/surcharge')
-def api_uala_surcharge():
-    """Calculate Ualá Bis surcharge for a given base price."""
-    precio_base = request.args.get('precio', type=int)
-    if not precio_base:
-        return jsonify({"error": "precio requerido"}), 400
-    precio_total, surcharge = calcular_precio_con_uala(precio_base)
-    return jsonify({"precio_base": precio_base, "surcharge": surcharge, "precio_total": precio_total})
 
 
 # --- Static Fallback ---
 
-def inject_gtm_script(html_content):
-    """Inject GTM script into HTML if not already present"""
-    gtm_script = f'<script src="/gtm.js"></script>'
-    # Insert GTM script right before closing </head> tag
+DEFAULT_OG = {
+    'title': 'Nez Juegos | Juegos Digitales Nintendo Switch y PlayStation',
+    'description': 'Compra juegos digitales para Nintendo Switch y PlayStation con entrega inmediata y precios imbatibles. Hasta 6 cuotas sin interés.',
+    'image': '/nez-logo.jpg'
+}
+
+def inject_head_tags(html_content, og_overrides=None):
+    """Inject GTM script, favicon and OG meta tags into HTML."""
+    og = {**DEFAULT_OG, **(og_overrides or {})}
+    tags = f'<script src="/gtm.js"></script>\n'
+    tags += f'<link rel="icon" type="image/jpeg" href="/nez-logo.jpg">\n'
+    if 'og:title' not in html_content:
+        tags += f'<meta property="og:title" content="{og["title"]}">\n'
+        tags += f'<meta property="og:description" content="{og["description"]}">\n'
+        tags += f'<meta property="og:image" content="{og["image"]}">\n'
+        tags += f'<meta property="og:type" content="website">\n'
+        tags += f'<meta name="twitter:card" content="summary_large_image">\n'
     if '</head>' in html_content and 'gtm.js' not in html_content:
-        html_content = html_content.replace('</head>', f'{gtm_script}\n</head>')
+        html_content = html_content.replace('</head>', f'{tags}</head>')
     return html_content
 
 @app.route('/')
 @app.route('/<path:path>')
 def serve_static(path=''):
-    # Helper to read and inject GTM
-    def get_html_with_gtm(file_path):
+    def get_html(file_path, og_overrides=None):
         with open(file_path, 'r', encoding='utf-8') as f:
             html = f.read()
-        return inject_gtm_script(html)
-    
-    if not path or path == 'index' or path == 'index.html': 
-        return get_html_with_gtm(os.path.join(UI_DIR, 'index.html'))
-    
-    # Clean URL routes for new pages
+        return inject_head_tags(html, og_overrides)
+
+    if not path or path == 'index' or path == 'index.html':
+        return get_html(os.path.join(UI_DIR, 'index.html'))
+
+    # Separate platform catalogs
+    if path == 'nintendo':
+        return get_html(os.path.join(UI_DIR, 'juegos.html'))
+    if path in ('playstation', 'juegos'):
+        return get_html(os.path.join(UI_DIR, 'juegos.html'))
+
+    # Individual game page with dynamic OG tags
     if path.startswith('juegos/') and path != 'juegos.html':
-        return get_html_with_gtm(os.path.join(UI_DIR, 'juego.html'))
-    
+        slug = path.replace('juegos/', '')
+        og = None
+        game = db.get_game_by_slug(slug) if slug else None
+        if game:
+            cover = f"/uploads/{game.get('imagen_filename')}" if game.get('imagen_filename') else '/nez-logo.jpg'
+            og = {
+                'title': f"{game['titulo']} | Nez Juegos",
+                'description': f"Compra {game['titulo']} en Nez Juegos con entrega inmediata. Hasta 6 cuotas sin interés.",
+                'image': cover
+            }
+        return get_html(os.path.join(UI_DIR, 'juego.html'), og)
+
     if path == 'checkout':
-        return get_html_with_gtm(os.path.join(UI_DIR, 'checkout.html'))
-    
+        return get_html(os.path.join(UI_DIR, 'checkout.html'))
+
     if path == 'terminos-y-condiciones':
-        return get_html_with_gtm(os.path.join(UI_DIR, 'terminos.html'))
-        
+        return get_html(os.path.join(UI_DIR, 'terminos.html'))
+
     if path in ['success', 'mp/success', 'mp/failure', 'mp/pending', 'uala/success', 'uala/failure']:
-        return get_html_with_gtm(os.path.join(UI_DIR, 'success.html'))
+        return get_html(os.path.join(UI_DIR, 'success.html'))
 
     # Security: If trying to access admin views, check auth first
     if path.startswith('admin') and not path.startswith('admin/login'):
         if not session.get('is_admin'):
             return redirect('/admin/login')
-            
-        # Admin paths route to UI_ADMIN_DIR
+
         page = path.replace('admin/', '').replace('admin', '')
         if not page or page == 'index': page = 'index'
-        
-        # Try finding the exact file or adding .html
+
         admin_file = None
         if os.path.exists(os.path.join(UI_ADMIN_DIR, page)):
             admin_file = os.path.join(UI_ADMIN_DIR, page)
         elif os.path.exists(os.path.join(UI_ADMIN_DIR, f"{page}.html")):
             admin_file = os.path.join(UI_ADMIN_DIR, f"{page}.html")
-        
+
         if admin_file:
-            return get_html_with_gtm(admin_file)
+            return get_html(admin_file)
         return "Not Found", 404
 
     # Public paths
     if os.path.exists(os.path.join(UI_DIR, path)):
-        # If it's an HTML file, inject GTM; otherwise serve as-is
         if path.endswith('.html'):
-            return get_html_with_gtm(os.path.join(UI_DIR, path))
+            return get_html(os.path.join(UI_DIR, path))
         return send_from_directory(UI_DIR, path)
     elif os.path.exists(os.path.join(UI_DIR, f"{path}.html")):
-        return get_html_with_gtm(os.path.join(UI_DIR, f"{path}.html"))
-        
+        return get_html(os.path.join(UI_DIR, f"{path}.html"))
+
     return "Not Found", 404
 
 if __name__ == '__main__':

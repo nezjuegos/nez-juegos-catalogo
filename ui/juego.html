@@ -210,6 +210,74 @@
         .ps-info-card ul li::before { content: '•'; color: var(--primary); font-weight: 800; position: absolute; left: 0; }
         .ps-info-card.secundaria ul li::before { color: var(--secondary); }
         @media (max-width: 640px) { .ps-info-grid { grid-template-columns: 1fr; } }
+
+        .version-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-md); overflow: hidden; margin-bottom: 1rem;
+        }
+        .version-card-header {
+            padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+        }
+        .version-card-header .version-name { font-weight: 700; font-size: 1rem; }
+        .version-card-header .version-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+        .price-tier {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.85rem 1.25rem; border-top: 1px solid var(--border); transition: background 0.15s;
+        }
+        .price-tier:first-child { border-top: none; }
+        .price-tier:hover { background: rgba(139,92,246,0.04); }
+        .price-tier .tier-info { flex: 1; }
+        .price-tier .tier-method { font-weight: 600; font-size: 0.88rem; }
+        .price-tier .tier-badge { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; margin-left: 0.5rem; }
+        .badge-discount { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-cuotas { background: rgba(139,92,246,0.15); color: var(--primary); }
+        .price-tier .tier-detail { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+        .price-tier .tier-price { font-size: 1.1rem; font-weight: 800; text-align: right; margin-right: 0.75rem; white-space: nowrap; }
+        .price-tier .tier-price .old { font-size: 0.8rem; color: var(--text-muted); text-decoration: line-through; font-weight: 400; }
+        .price-tier .tier-price .offer { color: #eab308; }
+
+        .btn-buy { min-width: 100px; text-align: center; }
+
+        .btn-payment-info {
+            display: block; width: 100%; text-align: center; padding: 0.85rem;
+            background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2);
+            border-radius: var(--radius-sm); color: var(--primary); font-weight: 600;
+            font-size: 0.9rem; cursor: pointer; transition: background 0.2s; margin-top: 1rem;
+        }
+        .btn-payment-info:hover { background: rgba(139,92,246,0.15); }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 2rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative;
+        }
+        .modal-close {
+            position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+            color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1;
+        }
+        .modal-close:hover { color: white; }
+        .modal-content h2 { font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin-bottom: 1rem; }
+        .modal-method {
+            display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem;
+            border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.6rem;
+        }
+        .modal-method .method-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .modal-method .method-name { font-weight: 700; font-size: 0.95rem; }
+        .modal-method .method-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+        @media (max-width: 640px) {
+            .price-tier { flex-wrap: wrap; gap: 0.5rem; }
+            .price-tier .tier-price { text-align: left; margin-right: 0; }
+            .btn-buy { width: 100%; justify-content: center; margin-top: 0.25rem; min-width: unset; }
+            .version-card-header { flex-direction: column; align-items: flex-start; }
+        }
     </style>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -228,7 +296,8 @@
     <nav class="nav">
         <a href="/" class="nav-logo">Nez Juegos</a>
         <div class="nav-links">
-            <a href="/juegos">Juegos</a>
+            <a href="/playstation">PlayStation</a>
+            <a href="/nintendo">Nintendo Switch</a>
             <a href="/packs">Packs</a>
         </div>
     </nav>
@@ -240,9 +309,41 @@
         </div>
     </div>
 
+    <!-- Payment Methods Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('paymentModal').classList.remove('active')">&times;</button>
+            <h2>💳 Medios de pago disponibles</h2>
+            <div class="modal-method" style="border-color: rgba(34,197,94,0.3);">
+                <span class="method-icon">🏦</span>
+                <div>
+                    <div class="method-name">Transferencia bancaria</div>
+                    <div class="method-desc">CBU o Alias — <strong style="color: #22c55e;">32% de descuento</strong></div>
+                    <div class="method-desc" style="margin-top: 0.3rem;">El precio más bajo. Aprobación manual dentro del horario de atención (8:00 a 22:00).</div>
+                </div>
+            </div>
+            <div class="modal-method" style="border-color: rgba(59,130,246,0.3);">
+                <span class="method-icon">💰</span>
+                <div>
+                    <div class="method-name">MercadoPago</div>
+                    <div class="method-desc">Saldo en cuenta o Cuotas sin Tarjeta — <strong style="color: #3b82f6;">26% de descuento</strong></div>
+                    <div class="method-desc" style="margin-top: 0.3rem;">Pagá con tu saldo de MercadoPago o con Mercado Crédito.</div>
+                </div>
+            </div>
+            <div class="modal-method" style="border-color: rgba(139,92,246,0.3);">
+                <span class="method-icon">💳</span>
+                <div>
+                    <div class="method-name">Tarjeta — Ualá Bis</div>
+                    <div class="method-desc">Débito o crédito — <strong style="color: var(--primary);">Hasta 6 cuotas sin interés</strong></div>
+                    <div class="method-desc" style="margin-top: 0.3rem;">Pagá con cualquier tarjeta. Precio habitual.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="footer">
         <p>© 2026 Nez Juegos · <a href="/terminos-y-condiciones">Términos y Condiciones</a></p>
-        <p style="margin-top: 0.5rem;"><a href="/">Inicio</a> · <a href="/juegos">Juegos</a> · <a href="/packs">Packs</a></p>
+        <p style="margin-top: 0.5rem;"><a href="/">Inicio</a> · <a href="/playstation">PlayStation</a> · <a href="/nintendo">Nintendo</a> · <a href="/packs">Packs</a></p>
     </div>
 
     <!-- WhatsApp Float -->
@@ -269,15 +370,18 @@
         // Get slug from URL: /juegos/my-game-slug
         const slug = window.location.pathname.split('/juegos/')[1];
         if (!slug) {
-            document.getElementById('gameContent').innerHTML = '<div class="error-msg"><h2>Juego no encontrado</h2><p><a href="/juegos" style="color: var(--primary);">Volver al catálogo</a></p></div>';
+            document.getElementById('gameContent').innerHTML = '<div class="error-msg"><h2>Juego no encontrado</h2><p><a href="/playstation" style="color: var(--primary);">Volver al catálogo</a></p></div>';
         } else {
             fetch(`/api/games/${slug}`)
                 .then(r => { if (!r.ok) throw new Error('Not found'); return r.json(); })
                 .then(game => renderGame(game))
                 .catch(() => {
-                    document.getElementById('gameContent').innerHTML = '<div class="error-msg"><h2>Juego no encontrado</h2><p style="margin-top:0.5rem;"><a href="/juegos" style="color: var(--primary);">← Volver al catálogo</a></p></div>';
+                    document.getElementById('gameContent').innerHTML = '<div class="error-msg"><h2>Juego no encontrado</h2><p style="margin-top:0.5rem;"><a href="/playstation" style="color: var(--primary);">← Volver al catálogo</a></p></div>';
                 });
         }
+
+        const DESCUENTO_SALDO = 0.26;
+        const DESCUENTO_TRANSFER = 0.32;
 
         function renderGame(game) {
             const isPS = gameIsPS(game);
@@ -285,143 +389,134 @@
             const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
             const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).filter(Boolean).join(' / ');
 
-            // Collect all prices to find minimum
+            // Update back link based on platform
+            const backLink = document.querySelector('.back-link');
+            if (backLink) backLink.href = isPS ? '/playstation' : '/nintendo';
+
             let allPrices = [];
             let priceOptions = [];
 
-            if (isPS) {
-                const types = [
-                    { key: 'primaria_ps5', name: 'PRIMARIA PS5', desc: 'Tu perfil principal en PS5 (Permanente)' },
-                    { key: 'primaria_ps4', name: 'PRIMARIA PS4', desc: 'Tu perfil principal en PS4 (Permanente)' },
-                    { key: 'secundaria_ps5', name: 'SECUNDARIA PS5', desc: 'Perfil alterno en PS5 (Permanente)' }
+            const types = isPS
+                ? [
+                    { key: 'primaria_ps5', name: 'Primaria PS5', desc: 'Tu perfil principal en PS5 (Permanente)' },
+                    { key: 'primaria_ps4', name: 'Primaria PS4', desc: 'Tu perfil principal en PS4 (Permanente)' },
+                    { key: 'secundaria_ps5', name: 'Secundaria PS5', desc: 'Perfil alterno en PS5 (Permanente)' }
+                ]
+                : [
+                    { key: 'primaria', name: 'Cuenta Primaria', desc: 'Jugás con tu usuario (Permanente)' },
+                    { key: 'secundaria', name: 'Cuenta Secundaria', desc: 'Jugás con perfil alterno (Permanente)' },
+                    { key: 'codigo_digital', name: 'Código Digital', desc: 'Canjeable en tu cuenta' },
+                    { key: 'alquiler', name: 'Alquiler 30 días', desc: 'Cuenta prestada por 1 mes' }
                 ];
-                types.forEach(t => {
-                    const reg = game.precios[t.key];
-                    const off = game.precios['oferta_' + t.key];
-                    if (reg || off) {
-                        const currentPrice = off || reg;
-                        allPrices.push(currentPrice);
-                        priceOptions.push({ ...t, regular: reg, offer: off, currentPrice });
-                    }
-                });
-            } else {
-                const types = [
-                    { key: 'primaria', name: 'CUENTA PRIMARIA', desc: 'Jugás con tu usuario (Permanente)' },
-                    { key: 'secundaria', name: 'CUENTA SECUNDARIA', desc: 'Jugás con perfil alterno (Permanente)' },
-                    { key: 'codigo_digital', name: 'CÓDIGO DIGITAL', desc: 'Canjeable en tu cuenta' },
-                    { key: 'alquiler', name: 'ALQUILER 30 DÍAS', desc: 'Cuenta prestada por 1 mes' }
-                ];
-                types.forEach(t => {
-                    const reg = game.precios[t.key];
-                    const off = game.precios['oferta_' + t.key];
-                    if (reg || off) {
-                        const currentPrice = off || reg;
-                        allPrices.push(currentPrice);
-                        priceOptions.push({ ...t, regular: reg, offer: off, currentPrice });
-                    }
-                });
+
+            types.forEach(t => {
+                const reg = game.precios[t.key];
+                const off = game.precios['oferta_' + t.key];
+                if (reg || off) {
+                    const currentPrice = off || reg;
+                    allPrices.push(currentPrice);
+                    priceOptions.push({ ...t, regular: reg, offer: off, currentPrice });
+                }
+            });
+
+            if (!allPrices.length) {
+                document.getElementById('gameContent').innerHTML = '<div class="error-msg"><h2>No hay precios disponibles</h2></div>';
+                return;
             }
 
             const minPrice = Math.min(...allPrices);
-            const maxPrice = Math.max(...allPrices);
+            const minTransfer = Math.round(minPrice * (1 - DESCUENTO_TRANSFER));
 
-            // Update document title and meta
-            document.title = `${game.titulo} ${platDisplay} — Desde ${formatPrice(minPrice)} | Nez Juegos`;
+            document.title = `${game.titulo} ${platDisplay} — Desde ${formatPrice(minTransfer)} | Nez Juegos`;
             document.querySelector('meta[name="description"]').content =
-                `Jugá ${game.titulo} en ${platDisplay} desde ${formatPrice(minPrice)}. Entrega inmediata. ${game.precios.eshop ? `Precio oficial ${storeName}: ${formatPrice(game.precios.eshop)}. ` : ''}+2000 ventas.`;
+                `Jugá ${game.titulo} en ${platDisplay} desde ${formatPrice(minTransfer)} con transferencia. Hasta 6 cuotas sin interés. Entrega inmediata. +2000 ventas.`;
 
-            // Schema.org Product markup
             schemaScript.textContent = JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "Product",
+                "@context": "https://schema.org", "@type": "Product",
                 "name": `${game.titulo} ${platDisplay}`,
                 "image": cover ? `https://nezjuegos.com/uploads/${game.imagen_filename}` : undefined,
                 "brand": { "@type": "Brand", "name": "Nez Juegos" },
                 "description": `Juego digital ${game.titulo} para ${platDisplay}. Entrega inmediata.`,
-                "offers": {
-                    "@type": "AggregateOffer",
-                    "lowPrice": String(minPrice),
-                    "highPrice": String(maxPrice),
-                    "priceCurrency": "ARS",
-                    "offerCount": String(priceOptions.length),
-                    "availability": "https://schema.org/InStock"
-                }
+                "offers": { "@type": "AggregateOffer", "lowPrice": String(minTransfer), "highPrice": String(Math.max(...allPrices)), "priceCurrency": "ARS", "offerCount": String(priceOptions.length), "availability": "https://schema.org/InStock" }
             });
 
-            // GTM Event: view_item
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ ecommerce: null });
-            window.dataLayer.push({
-                event: "view_item",
-                ecommerce: {
-                    items: [{
-                        item_name: `${game.titulo} ${platDisplay}`,
-                        item_id: game.id.toString(),
-                        price: minPrice,
-                        item_brand: "Nez Juegos",
-                        item_category: platDisplay
-                    }]
-                }
-            });
+            window.dataLayer.push({ event: "view_item", ecommerce: { items: [{ item_name: `${game.titulo} ${platDisplay}`, item_id: game.id.toString(), price: minPrice, item_brand: "Nez Juegos", item_category: platDisplay }] } });
 
-            // Build HTML
             let html = `
                 <div class="game-header">
-                    <div class="game-cover">
-                        ${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}
-                    </div>
+                    <div class="game-cover">${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}</div>
                     <div class="game-meta">
                         <h1>${game.titulo}</h1>
                         <span class="platform-badge">${platDisplay}</span>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
-                                <div>
-                                    <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde</div>
-                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minPrice)}</div>
-                                    ${(game.precios.eshop && game.precios.eshop > minPrice) ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(game.precios.eshop - minPrice)} vs ${storeName}</div>` : ''}
-                                </div>
+                            <div style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
+                                <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minTransfer)}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">Con tarjeta: ${formatPrice(minPrice)}</div>
                             </div>
-                            ${(game.precios.eshop) ? `
-                            <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
-                                <div>
-                                    <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">${storeName} con imp.</div>
-                                    <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
-                                </div>
+                            ${game.precios.eshop ? `
+                            <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 0.5rem 0.75rem;">
+                                <div style="font-size: 0.7rem; color: #fca5a5; font-weight: 700; text-transform: uppercase;">${storeName} con imp.</div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #f87171;">${formatPrice(game.precios.eshop)}</div>
                             </div>` : ''}
                         </div>
                     </div>
                 </div>
-
-                <div class="pricing-section">
-                    <div class="section-title">Elegí tu modalidad</div>
             `;
 
+            // Version cards — one per modality with 3 price tiers
             priceOptions.forEach(opt => {
                 const isDiscounted = opt.offer && opt.offer < opt.regular;
-                const savings = (game.precios.eshop && game.precios.eshop > opt.currentPrice)
-                    ? game.precios.eshop - opt.currentPrice : 0;
+                const cardPrice = opt.currentPrice;
+                const saldoPrice = Math.round(cardPrice * (1 - DESCUENTO_SALDO));
+                const transferPrice = Math.round(cardPrice * (1 - DESCUENTO_TRANSFER));
+
+                let priceDisplay = '';
+                if (isDiscounted) {
+                    priceDisplay = `<span class="old">${formatPrice(opt.regular)}</span> <span class="offer">${formatPrice(cardPrice)}</span>`;
+                } else {
+                    priceDisplay = formatPrice(cardPrice);
+                }
 
                 html += `
-                    <div class="price-option">
-                        <div class="info">
-                            <div class="type-name">${opt.name}</div>
-                            <div class="type-desc">${opt.desc}</div>
-                            ${savings > 0 ? `<div class="savings">Ahorras ${formatPrice(savings)} vs ${storeName}</div>` : ''}
+                <div class="version-card">
+                    <div class="version-card-header">
+                        <div>
+                            <div class="version-name">${opt.name}</div>
+                            <div class="version-desc">${opt.desc}</div>
                         </div>
-                        <div class="price-col">
-                            ${isDiscounted ? `<div class="old-price">${formatPrice(opt.regular)}</div>` : ''}
-                            <div class="current-price ${isDiscounted ? 'offer-price' : ''}">${formatPrice(opt.currentPrice)}</div>
-                        </div>
-                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}" class="btn-buy" onclick="trackBuyClick(event, this, '${opt.name}', ${opt.currentPrice})">
-                            🛒 Comprar
-                        </a>
                     </div>
-                `;
+                    <div class="price-tier">
+                        <div class="tier-info">
+                            <div class="tier-method">🏦 Transferencia <span class="tier-badge badge-discount">-32%</span></div>
+                            <div class="tier-detail">CBU o Alias</div>
+                        </div>
+                        <div class="tier-price" style="color: #22c55e;">${formatPrice(transferPrice)}</div>
+                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}&method=transferencia" class="btn-buy" onclick="trackBuyClick(event, this, '${opt.name}', ${transferPrice})">🛒 Comprar</a>
+                    </div>
+                    <div class="price-tier">
+                        <div class="tier-info">
+                            <div class="tier-method">💰 MercadoPago <span class="tier-badge badge-discount">-26%</span></div>
+                            <div class="tier-detail">Saldo en cuenta o Cuotas sin Tarjeta</div>
+                        </div>
+                        <div class="tier-price" style="color: #3b82f6;">${formatPrice(saldoPrice)}</div>
+                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}&method=mercadopago" class="btn-buy" onclick="trackBuyClick(event, this, '${opt.name}', ${saldoPrice})">🛒 Comprar</a>
+                    </div>
+                    <div class="price-tier">
+                        <div class="tier-info">
+                            <div class="tier-method">💳 Tarjeta — Ualá Bis <span class="tier-badge badge-cuotas">Hasta 6 cuotas sin interés</span></div>
+                            <div class="tier-detail">Débito o crédito</div>
+                        </div>
+                        <div class="tier-price">${priceDisplay}</div>
+                        <a href="/checkout?game=${game.slug}&tipo=${encodeURIComponent(opt.key)}&method=uala" class="btn-buy" onclick="trackBuyClick(event, this, '${opt.name}', ${cardPrice})">🛒 Comprar</a>
+                    </div>
+                </div>`;
             });
 
-            html += `</div>`;
+            html += `<button class="btn-payment-info" onclick="document.getElementById('paymentModal').classList.add('active')">💳 Ver medios de pago</button>`;
 
-            // PS account type info cards
             if (isPS) {
                 html += `
                     <div class="ps-info-grid">
@@ -447,12 +542,15 @@
                                 <li>No inicies sesión en la cuenta que te damos</li>
                             </ul>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }
 
             document.getElementById('gameContent').innerHTML = html;
         }
+
+        document.getElementById('paymentModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
 
         function trackBuyClick(ev, el, typeName, price) {
             ev.preventDefault();

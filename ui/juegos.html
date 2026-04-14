@@ -570,8 +570,9 @@
             <a href="/">🎮 <span>Nez</span> Juegos</a>
         </div>
         <nav class="nav-links">
-            <a href="/juegos" class="active">Juegos Individuales</a>
-            <a href="/packs">Packs en Oferta</a>
+            <a href="/playstation" id="navPS">PlayStation</a>
+            <a href="/nintendo" id="navNS">Nintendo Switch</a>
+            <a href="/packs">Packs</a>
             <a href="/terminos-y-condiciones">T&C</a>
         </nav>
     </header>
@@ -619,8 +620,31 @@
         let featuredJuegos = [];
         let waNumber = '';
         let currentPlatform = 'Nintendo Switch';
+        const DESCUENTO_TRANSFER = 0.32;
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Auto-detect platform from URL path
+            const path = window.location.pathname;
+            if (path === '/playstation' || path === '/juegos') {
+                currentPlatform = 'PlayStation';
+            } else {
+                currentPlatform = 'Nintendo Switch';
+            }
+
+            // Highlight active nav link
+            if (currentPlatform === 'PlayStation') {
+                document.getElementById('navPS').classList.add('active');
+                document.title = 'PlayStation | Nez Juegos';
+            } else {
+                document.getElementById('navNS').classList.add('active');
+                document.title = 'Nintendo Switch | Nez Juegos';
+            }
+
+            // Set active platform tab
+            document.querySelectorAll('.platform-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.platform === currentPlatform);
+            });
+
             Promise.all([
                 fetch('/api/juegos').then(r => r.json()),
                 fetch('/api/juegos?featured=true').then(r => r.json()),
@@ -632,11 +656,8 @@
                 applyFilters();
             }).catch(err => console.error("Error loading data:", err));
 
-            // Wire up search
             const searchInput = document.getElementById('searchInput');
             const clearBtn = document.getElementById('clearBtn');
-
-            const normalize = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
             searchInput.addEventListener('input', () => {
                 clearBtn.style.display = searchInput.value ? 'block' : 'none';
@@ -648,12 +669,17 @@
                 applyFilters();
             });
 
-            // Wire up platform tabs
             document.querySelectorAll('.platform-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
                     currentPlatform = tab.dataset.platform;
+                    // Update URL without reload
+                    const newPath = currentPlatform === 'PlayStation' ? '/playstation' : '/nintendo';
+                    history.replaceState(null, '', newPath);
+                    document.getElementById('navPS').classList.toggle('active', currentPlatform === 'PlayStation');
+                    document.getElementById('navNS').classList.toggle('active', currentPlatform !== 'PlayStation');
+                    document.title = (currentPlatform === 'PlayStation' ? 'PlayStation' : 'Nintendo Switch') + ' | Nez Juegos';
                     applyFilters();
                 });
             });
@@ -840,7 +866,6 @@
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
                         ${(() => {
-                            // Find minimum price across available platform types
                             const saleKeys = isPS 
                                 ? ['primaria_ps5','primaria_ps4','secundaria_ps5'] 
                                 : ['codigo_digital','primaria','secundaria','alquiler'];
@@ -849,17 +874,14 @@
                                 .filter(Boolean);
                             if (!actualPrices.length) return '';
                             const minP = Math.min(...actualPrices);
-                            
-                            const storeName = isPS ? 'PS Store' : 'eShop';
-                            const baseStorePrice = isPS ? game.precios.eshop : game.precios.eshop;
-                            const savings = baseStorePrice ? baseStorePrice - minP : 0;
+                            const transferPrice = Math.round(minP * (1 - DESCUENTO_TRANSFER));
                             
                             return `
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div>
-                                    <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde</div>
-                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minP)}</div>
-                                    ${savings > 0 ? `<div style="font-size: 0.7rem; color: #86efac;">Ahorrás ${formatPrice(savings)} vs ${storeName}</div>` : ''}
+                                    <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(transferPrice)}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">Con tarjeta: ${formatPrice(minP)}</div>
                                 </div>
                             </div>`;
                         })()
