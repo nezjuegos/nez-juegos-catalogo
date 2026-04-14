@@ -186,6 +186,19 @@ def create_juego():
     new_id = db.create_juego(data)
     return jsonify({"status": "ok", "id": new_id})
 
+@app.route('/api/admin/juegos/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_juegos():
+    ids = request.json.get('ids', [])
+    if not ids or not isinstance(ids, list):
+        return jsonify({"error": "ids requeridos"}), 400
+    deleted = 0
+    for juego_id in ids:
+        if isinstance(juego_id, int):
+            db.delete_juego(juego_id)
+            deleted += 1
+    return jsonify({"status": "ok", "deleted": deleted})
+
 @app.route('/api/admin/juegos/<int:juego_id>', methods=['PUT', 'DELETE'])
 @admin_required
 def manage_juego(juego_id):

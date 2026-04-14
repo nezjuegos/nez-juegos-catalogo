@@ -255,9 +255,17 @@
                 <input type="text" id="adminSearchInput" placeholder="🔍 Buscar juego por nombre..."
                     style="width: 100%; background: #09090b; border: 1px solid var(--border); color: white; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.95rem;">
             </div>
+            <!-- Bulk delete toolbar -->
+            <div id="bulkBar" style="display:none; align-items:center; gap:1rem; background:#1c0a0a; border:1px solid #7f1d1d; border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem;">
+                <span id="bulkCount" style="font-weight:700; color:#fca5a5;"></span>
+                <button onclick="bulkDelete()" style="background:#dc2626; color:white; border:none; padding:0.45rem 1.1rem; border-radius:6px; font-weight:700; cursor:pointer;">🗑️ Eliminar seleccionados</button>
+                <button onclick="clearSelection()" style="background:#27272a; color:#a1a1aa; border:none; padding:0.45rem 1rem; border-radius:6px; cursor:pointer;">Cancelar</button>
+            </div>
+
             <table id="gamesTable">
                 <thead>
                     <tr>
+                        <th style="width:2rem;"><input type="checkbox" id="selectAll" title="Seleccionar todos" onchange="toggleSelectAll(this)"></th>
                         <th>Juego</th>
                         <th>Plataforma(s)</th>
                         <th>Precios Registrados</th>
@@ -415,6 +423,7 @@
                 }
 
                 tr.innerHTML = `
+                    <td style="text-align:center;"><input type="checkbox" class="row-cb" data-id="${game.id}" onchange="onRowCheck()"></td>
                     <td>
                         <div class="game-cell">
                             <img src="${cover}" alt="${game.titulo}">
@@ -544,6 +553,58 @@
                 uploadText.innerText = "📁 Haz clic para subir imagen";
             }
             document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        function getCheckedIds() {
+            return [...document.querySelectorAll('.row-cb:checked')].map(cb => parseInt(cb.dataset.id));
+        }
+
+        window.toggleSelectAll = (master) => {
+            document.querySelectorAll('.row-cb').forEach(cb => cb.checked = master.checked);
+            onRowCheck();
+        };
+
+        window.onRowCheck = () => {
+            const ids = getCheckedIds();
+            const bar = document.getElementById('bulkBar');
+            const count = document.getElementById('bulkCount');
+            const all = document.querySelectorAll('.row-cb');
+            document.getElementById('selectAll').indeterminate = ids.length > 0 && ids.length < all.length;
+            document.getElementById('selectAll').checked = ids.length === all.length && all.length > 0;
+            if (ids.length > 0) {
+                bar.style.display = 'flex';
+                count.textContent = `${ids.length} juego${ids.length > 1 ? 's' : ''} seleccionado${ids.length > 1 ? 's' : ''}`;
+            } else {
+                bar.style.display = 'none';
+            }
+        };
+
+        window.clearSelection = () => {
+            document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+            document.getElementById('selectAll').checked = false;
+            document.getElementById('selectAll').indeterminate = false;
+            document.getElementById('bulkBar').style.display = 'none';
+        };
+
+        window.bulkDelete = async () => {
+            const ids = getCheckedIds();
+            if (ids.length === 0) return;
+            if (!confirm(`¿Seguro que querés eliminar ${ids.length} juego${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
+            try {
+                const res = await fetch('/api/admin/juegos/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    showToast(`${data.deleted} juego${data.deleted > 1 ? 's' : ''} eliminado${data.deleted > 1 ? 's' : ''}`);
+                    clearSelection();
+                    loadGames();
+                } else {
+                    showToast('Error al eliminar', true);
+                }
+            } catch (err) { console.error(err); showToast('Error al eliminar', true); }
         };
 
         window.deleteGame = async (id) => {
