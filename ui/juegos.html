@@ -816,16 +816,19 @@
             const currentPrice = offer || regular;
             const isDiscounted = offer && offer < regular;
 
-            const cardColor = isDiscounted ? '#eab308' : 'white';
+            // currentPrice is now the TRANSFER price (stored in DB)
+            const transferPrice = currentPrice;
+            const cardPrice = Math.round(currentPrice / (1 - DESCUENTO_TRANSFER));
+            const regularCardPrice = Math.round(regular / (1 - DESCUENTO_TRANSFER));
+
             let cardAmountHtml = '';
             if (isDiscounted) {
-                cardAmountHtml = `<span style="text-decoration:line-through; color:var(--text-muted); font-size:0.85rem; font-weight:500; margin-right:0.4rem;">${formatPrice(regular)}</span>`;
-                cardAmountHtml += `<span class="price-amount" style="color:#eab308;">${formatPrice(offer)}</span>`;
+                cardAmountHtml = `<span style="text-decoration:line-through; color:var(--text-muted); font-size:0.85rem; font-weight:500; margin-right:0.4rem;">${formatPrice(regularCardPrice)}</span>`;
+                cardAmountHtml += `<span class="price-amount" style="color:#eab308;">${formatPrice(cardPrice)}</span>`;
             } else {
-                cardAmountHtml = `<span class="price-amount">${formatPrice(currentPrice)}</span>`;
+                cardAmountHtml = `<span class="price-amount">${formatPrice(cardPrice)}</span>`;
             }
 
-            const transferPrice = Math.round(currentPrice * (1 - DESCUENTO_TRANSFER));
             const isPS = gameIsPS(game);
 
             const buyBtn = `<a href="/checkout?game=${generateSlug(game.titulo, game.plataforma)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration:none;" onclick="fbq('track','InitiateCheckout')">🛒 Comprar</a>`;
@@ -920,15 +923,15 @@
                                 .map(k => game.precios['oferta_'+k] || game.precios[k])
                                 .filter(Boolean);
                             if (!actualPrices.length) return '';
-                            const minP = Math.min(...actualPrices);
-                            const transferPrice = Math.round(minP * (1 - DESCUENTO_TRANSFER));
-                            
+                            const minTransfer = Math.min(...actualPrices);  // DB stores transfer price
+                            const minCard = Math.round(minTransfer / (1 - DESCUENTO_TRANSFER));
+
                             return `
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div>
                                     <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>
-                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(transferPrice)}</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-muted);">Con tarjeta: ${formatPrice(minP)}</div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minTransfer)}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">Con tarjeta: ${formatPrice(minCard)}</div>
                                 </div>
                             </div>`;
                         })()
@@ -977,14 +980,14 @@
                 const reg = game.precios[priceKey];
                 const off = game.precios['oferta_' + priceKey];
                 if (!reg && !off) return;
-                const basePrice = off || reg;
-                const transferPrice = Math.round(basePrice * (1 - DESCUENTO_TRANSFER));
-                const saldoPrice = Math.round(basePrice * (1 - DESCUENTO_SALDO));
+                const transferPrice = off || reg;  // DB stores transfer price
+                const cardPrice = Math.round(transferPrice / (1 - DESCUENTO_TRANSFER));
+                const saldoPrice = Math.round(cardPrice * (1 - DESCUENTO_SALDO));
 
                 text += `*${label}*\n`;
                 text += `  🏦 Transferencia: *${formatPrice(transferPrice)}* _(−32%)_\n`;
                 text += `  💰 MercadoPago saldo: *${formatPrice(saldoPrice)}* _(−26%)_\n`;
-                text += `  💳 Tarjeta Ualá Bis: *${formatPrice(basePrice)}* _(hasta 6 cuotas sin interés)_\n`;
+                text += `  💳 Tarjeta Ualá Bis: *${formatPrice(cardPrice)}* _(hasta 6 cuotas sin interés)_\n`;
                 if (game.precios.eshop && game.precios.eshop > transferPrice) {
                     text += `  ✅ _Ahorrás hasta ${formatPrice(game.precios.eshop - transferPrice)} vs ${storeName}_\n`;
                 }

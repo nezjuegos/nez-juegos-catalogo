@@ -439,8 +439,8 @@
                 return;
             }
 
-            const minPrice = Math.min(...allPrices);
-            const minTransfer = Math.round(minPrice * (1 - DESCUENTO_TRANSFER));
+            const minTransfer = Math.min(...allPrices);  // DB stores transfer price
+            const minPrice = Math.round(minTransfer / (1 - DESCUENTO_TRANSFER));
 
             document.title = `${game.titulo} ${platDisplay} — Desde ${formatPrice(minTransfer)} | Nez Juegos`;
             document.querySelector('meta[name="description"]').content =
@@ -484,13 +484,15 @@
             // Version cards — one per modality with 3 price tiers
             priceOptions.forEach(opt => {
                 const isDiscounted = opt.offer && opt.offer < opt.regular;
-                const cardPrice = opt.currentPrice;
+                // DB stores transfer price; card and MP are calculated upward
+                const transferPrice = opt.currentPrice;
+                const cardPrice = Math.round(transferPrice / (1 - DESCUENTO_TRANSFER));
+                const regularCardPrice = Math.round(opt.regular / (1 - DESCUENTO_TRANSFER));
                 const saldoPrice = Math.round(cardPrice * (1 - DESCUENTO_SALDO));
-                const transferPrice = Math.round(cardPrice * (1 - DESCUENTO_TRANSFER));
 
                 let priceDisplay = '';
                 if (isDiscounted) {
-                    priceDisplay = `<span class="old">${formatPrice(opt.regular)}</span> <span class="offer">${formatPrice(cardPrice)}</span>`;
+                    priceDisplay = `<span class="old">${formatPrice(regularCardPrice)}</span> <span class="offer">${formatPrice(cardPrice)}</span>`;
                 } else {
                     priceDisplay = formatPrice(cardPrice);
                 }

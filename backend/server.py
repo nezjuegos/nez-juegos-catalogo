@@ -641,13 +641,16 @@ def api_uala_webhook():
 @app.route('/api/pricing')
 def api_pricing():
     """Calculate all price tiers from the base (card) price stored in DB."""
-    precio_base = request.args.get('precio', type=int)
-    if not precio_base:
+    precio_transfer = request.args.get('precio', type=int)
+    if not precio_transfer:
         return jsonify({"error": "precio requerido"}), 400
+    # DB stores the transfer (minimum) price; card and MP are calculated upward from it
+    precio_tarjeta = int(precio_transfer / (1 - DESCUENTO_TRANSFERENCIA))
+    precio_saldo_mp = int(precio_tarjeta * (1 - DESCUENTO_SALDO_MP))
     return jsonify({
-        "precio_tarjeta": precio_base,
-        "precio_saldo_mp": int(precio_base * (1 - DESCUENTO_SALDO_MP)),
-        "precio_transferencia": int(precio_base * (1 - DESCUENTO_TRANSFERENCIA)),
+        "precio_transferencia": precio_transfer,
+        "precio_saldo_mp": precio_saldo_mp,
+        "precio_tarjeta": precio_tarjeta,
         "descuento_saldo_pct": int(DESCUENTO_SALDO_MP * 100),
         "descuento_transfer_pct": int(DESCUENTO_TRANSFERENCIA * 100)
     })

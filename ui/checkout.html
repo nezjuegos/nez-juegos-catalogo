@@ -351,7 +351,8 @@
     <script>
         let gameData = null;
         let selectedPayment = 'transferencia';
-        let precioBase = 0;
+        let precioBase = 0;       // transfer price (stored in DB — the minimum)
+        let precioTarjeta = 0;    // card price = precioBase / 0.68
         let precioTransferencia = 0;
         let precioSaldoMP = 0;
         let tipoProducto = '';
@@ -411,14 +412,15 @@
 
                     const reg = game.precios[gameType];
                     const off = game.precios['oferta_' + gameType];
-                    precioBase = off || reg || 0;
-                    precioTransferencia = Math.round(precioBase * (1 - DESCUENTO_TRANSFER));
-                    precioSaldoMP = Math.round(precioBase * (1 - DESCUENTO_SALDO));
+                    precioBase = off || reg || 0;          // transfer price (DB minimum)
+                    precioTransferencia = precioBase;
+                    precioTarjeta = Math.round(precioBase / (1 - DESCUENTO_TRANSFER));
+                    precioSaldoMP = Math.round(precioTarjeta * (1 - DESCUENTO_SALDO));
 
                     // Display prices on each payment option
                     document.getElementById('transferPriceDisplay').textContent = formatPrice(precioTransferencia);
                     document.getElementById('saldoPriceDisplay').textContent = formatPrice(precioSaldoMP);
-                    document.getElementById('ualaPriceDisplay').textContent = formatPrice(precioBase);
+                    document.getElementById('ualaPriceDisplay').textContent = formatPrice(precioTarjeta);
 
                     const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
                     const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
@@ -453,7 +455,7 @@
 
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push({ ecommerce: null });
-                    window.dataLayer.push({ event: "begin_checkout", ecommerce: { currency: "ARS", value: precioBase, items: [{ item_name: `${game.titulo} ${platDisplay}`, item_id: game.id.toString(), price: precioBase, item_brand: "Nez Juegos", item_category: platDisplay }] } });
+                    window.dataLayer.push({ event: "begin_checkout", ecommerce: { currency: "ARS", value: precioTarjeta, items: [{ item_name: `${game.titulo} ${platDisplay}`, item_id: game.id.toString(), price: precioTarjeta, item_brand: "Nez Juegos", item_category: platDisplay }] } });
                 })
                 .catch(() => {
                     document.getElementById('mainContainer').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted);"><h2>Juego no encontrado</h2><a href="/playstation" style="color:var(--primary);">← Volver al catálogo</a></div>';
@@ -484,7 +486,7 @@
             if (summaryPrice) {
                 if (method === 'transferencia') summaryPrice.textContent = formatPrice(precioTransferencia);
                 else if (method === 'mercadopago_saldo') summaryPrice.textContent = formatPrice(precioSaldoMP);
-                else summaryPrice.textContent = formatPrice(precioBase);
+                else summaryPrice.textContent = formatPrice(precioTarjeta);
             }
 
             const btn = document.getElementById('submitBtn');
@@ -520,8 +522,7 @@
             }
             if (!email) email = 'comprador@nezjuegos.com';
 
-            const precioCobrado = precioSaldoMP;
-
+            const precioCobrado = precioSaldoMP;  // MP always charges the saldo price
             const btn = document.getElementById('submitBtn');
             btn.style.display = 'none';
 
@@ -682,7 +683,7 @@
             btn.textContent = 'Procesando...';
 
             try {
-                let precioCobrado = precioBase;
+                let precioCobrado = precioTarjeta;  // default: card price
                 let paymentMethodName = selectedPayment;
 
                 if (selectedPayment === 'transferencia') {
@@ -698,7 +699,7 @@
                             game_plataforma: gameData.plataforma, tipo_producto: tipoProducto,
                             buyer_email: email, buyer_phone: phone,
                             payment_method: 'transferencia',
-                            precio_base: precioBase, precio_cobrado: precioCobrado, surcharge: 0
+                            precio_base: precioTarjeta, precio_cobrado: precioCobrado, surcharge: 0
                         })
                     });
                     const orderData = await orderResp.json();
@@ -723,7 +724,7 @@
                             game_id: gameData.id, game_titulo: gameData.titulo,
                             game_plataforma: gameData.plataforma, tipo_producto: tipoProducto,
                             buyer_email: email, buyer_phone: phone,
-                            precio_base: precioBase, precio_cobrado: precioBase, surcharge: 0
+                            precio_base: precioTarjeta, precio_cobrado: precioTarjeta, surcharge: 0
                         })
                     });
                     const ualaData = await ualaResp.json();
@@ -772,7 +773,7 @@
                 </div>`;
 
             const platDisplay = (gameData.plataforma || '').split(',').map(p => p.trim()).join(' / ');
-            let finalPrice = precioBase;
+            let finalPrice = precioTarjeta;
             if (method === 'transferencia') finalPrice = precioTransferencia;
             else if (selectedPayment === 'mercadopago_saldo') finalPrice = precioSaldoMP;
 
