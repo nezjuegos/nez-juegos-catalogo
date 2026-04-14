@@ -698,16 +698,20 @@ class Database:
 
     @staticmethod
     def generate_slug(titulo, plataforma=''):
-        """Generate a URL-friendly slug from game title + platform."""
+        """Generate URL slug from title + platform, skipping platform if already in title."""
         import re
-        text = f"{titulo} {plataforma}".strip()
-        # Remove accents
-        nfkd = unicodedata.normalize('NFKD', text)
-        text = ''.join(c for c in nfkd if not unicodedata.combining(c))
-        text = text.lower()
-        text = re.sub(r'[^a-z0-9\s-]', '', text)
-        text = re.sub(r'[\s-]+', '-', text).strip('-')
-        return text
+        def slugify(s):
+            nfkd = unicodedata.normalize('NFKD', s.strip())
+            s = ''.join(c for c in nfkd if not unicodedata.combining(c))
+            s = s.lower()
+            s = re.sub(r'[^a-z0-9\s-]', '', s)
+            return re.sub(r'[\s-]+', '-', s).strip('-')
+
+        title_slug = slugify(titulo)
+        plat_slug = slugify(plataforma) if plataforma else ''
+        if not plat_slug or plat_slug in title_slug:
+            return title_slug
+        return f"{title_slug}-{plat_slug}"
 
     # --- GAME BY SLUG ---
     def get_game_by_slug(self, slug):

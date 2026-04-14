@@ -1121,10 +1121,12 @@ def api_admin_add_ps_slots(account_id):
 
 # --- Static Fallback ---
 
+SITE_URL = os.getenv('SITE_URL', 'https://nezjuegos.com')
+
 DEFAULT_OG = {
     'title': 'Nez Juegos | Juegos Digitales Nintendo Switch y PlayStation',
     'description': 'Compra juegos digitales para Nintendo Switch y PlayStation con entrega inmediata y precios imbatibles. Hasta 6 cuotas sin interés.',
-    'image': '/nez-logo.jpg'
+    'image': f'{SITE_URL}/nez-logo.jpg'
 }
 
 def inject_head_tags(html_content, og_overrides=None):
@@ -1133,6 +1135,10 @@ def inject_head_tags(html_content, og_overrides=None):
         return html_content
 
     og = {**DEFAULT_OG, **(og_overrides or {})}
+    # Ensure og:image is always an absolute URL
+    if og['image'].startswith('/'):
+        og['image'] = f"{SITE_URL}{og['image']}"
+
     tags = ''
 
     # Always inject favicon if not present
@@ -1144,6 +1150,7 @@ def inject_head_tags(html_content, og_overrides=None):
         tags += f'<meta property="og:title" content="{og["title"]}">\n'
         tags += f'<meta property="og:description" content="{og["description"]}">\n'
         tags += f'<meta property="og:image" content="{og["image"]}">\n'
+        tags += f'<meta property="og:url" content="{og.get("url", SITE_URL)}">\n'
         tags += f'<meta property="og:type" content="website">\n'
         tags += f'<meta name="twitter:card" content="summary_large_image">\n'
 
@@ -1178,7 +1185,8 @@ def serve_static(path=''):
             og = {
                 'title': f"{game['titulo']} | Nez Juegos",
                 'description': f"Compra {game['titulo']} en Nez Juegos con entrega inmediata. Hasta 6 cuotas sin interés.",
-                'image': cover
+                'image': cover,
+                'url': f"{SITE_URL}/juegos/{slug}"
             }
         return get_html(os.path.join(UI_DIR, 'juego.html'), og)
 

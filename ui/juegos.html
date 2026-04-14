@@ -767,12 +767,14 @@
         }
 
         function generateSlug(titulo, plataforma) {
-            let text = (titulo + ' ' + (plataforma || '')).trim();
-            text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            text = text.toLowerCase();
-            text = text.replace(/[^a-z0-9\s-]/g, '');
-            text = text.replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
-            return text;
+            function slugify(s) {
+                return (s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
+            }
+            const titleSlug = slugify(titulo);
+            const platSlug = slugify(plataforma);
+            if (!platSlug || titleSlug.includes(platSlug)) return titleSlug;
+            return `${titleSlug}-${platSlug}`;
         }
 
         function createOrderLink(game, type, currentPrice) {
@@ -970,11 +972,7 @@
                 game.precios.oferta_primaria_ps5 || game.precios.oferta_primaria_ps4 || game.precios.oferta_secundaria_ps5
             );
 
-            let text = '';
-            if (hasOferta) text += `🚨 *OFERTA ESPECIAL* 🚨\n`;
-            text += `🎮 *${game.titulo}* — _Nez Juegos_\n`;
-            if (game.precios.eshop) text += `🏪 *Precio oficial ${storeName}:* ${formatPrice(game.precios.eshop)}\n`;
-            text += `\n`;
+            let text = `🎮 *${game.titulo}* — _Nez Juegos_\n\n`;
 
             // For each modality, show 3 price tiers
             const addPriceLine = (label, priceKey) => {
@@ -1006,7 +1004,7 @@
                 addPriceLine('Alquiler 30 días', 'alquiler');
             }
 
-            text += `🛒 Ver más: nezjuegos.com/juegos/${generateSlug(game.titulo, game.plataforma)}`;
+            text += `🛒 Ver más: https://nezjuegos.com/juegos/${generateSlug(game.titulo, game.plataforma)}`;
             navigator.clipboard.writeText(text).then(() => {
                 showToast('¡Precios copiados al portapapeles!');
             }).catch(err => console.error('Error:', err));
