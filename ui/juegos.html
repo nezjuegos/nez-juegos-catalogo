@@ -218,39 +218,72 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem 1.1rem;
             border-radius: var(--radius-sm);
             border: 1px solid var(--border);
-            transition: 0.2s;
+            gap: 1rem;
+            transition: background 0.2s;
         }
 
         .price-row:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.07);
         }
 
         .price-details {
             display: flex;
             flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+            min-width: 0;
         }
 
         .price-type {
-            font-weight: 700;
-            font-size: 0.9rem;
+            font-weight: 800;
+            font-size: 0.78rem;
             color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
 
         .price-amount {
             font-family: 'Outfit';
-            font-size: 1.2rem;
-            font-weight: 800;
+            font-size: 1.65rem;
+            font-weight: 900;
             color: white;
+            line-height: 1;
+        }
+
+        .price-transfer-line {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.25);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            width: fit-content;
+        }
+
+        .price-transfer-label {
+            font-size: 0.7rem;
+            color: #86efac;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .price-transfer-amount {
+            font-family: 'Outfit';
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: #22c55e;
+            line-height: 1;
         }
 
         .price-desc {
             font-size: 0.7rem;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 0.1rem;
         }
 
         .btn-wa-small {
@@ -425,11 +458,16 @@
             }
 
             .price-row {
-                padding: 0.6rem;
+                padding: 0.75rem 0.85rem;
+                gap: 0.75rem;
             }
 
             .price-amount {
-                font-size: 1rem;
+                font-size: 1.4rem;
+            }
+
+            .price-transfer-amount {
+                font-size: 1.05rem;
             }
 
             .info-banner {
@@ -778,45 +816,36 @@
             const currentPrice = offer || regular;
             const isDiscounted = offer && offer < regular;
 
-            let amountHtml = '';
+            const cardColor = isDiscounted ? '#eab308' : 'white';
+            let cardAmountHtml = '';
             if (isDiscounted) {
-                amountHtml = `<span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.85rem; font-weight: normal; margin-right: 0.5rem;">${formatPrice(regular)}</span>`;
-                amountHtml += `<span class="price-amount" style="color: #eab308;">${formatPrice(offer)}</span>`;
+                cardAmountHtml = `<span style="text-decoration:line-through; color:var(--text-muted); font-size:0.85rem; font-weight:500; margin-right:0.4rem;">${formatPrice(regular)}</span>`;
+                cardAmountHtml += `<span class="price-amount" style="color:#eab308;">${formatPrice(offer)}</span>`;
             } else {
-                amountHtml = `<span class="price-amount">${formatPrice(regular)}</span>`;
-            }
-
-            const isPS = gameIsPS(game);
-
-            // PS games: only Comprar button. Nintendo: Comprar + Pedir (WhatsApp)
-            let buttonsHtml = '';
-            if (isPS) {
-                buttonsHtml = `
-                    <a href="/checkout?game=${generateSlug(game.titulo, game.plataforma)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration: none;" onclick="fbq('track','InitiateCheckout')">
-                        🛒 Comprar
-                    </a>`;
-            } else {
-                buttonsHtml = `
-                    <a href="/checkout?game=${generateSlug(game.titulo, game.plataforma)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration: none;" onclick="fbq('track','InitiateCheckout')">
-                        🛒 Comprar
-                    </a>
-                    <a href="${createOrderLink(game, typeName, currentPrice)}" target="_blank" class="btn-wa-small" style="text-decoration: none;" onclick="fbq('track','Lead')">
-                        <svg style="width:14px;height:14px;vertical-align:middle;margin-right:3px" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>Pedir
-                    </a>`;
+                cardAmountHtml = `<span class="price-amount">${formatPrice(currentPrice)}</span>`;
             }
 
             const transferPrice = Math.round(currentPrice * (1 - DESCUENTO_TRANSFER));
+            const isPS = gameIsPS(game);
+
+            const buyBtn = `<a href="/checkout?game=${generateSlug(game.titulo, game.plataforma)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration:none;" onclick="fbq('track','InitiateCheckout')">🛒 Comprar</a>`;
 
             return `
                 <div class="price-row">
                     <div class="price-details">
                         <span class="price-type">${typeName}</span>
-                        <div>${amountHtml}</div>
-                        <div style="font-size:0.72rem; color:#86efac; margin-top:0.15rem;">🏦 Transferencia: <strong>${formatPrice(transferPrice)}</strong></div>
+                        <div style="display:flex; align-items:baseline; gap:0.4rem; flex-wrap:wrap;">
+                            ${cardAmountHtml}
+                            <span style="font-size:0.72rem; color:var(--text-muted);">tarjeta</span>
+                        </div>
+                        <div class="price-transfer-line">
+                            <span class="price-transfer-label">🏦 Transferencia</span>
+                            <span class="price-transfer-amount">${formatPrice(transferPrice)}</span>
+                        </div>
                         <span class="price-desc">${desc}</span>
                     </div>
-                    <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0;">
-                        ${buttonsHtml}
+                    <div style="display:flex; flex-direction:column; gap:0.35rem; align-items:stretch; flex-shrink:0;">
+                        ${buyBtn}
                     </div>
                 </div>
             `;
