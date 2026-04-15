@@ -161,6 +161,10 @@
             .payment-option { padding: 0.75rem; gap: 0.6rem; }
             .payment-option .pay-name { font-size: 0.88rem; }
             .payment-option .pay-desc { font-size: 0.75rem; }
+            #instructionsPrimaria ul, #instructionsSecundaria ul,
+            #instructionsNintendoPrimaria ul, #instructionsNintendoSecundaria ul { font-size: 0.78rem; }
+            #instructionsPrimaria, #instructionsSecundaria,
+            #instructionsNintendoPrimaria, #instructionsNintendoSecundaria { padding: 0.75rem; }
             #deliveryImmediate, #deliveryQueued { padding: 0.65rem 0.85rem; }
         }
 
@@ -341,6 +345,44 @@
                 <div id="comprobanteError" class="error-text" style="display:none;"></div>
             </div>
 
+            <!-- Account usage rules (PS primaria/secundaria) -->
+            <div class="card" id="instructionsPrimaria" style="display: none; border-color: rgba(34,197,94,0.3);">
+                <h2 style="color: var(--success);">📔 Reglas de uso — Cuenta Primaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>✅ Se puede usar <strong style="color: var(--text-main);">online y offline</strong>.</li>
+                    <li>🛡️ La <strong style="color: var(--text-main);">garantía es de por vida</strong>.</li>
+                    <li>👤 Debés jugar con usuarios de <strong style="color: var(--text-main);">tu propiedad</strong>.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta.</li>
+                </ul>
+            </div>
+            <div class="card" id="instructionsSecundaria" style="display: none; border-color: rgba(234,179,8,0.3);">
+                <h2 style="color: var(--warning);">📔 Reglas de uso — Cuenta Secundaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>🌐 Debés contar con <strong style="color: var(--text-main);">internet</strong> para ejecutar el juego.</li>
+                    <li>🛡️ Contás con <strong style="color: var(--text-main);">garantía</strong>.</li>
+                    <li>👤 Debés jugar con el <strong style="color: var(--text-main);">usuario que te vendemos</strong>.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta.</li>
+                </ul>
+            </div>
+            <div class="card" id="instructionsNintendoPrimaria" style="display: none; border-color: rgba(34,197,94,0.3);">
+                <h2 style="color: var(--success);">📔 Reglas de uso — Cuenta Primaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>✅ Se puede usar <strong style="color: var(--text-main);">online y offline</strong>.</li>
+                    <li>🛡️ La <strong style="color: var(--text-main);">garantía es de por vida</strong>.</li>
+                    <li>👤 Debés jugar con <strong style="color: var(--text-main);">tu usuario personal</strong>.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés eliminar</strong> la cuenta que te compartimos ni cambiar sus datos.</li>
+                </ul>
+            </div>
+            <div class="card" id="instructionsNintendoSecundaria" style="display: none; border-color: rgba(234,179,8,0.3);">
+                <h2 style="color: var(--warning);">📔 Reglas de uso — Cuenta Secundaria</h2>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                    <li>🌐 Debés contar con <strong style="color: var(--text-main);">internet</strong> para ejecutar el juego.</li>
+                    <li>🛡️ Contás con <strong style="color: var(--text-main);">garantía</strong>.</li>
+                    <li>👤 Debés jugar con el <strong style="color: var(--text-main);">usuario que te vendemos</strong>.</li>
+                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta.</li>
+                </ul>
+            </div>
+
             <!-- Delivery Time Notice -->
             <div class="card" id="deliveryNotice" style="display: none; border-color: rgba(34,197,94,0.3); padding: 1rem 1.25rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -513,6 +555,21 @@
                     }
 
                     setupInstallModal(isNintendo, gameType);
+
+                    // Show account usage rules
+                    if (isNintendo) {
+                        if (gameType.includes('secundaria')) {
+                            document.getElementById('instructionsNintendoSecundaria').style.display = 'block';
+                        } else if (gameType.includes('primaria')) {
+                            document.getElementById('instructionsNintendoPrimaria').style.display = 'block';
+                        }
+                    } else {
+                        if (gameType.includes('secundaria')) {
+                            document.getElementById('instructionsSecundaria').style.display = 'block';
+                        } else {
+                            document.getElementById('instructionsPrimaria').style.display = 'block';
+                        }
+                    }
 
                     // Show delivery notice
                     document.getElementById('deliveryNotice').style.display = 'block';
