@@ -161,11 +161,57 @@
             .payment-option { padding: 0.75rem; gap: 0.6rem; }
             .payment-option .pay-name { font-size: 0.88rem; }
             .payment-option .pay-desc { font-size: 0.75rem; }
-            /* Collapse instruction cards to be more compact */
-            #instructionsPrimaria ul, #instructionsSecundaria ul { font-size: 0.78rem; }
-            #instructionsPrimaria, #instructionsSecundaria { padding: 0.75rem; }
             #deliveryImmediate, #deliveryQueued { padding: 0.65rem 0.85rem; }
         }
+
+        /* Install instructions modal */
+        .install-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+            padding: 1.5rem;
+        }
+        .install-modal {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-md); max-width: 520px; width: 100%;
+            padding: 2rem; position: relative; max-height: 85vh; overflow-y: auto;
+        }
+        .install-modal-close {
+            position: absolute; top: 0.75rem; right: 1rem;
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.5rem; cursor: pointer; line-height: 1;
+        }
+        .install-modal-close:hover { color: white; }
+        .install-modal h3 {
+            font-family: 'Outfit', sans-serif; font-weight: 800;
+            font-size: 1.15rem; margin-bottom: 1.25rem;
+        }
+        .install-step {
+            display: flex; gap: 0.75rem; margin-bottom: 1rem;
+        }
+        .install-step-num {
+            flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+            background: var(--primary); color: white; font-weight: 800;
+            font-size: 0.8rem; display: flex; align-items: center; justify-content: center;
+        }
+        .install-step-text {
+            font-size: 0.88rem; color: var(--text-muted); line-height: 1.55;
+        }
+        .install-step-text strong { color: var(--text-main); }
+        .install-step-text .warn { color: var(--error); font-weight: 700; }
+        .install-footer {
+            margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);
+            font-size: 0.82rem; color: var(--text-muted); text-align: center;
+        }
+        .install-footer a { color: var(--primary); font-weight: 600; text-decoration: none; }
+        .btn-install-info {
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            width: 100%; padding: 0.7rem; margin-top: 0.75rem;
+            background: transparent; border: 1px dashed var(--border);
+            border-radius: var(--radius-sm); color: var(--text-muted);
+            font-size: 0.85rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-install-info:hover { border-color: var(--primary); color: var(--primary); }
     </style>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -295,26 +341,6 @@
                 <div id="comprobanteError" class="error-text" style="display:none;"></div>
             </div>
 
-            <!-- 3. PS Instructions (shown below payment for PS games) -->
-            <div class="card" id="instructionsPrimaria" style="display: none; border-color: rgba(34,197,94,0.3);">
-                <h2 style="color: var(--success);">📔 Instrucciones — Cuenta Primaria</h2>
-                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
-                    <li>✅ Se puede usar <strong style="color: var(--text-main);">online y offline</strong>.</li>
-                    <li>🛡️ La <strong style="color: var(--text-main);">garantía es de por vida</strong>.</li>
-                    <li>👤 Debés jugar con usuarios de <strong style="color: var(--text-main);">tu propiedad</strong>.</li>
-                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta.</li>
-                </ul>
-            </div>
-            <div class="card" id="instructionsSecundaria" style="display: none; border-color: rgba(234,179,8,0.3);">
-                <h2 style="color: var(--warning);">📔 Instrucciones — Cuenta Secundaria</h2>
-                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
-                    <li>🌐 Debés contar con <strong style="color: var(--text-main);">internet</strong> para ejecutar el juego.</li>
-                    <li>🛡️ Contás con <strong style="color: var(--text-main);">garantía</strong>.</li>
-                    <li>👤 Debés jugar con el <strong style="color: var(--text-main);">usuario que te vendemos</strong>.</li>
-                    <li>🔒 <strong style="color: var(--error);">No debés cambiar</strong> ninguna información de seguridad de la cuenta.</li>
-                </ul>
-            </div>
-
             <!-- Delivery Time Notice -->
             <div class="card" id="deliveryNotice" style="display: none; border-color: rgba(34,197,94,0.3); padding: 1rem 1.25rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -336,11 +362,21 @@
                 </p>
             </div>
 
+            <button class="btn-install-info" onclick="document.getElementById('installModal').style.display='flex'">📖 Cómo instalar</button>
+
             <button class="btn-submit" id="submitBtn" onclick="submitOrder()">Confirmar pedido</button>
         </div>
 
         <!-- Confirmation (hidden by default) -->
         <div id="confirmationScreen" style="display: none;"></div>
+    </div>
+
+    <!-- Install instructions modal -->
+    <div class="install-modal-overlay" id="installModal" onclick="if(event.target===this)this.style.display='none'">
+        <div class="install-modal">
+            <button class="install-modal-close" onclick="document.getElementById('installModal').style.display='none'">&times;</button>
+            <div id="installModalContent"></div>
+        </div>
     </div>
 
     <!-- WhatsApp Float -->
@@ -369,6 +405,45 @@
         function formatPrice(val) {
             if (!val) return '$0';
             return '$' + val.toLocaleString('es-AR');
+        }
+
+        function setupInstallModal(isNintendo, gameType) {
+            const container = document.getElementById('installModalContent');
+            const isSecundaria = gameType.includes('secundaria');
+            const footer = `<div class="install-footer">¿Dudas? Contactanos en <a href="https://instagram.com/nezjuegos" target="_blank">@nezjuegos</a></div>`;
+
+            if (isNintendo) {
+                container.innerHTML = `
+                    <h3>📖 Cómo instalar — Nintendo</h3>
+                    <div class="install-step">
+                        <div class="install-step-num">1</div>
+                        <div class="install-step-text">Después de tu compra, <strong>serás contactado por WhatsApp</strong> para guiarte con la instalación paso a paso.</div>
+                    </div>
+                    <div class="install-step">
+                        <div class="install-step-num">2</div>
+                        <div class="install-step-text">Te ayudamos a <strong>agregar el usuario</strong>, descargar el juego y dejarlo <strong>listo para jugar</strong>.</div>
+                    </div>
+                    ${footer}`;
+            } else {
+                container.innerHTML = `
+                    <h3>📖 Cómo instalar — PlayStation</h3>
+                    <div class="install-step">
+                        <div class="install-step-num">1</div>
+                        <div class="install-step-text">Vas a recibir un <strong>correo electrónico</strong> con las credenciales y un código de acceso. Si pagás con MercadoPago o tarjeta el mail llega <strong>al instante</strong>; con transferencia hay que esperar aprobación.</div>
+                    </div>
+                    <div class="install-step">
+                        <div class="install-step-num">2</div>
+                        <div class="install-step-text">Agregá un <strong>usuario en tu consola PlayStation</strong> usando las credenciales recibidas. <span class="warn">IMPORTANTE: no agregarlo como invitado.</span></div>
+                    </div>
+                    <div class="install-step">
+                        <div class="install-step-num">3</div>
+                        <div class="install-step-text">Descargá el juego desde la <strong>colección de esa cuenta</strong>. ${isSecundaria
+                            ? 'Como es cuenta secundaria, <strong>debés jugar con la cuenta que te vendemos</strong>.'
+                            : '<span class="warn">No elimines la cuenta</span> ni juegues con ella — usá tu perfil personal.'
+                        }</div>
+                    </div>
+                    ${footer}`;
+            }
         }
 
         function gameIsPS(game) {
@@ -437,13 +512,7 @@
                         document.getElementById('emailField').style.display = 'none';
                     }
 
-                    if (!isNintendo) {
-                        if (gameType.includes('secundaria')) {
-                            document.getElementById('instructionsSecundaria').style.display = 'block';
-                        } else {
-                            document.getElementById('instructionsPrimaria').style.display = 'block';
-                        }
-                    }
+                    setupInstallModal(isNintendo, gameType);
 
                     // Show delivery notice
                     document.getElementById('deliveryNotice').style.display = 'block';
