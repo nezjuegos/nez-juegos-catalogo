@@ -629,12 +629,67 @@
 
         /* Featured Section */
         .featured-section {
-            margin-bottom: 3rem;
+            margin-bottom: 2.5rem;
+            padding: 1.25rem 1.1rem 1.4rem;
+            background: linear-gradient(135deg, rgba(234,179,8,0.07) 0%, rgba(139,92,246,0.08) 100%);
+            border: 1px solid rgba(234,179,8,0.22);
+            border-radius: var(--radius-md);
         }
 
         .featured-section h2 {
-            font-size: 1.3rem;
-            margin-bottom: 1.25rem;
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 0.9rem;
+            color: #fde68a;
+            letter-spacing: 0.01em;
+        }
+
+        /* Featured cards use a horizontal layout & golden accent */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.85rem;
+        }
+
+        .featured-grid .game-card {
+            border-color: rgba(234,179,8,0.35);
+            background: linear-gradient(160deg, rgba(234,179,8,0.07), rgba(17,17,21,0.9));
+            box-shadow: 0 4px 20px rgba(234,179,8,0.07);
+        }
+
+        .featured-grid .game-card:hover {
+            border-color: rgba(234,179,8,0.6);
+            box-shadow: 0 8px 28px rgba(234,179,8,0.18);
+            transform: translateY(-3px);
+        }
+
+        .featured-grid .game-cover {
+            height: 135px;
+        }
+
+        .featured-grid .btn-card-primary {
+            background: linear-gradient(135deg, #d97706, #eab308);
+            color: #000;
+        }
+
+        .featured-grid .price-range-box {
+            background: rgba(234,179,8,0.1);
+            border-color: rgba(234,179,8,0.3);
+        }
+
+        .featured-grid .price-range-label { color: #fde68a; }
+        .featured-grid .price-range-amount { color: #facc15; }
+
+        @media (max-width: 768px) {
+            .featured-section {
+                padding: 0.9rem 0.75rem 1rem;
+                margin-bottom: 1.5rem;
+            }
+            .featured-section h2 {
+                font-size: 1rem;
+                margin-bottom: 0.65rem;
+            }
+            .featured-grid .game-cover { height: 100px; }
         }
 
         /* Toast Notification */
@@ -740,10 +795,10 @@
 
         <div class="featured-section" id="featuredSection" style="display: none;">
             <h2>⭐ Juegos Destacados</h2>
-            <div class="games-grid" id="featuredGrid"></div>
+            <div class="featured-grid" id="featuredGrid"></div>
         </div>
 
-        <h2 style="font-size: 1.2rem; margin-bottom: 1.25rem; color: var(--text-muted);">Catálogo Completo</h2>
+        <h2 style="font-size: 1.2rem; margin-bottom: 1.25rem; color: var(--text-muted);" id="catalogTitle">Catálogo Completo</h2>
         <div class="games-grid" id="gamesGrid">
             <!-- Rendered via JS -->
         </div>
@@ -842,16 +897,20 @@
             const filtered = platformGames.filter(j => normalize(j.titulo).includes(term));
             const filteredFeatured = platformFeatured.filter(j => normalize(j.titulo).includes(term));
 
-            // Show featured section
+            // Show featured section — hide from main catalog to avoid duplication
             const featuredSection = document.getElementById('featuredSection');
-            if (filteredFeatured.length > 0 && !term) {
+            const showFeatured = filteredFeatured.length > 0 && !term;
+            if (showFeatured) {
                 featuredSection.style.display = 'block';
                 renderGames(filteredFeatured, 'featuredGrid');
             } else {
                 featuredSection.style.display = 'none';
             }
 
-            renderGames(filtered, 'gamesGrid');
+            // Exclude featured IDs from the main catalog
+            const featuredIds = showFeatured ? new Set(filteredFeatured.map(g => g.id)) : new Set();
+            const catalogGames = filtered.filter(g => !featuredIds.has(g.id));
+            renderGames(catalogGames, 'gamesGrid');
         }
 
         function formatPrice(val) {
