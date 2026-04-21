@@ -82,7 +82,19 @@
             background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
             color: #c4b5fd; font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 999px;
             font-weight: 600;
+            display: inline-flex; align-items: center; gap: 0.35rem;
         }
+        .chip-tag {
+            font-size: 0.62rem; font-weight: 800; padding: 0.08rem 0.45rem;
+            border-radius: 999px; letter-spacing: 0.03em; text-transform: uppercase;
+            line-height: 1.4;
+        }
+        .chip-tag-pri-ps5 { background: #fff; color: #000; }
+        .chip-tag-sec-ps5 { background: #111; color: #fff; border: 1px solid #444; }
+        .chip-tag-pri-ps4 { background: #003087; color: #fff; }
+        .chip-tag-ps5 { background: rgba(255,255,255,0.9); color: #000; }
+        .chip-tag-ps4 { background: #003087; color: #fff; }
+        .chip-tag-other { background: rgba(139,92,246,0.25); color: #c4b5fd; }
 
         .btn-add {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -340,9 +352,19 @@
                 const keys = acc.activation_keys_list || [];
                 const deliveries = acc.deliveries || [];
 
+                const versionClass = (label) => {
+                    if (label === 'Primaria PS5') return 'chip-tag-pri-ps5';
+                    if (label === 'Secundaria PS5') return 'chip-tag-sec-ps5';
+                    if (label === 'Primaria PS4') return 'chip-tag-pri-ps4';
+                    if (label === 'PS5') return 'chip-tag-ps5';
+                    if (label === 'PS4') return 'chip-tag-ps4';
+                    return 'chip-tag-other';
+                };
                 const chipsHtml = linkedGames.length
-                    ? `<div class="linked-games-chips">${linkedGames.map(g =>
-                        `<span class="linked-chip">🎮 ${g.titulo}</span>`).join('')}</div>`
+                    ? `<div class="linked-games-chips">${linkedGames.map(g => {
+                        const label = g.version_label || g.plataforma || 'PS';
+                        return `<span class="linked-chip">🎮 ${g.titulo} <span class="chip-tag ${versionClass(label)}">${label}</span></span>`;
+                      }).join('')}</div>`
                     : `<div class="linked-games-chips"><span class="linked-chip" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#fca5a5;">⚠️ Sin juegos vinculados — editá para asignar</span></div>`;
 
                 let barHtml = '';
@@ -489,6 +511,31 @@
         let ALL_GAMES = [];              // cached games list
         const pickerState = { acc: new Set(), edit: new Set() };
 
+        function gameVersionLabel(g) {
+            const p = g.precios || {};
+            const has_p5 = !!(p.primaria_ps5 || p.oferta_primaria_ps5);
+            const has_p4 = !!(p.primaria_ps4 || p.oferta_primaria_ps4);
+            const has_s5 = !!(p.secundaria_ps5 || p.oferta_secundaria_ps5);
+            const active = [has_p5, has_p4, has_s5].filter(Boolean).length;
+            if (active === 1) {
+                if (has_p5) return 'Primaria PS5';
+                if (has_p4) return 'Primaria PS4';
+                if (has_s5) return 'Secundaria PS5';
+            }
+            const plat = g.plataforma || '';
+            if (/PS5/i.test(plat)) return 'PS5';
+            if (/PS4/i.test(plat)) return 'PS4';
+            return plat || 'PS';
+        }
+        function versionTagClass(label) {
+            if (label === 'Primaria PS5') return 'chip-tag-pri-ps5';
+            if (label === 'Secundaria PS5') return 'chip-tag-sec-ps5';
+            if (label === 'Primaria PS4') return 'chip-tag-pri-ps4';
+            if (label === 'PS5') return 'chip-tag-ps5';
+            if (label === 'PS4') return 'chip-tag-ps4';
+            return 'chip-tag-other';
+        }
+
         async function loadGames() {
             try {
                 const resp = await fetch('/api/juegos');
@@ -516,9 +563,11 @@
                 list.innerHTML = filtered.map(g => {
                     const checked = selected.has(g.id) ? 'checked' : '';
                     const selectedCls = selected.has(g.id) ? 'selected' : '';
+                    const label = gameVersionLabel(g);
+                    const tagCls = versionTagClass(label);
                     return `<label class="game-opt ${selectedCls}">
                         <input type="checkbox" value="${g.id}" ${checked} onchange="togglePickerGame('${kind}', ${g.id}, this.checked)">
-                        <span>${g.titulo}</span>
+                        <span>${g.titulo} <span class="chip-tag ${tagCls}" style="margin-left:0.35rem;">${label}</span></span>
                     </label>`;
                 }).join('');
             }
@@ -532,8 +581,11 @@
                 summary.textContent = 'Ninguno seleccionado';
                 summary.style.color = 'var(--text-muted)';
             } else {
-                const titles = [...selected]
-                    .map(id => (ALL_GAMES.find(g => g.id === id) || {}).titulo || `#${id}`);
+                const titles = [...selected].map(id => {
+                    const g = ALL_GAMES.find(x => x.id === id);
+                    if (!g) return `#${id}`;
+                    return `${g.titulo} (${gameVersionLabel(g)})`;
+                });
                 summary.innerHTML = `<strong style="color:var(--primary);">${selected.size} seleccionado(s):</strong> ${titles.join(', ')}`;
                 summary.style.color = 'var(--text-main)';
             }

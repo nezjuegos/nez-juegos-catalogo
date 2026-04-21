@@ -879,8 +879,27 @@ class Database:
                 # Fetch titles of linked games for convenience
                 if d['game_ids_list']:
                     placeholders = ','.join('?' * len(d['game_ids_list']))
-                    cursor2.execute(f"SELECT id, titulo, plataforma FROM juegos WHERE id IN ({placeholders})", d['game_ids_list'])
-                    d['linked_games'] = [dict(r) for r in cursor2.fetchall()]
+                    cursor2.execute(f"""SELECT id, titulo, plataforma,
+                                          precio_primaria_ps5, oferta_primaria_ps5,
+                                          precio_primaria_ps4, oferta_primaria_ps4,
+                                          precio_secundaria_ps5, oferta_secundaria_ps5
+                                        FROM juegos WHERE id IN ({placeholders})""", d['game_ids_list'])
+                    linked = []
+                    for r in cursor2.fetchall():
+                        g = dict(r)
+                        has_p5 = bool(g.get('precio_primaria_ps5') or g.get('oferta_primaria_ps5'))
+                        has_p4 = bool(g.get('precio_primaria_ps4') or g.get('oferta_primaria_ps4'))
+                        has_s5 = bool(g.get('precio_secundaria_ps5') or g.get('oferta_secundaria_ps5'))
+                        active = sum([has_p5, has_p4, has_s5])
+                        if active == 1:
+                            if has_p5:    g['version_label'] = 'Primaria PS5'
+                            elif has_p4:  g['version_label'] = 'Primaria PS4'
+                            elif has_s5:  g['version_label'] = 'Secundaria PS5'
+                        else:
+                            plat = g.get('plataforma') or ''
+                            g['version_label'] = 'PS5' if 'PS5' in plat else ('PS4' if 'PS4' in plat else plat)
+                        linked.append(g)
+                    d['linked_games'] = linked
                 else:
                     d['linked_games'] = []
                 results.append(d)
