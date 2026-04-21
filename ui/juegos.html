@@ -177,22 +177,38 @@
             object-fit: cover;
         }
 
-        .platform-badge {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            padding: 0.25rem 0.65rem;
-            border-radius: 50px;
+        /* Platform bar — sits between cover photo and price section */
+        .platform-bar {
+            display: flex;
+            align-items: center;
+            padding: 0.28rem 0.7rem;
             font-size: 0.72rem;
             font-weight: 800;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.04em;
             text-transform: uppercase;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }
-        .plat-ps5  { background: #fff; color: #000; }
-        .plat-ps4  { background: #003087; color: #fff; }
-        .plat-nsw  { background: #e4000f; color: #fff; }
-        .plat-nsw2 { background: #000; color: #e4000f; border: 1px solid #e4000f; }
-        .plat-mix  { background: rgba(10,10,12,0.82); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
+        .pb-primaria-ps5  { background: #fff; color: #000; }
+        .pb-secundaria-ps5 { background: #111; color: #fff; border-top: 1px solid #333; }
+        .pb-primaria-ps4  { background: #003087; color: #fff; }
+        .pb-secundaria-ps4 { background: #001a5c; color: #bcc8e8; }
+        .pb-nsw   { background: #e4000f; color: #fff; }
+        .pb-nsw2  { background: #0d0d0d; color: #e4000f; border-top: 1px solid #222; }
+        .pb-other { background: rgba(255,255,255,0.08); color: #ccc; }
+        /* Keep small discount/hot badges on cover */
+        .cover-badge {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: #eab308;
+            color: #000;
+            font-weight: 800;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            z-index: 2;
+            box-shadow: 0 4px 12px rgba(234,179,8,0.3);
+        }
 
         .game-info {
             padding: 0.9rem 1rem;
@@ -538,11 +554,9 @@
             .btn-card-primary { font-size: 0.72rem; padding: 0.45rem 0.5rem; }
             .btn-card-ghost { font-size: 0.65rem; padding: 0.35rem 0.5rem; }
 
-            .platform-badge {
-                font-size: 0.6rem;
-                padding: 0.15rem 0.45rem;
-                top: 0.4rem;
-                right: 0.4rem;
+            .platform-bar {
+                font-size: 0.65rem;
+                padding: 0.22rem 0.6rem;
             }
 
             .pricing-list {
@@ -631,8 +645,8 @@
         .featured-section {
             margin-bottom: 2.5rem;
             padding: 1.25rem 1.1rem 1.4rem;
-            background: linear-gradient(135deg, rgba(234,179,8,0.07) 0%, rgba(139,92,246,0.08) 100%);
-            border: 1px solid rgba(234,179,8,0.22);
+            background: linear-gradient(135deg, rgba(234,179,8,0.04) 0%, rgba(139,92,246,0.07) 100%);
+            border: 1px solid rgba(234,179,8,0.15);
             border-radius: var(--radius-md);
         }
 
@@ -680,12 +694,13 @@
         }
 
         .featured-grid .price-range-box {
-            background: rgba(234,179,8,0.1);
-            border-color: rgba(234,179,8,0.3);
+            background: rgba(234,179,8,0.06);
+            border-color: rgba(234,179,8,0.2);
         }
 
-        .featured-grid .price-range-label { color: #fde68a; }
-        .featured-grid .price-range-amount { color: #facc15; }
+        .featured-grid .price-range-label { color: #d4b966; }
+        .featured-grid .price-range-amount { color: #e8c84a; }
+        .featured-grid .btn-card-primary { font-weight: 800; }
 
         @media (max-width: 768px) {
             .featured-section {
@@ -1026,17 +1041,30 @@
             return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
         }
 
-        function platformBadgeHtml(plataforma) {
-            const parts = (plataforma || '').split(',').map(p => p.trim()).filter(Boolean);
-            if (parts.length > 1) {
-                return `<span class="platform-badge plat-mix">${parts.join(' / ')}</span>`;
+        function platformBarHtml(titulo, plataforma) {
+            const t = (titulo || '').toLowerCase();
+            const p = (plataforma || '').trim();
+            const isSecundaria = t.includes('secundaria');
+
+            if (p.includes('PS5')) {
+                return isSecundaria
+                    ? `<div class="platform-bar pb-secundaria-ps5">Secundaria PS5</div>`
+                    : `<div class="platform-bar pb-primaria-ps5">Primaria PS5</div>`;
             }
-            const p = parts[0] || '';
-            if (p === 'PS5' || p.includes('PS5'))            return `<span class="platform-badge plat-ps5">PS5</span>`;
-            if (p === 'PS4' || p.includes('PS4'))            return `<span class="platform-badge plat-ps4">PS4</span>`;
-            if (p.includes('Switch 2'))                      return `<span class="platform-badge plat-nsw2">Switch 2</span>`;
-            if (p.includes('Nintendo Switch') || p.includes('Switch')) return `<span class="platform-badge plat-nsw">Switch</span>`;
-            return `<span class="platform-badge plat-mix">${p}</span>`;
+            if (p.includes('PS4')) {
+                return isSecundaria
+                    ? `<div class="platform-bar pb-secundaria-ps4">Secundaria PS4</div>`
+                    : `<div class="platform-bar pb-primaria-ps4">Primaria PS4</div>`;
+            }
+            if (p.includes('Switch 2') || p.includes('Nintendo Switch 2')) {
+                return `<div class="platform-bar pb-nsw2">Nintendo Switch 2</div>`;
+            }
+            if (p.includes('Switch') || p.includes('Nintendo')) {
+                return `<div class="platform-bar pb-nsw">Nintendo Switch</div>`;
+            }
+            // Fallback: show platform text
+            const parts = p.split(',').map(s => s.trim()).filter(Boolean);
+            return `<div class="platform-bar pb-other">${parts.join(' / ')}</div>`;
         }
 
         function renderGames(gamesArray, containerId = 'gamesGrid') {
@@ -1070,7 +1098,7 @@
                     }
                 });
 
-                const discountBadge = maxPct > 0 ? `<div style="position: absolute; top: 0.75rem; left: 0.75rem; background: #eab308; color: black; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; z-index: 2; box-shadow: 0 4px 12px rgba(234,179,8,0.3);">- ${maxPct}% OFF</div>` : '';
+                const discountBadge = maxPct > 0 ? `<div class="cover-badge">- ${maxPct}% OFF</div>` : '';
 
                 const saleKeys = isPS
                     ? ['primaria_ps5','primaria_ps4','secundaria_ps5']
@@ -1089,16 +1117,12 @@
                     const transferLine = isRange
                         ? `${formatPrice(minTransfer)} <span style="color:var(--text-muted); font-weight:600; font-size:0.8em;">– ${formatPrice(maxTransfer)}</span>`
                         : `${formatPrice(minTransfer)}`;
-                    const cardLine = isRange
-                        ? `Con tarjeta: <strong>${formatPrice(minCard)}</strong> – <strong>${formatPrice(maxCard)}</strong>`
-                        : `Con tarjeta: <strong>${formatPrice(minCard)}</strong>`;
                     const minUsdt = usdtRate > 0 ? (minTransfer / usdtRate).toFixed(2) : null;
-                    const usdtChip = minUsdt ? `<span style="display:inline-flex;align-items:center;gap:0.2rem;background:rgba(240,185,11,0.12);border:1px solid rgba(240,185,11,0.3);border-radius:4px;padding:0.1rem 0.35rem;font-size:0.62rem;font-weight:700;color:#f0b90b;margin-top:0.2rem;"><svg width="10" height="10" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#F0B90B"/><path d="M12.116 13.884L16 10l3.886 3.886-2.26 2.26-1.626-1.626-1.624 1.626-2.26-2.262zM10 16l2.26-2.26L14.52 16l-2.26 2.26L10 16zm6 6-3.884-3.884 2.26-2.262L16 17.48l1.626-1.626 2.26 2.262L16 22zm4.48-4.74L22.74 16l-2.26-2.26 2.26-2.26L25.04 14l.002.002L25 16l-2.26 2.26H22.74l-.26-.26v.26zM17.48 16l-1.482-1.48L14.52 16l1.478 1.48L17.48 16z" fill="#fff"/></svg>${isRange ? 'desde ' : ''}${minUsdt} USDT</span>` : '';
+                    const usdtChip = minUsdt ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;background:rgba(240,185,11,0.1);border:1px solid rgba(240,185,11,0.28);border-radius:4px;padding:0.15rem 0.4rem;font-size:0.78rem;font-weight:800;color:#f0b90b;margin-top:0.25rem;letter-spacing:0.01em;"><svg width="11" height="11" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#F0B90B"/><path d="M12.116 13.884L16 10l3.886 3.886-2.26 2.26-1.626-1.626-1.624 1.626-2.26-2.262zM10 16l2.26-2.26L14.52 16l-2.26 2.26L10 16zm6 6-3.884-3.884 2.26-2.262L16 17.48l1.626-1.626 2.26 2.262L16 22zm4.48-4.74L22.74 16l-2.26-2.26 2.26-2.26L25.04 14l.002.002L25 16l-2.26 2.26H22.74l-.26-.26v.26zM17.48 16l-1.482-1.48L14.52 16l1.478 1.48L17.48 16z" fill="#fff"/></svg>${isRange ? 'desde ' : ''}${minUsdt} USDT</span>` : '';
                     priceRangeHtml = `
                         <div class="price-range-box">
                             <span class="price-range-label">🏦 Transferencia ${isRange ? 'desde' : ''}</span>
                             <span class="price-range-amount">${transferLine}</span>
-                            <span class="price-range-card">${cardLine}</span>
                             ${usdtChip}
                         </div>`;
                 }
@@ -1110,8 +1134,8 @@
                     <div class="game-cover" style="position: relative; cursor: pointer; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}" onclick="window.location.href='/juegos/${gameSlug}'">
                         ${discountBadge}
                         ${!cover ? '🎮' : ''}
-                        ${platformBadgeHtml(game.plataforma)}
                     </div>
+                    ${platformBarHtml(game.titulo, game.plataforma)}
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
                         ${priceRangeHtml}

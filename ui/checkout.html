@@ -349,7 +349,6 @@
                     </div>
                     <div style="padding:0.6rem 0.8rem; border-radius:8px; background:rgba(240,185,11,0.08); border:1px solid rgba(240,185,11,0.25); font-size:0.85rem;">
                         Monto a enviar: <strong style="color:#f0b90b; font-size:1rem;" id="binanceAmountDisplay">— USDT</strong>
-                        <span style="color:var(--text-muted); font-size:0.75rem;" id="binanceRateHint"></span>
                     </div>
                 </div>
 
@@ -576,7 +575,11 @@
                             document.getElementById('binancePriceDisplay').textContent = usdtLabel;
                             document.getElementById('binanceArsHint').textContent = '≈ ' + formatPrice(precioTransferencia);
                             document.getElementById('binanceAmountDisplay').textContent = usdtLabel;
-                            document.getElementById('binanceRateHint').textContent = ` · 1 USDT = $${usdtRate.toLocaleString('es-AR')}`;
+                            // Also update summary price if Binance is already selected
+                            if (selectedPayment === 'binance') {
+                                const sp = document.getElementById('summaryPrice');
+                                if (sp) sp.textContent = usdtLabel;
+                            }
                         })
                         .catch(() => {});
                     fetch('/api/config')
