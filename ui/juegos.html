@@ -645,10 +645,17 @@
         }
 
         /* Featured cards use a horizontal layout & golden accent */
+        /* Featured grid: same auto-fill as main catalog, max 4 cols, no stretching */
         .featured-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 0.85rem;
+        }
+        /* Hard cap at 4 columns on wide screens */
+        @media (min-width: 900px) {
+            .featured-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 240px));
+            }
         }
 
         .featured-grid .game-card {
@@ -688,6 +695,9 @@
             .featured-section h2 {
                 font-size: 1rem;
                 margin-bottom: 0.65rem;
+            }
+            .featured-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
             .featured-grid .game-cover { height: 100px; }
         }
