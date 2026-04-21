@@ -538,7 +538,7 @@
                 html += `
                     <div class="ps-info-grid">
                         <div class="ps-info-card primaria">
-                            <h3>📔 Cuenta Primaria</h3>
+                            <h3>📔 Cuenta Primaria (PlayStation)</h3>
                             <ul>
                                 <li>Se puede usar online y offline</li>
                                 <li>Garantía de por vida: si perdés acceso por fallo de la cuenta, te damos soporte</li>
@@ -549,7 +549,7 @@
                             </ul>
                         </div>
                         <div class="ps-info-card secundaria">
-                            <h3>🎮 Cuenta Secundaria</h3>
+                            <h3>🎮 Cuenta Secundaria (PlayStation)</h3>
                             <ul>
                                 <li>Solo online: necesitás conexión a internet para jugar</li>
                                 <li>Garantía de por vida por fallo de la cuenta</li>
@@ -557,6 +557,33 @@
                                 <li>No cambies datos de la cuenta que te damos</li>
                                 <li>No activés el Uso Offline con esta cuenta</li>
                                 <li>No inicies sesión en la cuenta que te damos</li>
+                            </ul>
+                        </div>
+                    </div>`;
+            } else {
+                // Nintendo: show primaria / secundaria rules as well
+                html += `
+                    <div class="ps-info-grid">
+                        <div class="ps-info-card primaria">
+                            <h3>📔 Cuenta Primaria (Nintendo)</h3>
+                            <ul>
+                                <li>Se puede usar online y offline</li>
+                                <li>Garantía de por vida por fallo de la cuenta</li>
+                                <li>Jugá con un usuario <strong>propio</strong>, no el que te damos</li>
+                                <li>No cambies ninguna información de seguridad de la cuenta</li>
+                                <li>No inicies sesión activa en la cuenta que te damos</li>
+                                <li>Activá la consola como <strong>Principal</strong> para esa cuenta</li>
+                            </ul>
+                        </div>
+                        <div class="ps-info-card secundaria">
+                            <h3>🎮 Cuenta Secundaria (Nintendo)</h3>
+                            <ul>
+                                <li>Necesitás <strong>internet</strong> para jugar (modo online)</li>
+                                <li>Garantía por fallo de la cuenta</li>
+                                <li>Jugá con <strong>tu propio usuario</strong>, no con el nuestro</li>
+                                <li>No cambies datos de la cuenta que te damos</li>
+                                <li>No marques la consola como Principal con esa cuenta</li>
+                                <li>No inicies sesión activa en la cuenta que te damos</li>
                             </ul>
                         </div>
                     </div>`;

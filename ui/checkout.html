@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout | Nez Juegos</title>
-    <meta name="description" content="Finalizá tu compra en Nez Juegos. Pago por transferencia bancaria o tarjeta.">
+    <meta name="description" content="Finalizá tu compra en Nez Juegos. Pago por transferencia bancaria, tarjeta o Binance Pay.">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
@@ -293,6 +293,19 @@
                             <div id="saldoPriceDisplay" style="font-weight: 800; font-size: 1rem; color: #3b82f6; margin-top: 0.2rem;"></div>
                         </div>
                     </div>
+                    <div class="payment-option" onclick="selectPayment('binance')">
+                        <input type="radio" name="payment" value="binance">
+                        <div class="radio-dot"></div>
+                        <div class="pay-info">
+                            <div class="pay-name"><img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.png" alt="Binance" style="height:18px;vertical-align:middle;margin-right:0.25rem;filter:drop-shadow(0 0 4px rgba(240,185,11,0.4));"> Binance Pay <span style="color:#f0b90b;font-weight:700;">(USDT)</span></div>
+                            <div class="pay-desc">Pago en cripto · Aprobación manual</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="pay-badge" style="background: rgba(240,185,11,0.15); color: #f0b90b;">USDT</span>
+                            <div id="binancePriceDisplay" style="font-weight: 800; font-size: 1rem; color: #f0b90b; margin-top: 0.2rem;"></div>
+                            <div id="binanceArsHint" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;"></div>
+                        </div>
+                    </div>
                     <div class="payment-option" onclick="selectPayment('uala')">
                         <input type="radio" name="payment" value="uala">
                         <div class="radio-dot"></div>
@@ -317,6 +330,29 @@
                     <div class="value-mono">Miguel Martinez Giovanardi</div>
                 </div>
 
+                <!-- Binance Pay details -->
+                <div class="transfer-details" id="binanceDetails" style="display:none; border-color: rgba(240,185,11,0.35); background: linear-gradient(180deg, rgba(240,185,11,0.06), rgba(240,185,11,0.02));">
+                    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.75rem;">
+                        <img src="/binance-qr.png" alt="QR Binance Pay" style="width:150px; height:150px; border-radius:8px; background:#fff; padding:6px; object-fit:contain;">
+                        <div style="flex:1; min-width:180px;">
+                            <div class="label-sm">Binance Pay ID</div>
+                            <div class="value-mono" id="binanceIdDisplay">
+                                192 236 539
+                                <button class="copy-btn" onclick="copyText(document.getElementById('binanceIdDisplay').firstChild.textContent.trim())">Copiar</button>
+                            </div>
+                            <div class="label-sm" style="margin-top:0.6rem;">Usuario</div>
+                            <div class="value-mono" style="font-size:0.85rem;">Martinezmlds5</div>
+                            <div style="margin-top:0.6rem; font-size:0.78rem; color:var(--text-muted);">
+                                Abrí la app de Binance → <strong>Pay</strong> → <strong>Enviar</strong> → pegá el ID o escaneá el QR.
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:0.6rem 0.8rem; border-radius:8px; background:rgba(240,185,11,0.08); border:1px solid rgba(240,185,11,0.25); font-size:0.85rem;">
+                        Monto a enviar: <strong style="color:#f0b90b; font-size:1rem;" id="binanceAmountDisplay">— USDT</strong>
+                        <span style="color:var(--text-muted); font-size:0.75rem;" id="binanceRateHint"></span>
+                    </div>
+                </div>
+
                 <!-- MercadoPago Brick container -->
                 <div id="mpBrickSection" style="display: none; margin-top: 0.75rem;">
                     <div id="paymentBrick_container"></div>
@@ -327,10 +363,10 @@
             <div class="card comprobante-section" id="comprobanteSection">
                 <h2>📎 Comprobante de pago</h2>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                    Enviá al menos uno: ID de comprobante o imagen/PDF del mismo.
+                    Enviá al menos uno: ID/Nº de operación o imagen/PDF del comprobante.
                 </p>
-                <label for="comprobanteRef">ID de comprobante / Nro. de operación</label>
-                <input type="text" id="comprobanteRef" placeholder="Ej: OP-123456789">
+                <label for="comprobanteRef">ID / Nº de operación (transferencia o Binance Pay)</label>
+                <input type="text" id="comprobanteRef" placeholder="Ej: OP-123456789 o TX Binance">
                 <div class="or-divider">— Y/O —</div>
                 <div class="file-upload" onclick="document.getElementById('comprobanteFile').click()">
                     <input type="file" id="comprobanteFile" accept=".jpg,.jpeg,.png,.pdf,.webp">
@@ -422,6 +458,8 @@
         let precioTarjeta = 0;    // card price = precioBase / 0.68
         let precioTransferencia = 0;
         let precioSaldoMP = 0;
+        let precioUsdt = 0;
+        let usdtRate = 1440;
         let tipoProducto = '';
         let isNintendo = false;
 
@@ -528,6 +566,31 @@
                     document.getElementById('saldoPriceDisplay').textContent = formatPrice(precioSaldoMP);
                     document.getElementById('ualaPriceDisplay').textContent = formatPrice(precioTarjeta);
 
+                    // Fetch USDT rate & Binance Pay ID from server
+                    fetch(`/api/pricing?precio=${precioBase}`)
+                        .then(r => r.json())
+                        .then(p => {
+                            precioUsdt = p.precio_usdt || 0;
+                            usdtRate = p.usdt_rate || 1440;
+                            const usdtLabel = precioUsdt.toFixed(2) + ' USDT';
+                            document.getElementById('binancePriceDisplay').textContent = usdtLabel;
+                            document.getElementById('binanceArsHint').textContent = '≈ ' + formatPrice(precioTransferencia);
+                            document.getElementById('binanceAmountDisplay').textContent = usdtLabel;
+                            document.getElementById('binanceRateHint').textContent = ` · 1 USDT = $${usdtRate.toLocaleString('es-AR')}`;
+                        })
+                        .catch(() => {});
+                    fetch('/api/config')
+                        .then(r => r.json())
+                        .then(cfg => {
+                            if (cfg.binance_pay_id) {
+                                const el = document.getElementById('binanceIdDisplay');
+                                const btn = el.querySelector('button');
+                                el.firstChild.textContent = cfg.binance_pay_id + ' ';
+                                if (btn) el.appendChild(btn);
+                            }
+                        })
+                        .catch(() => {});
+
                     const cover = game.imagen_filename ? `/uploads/${game.imagen_filename}` : null;
                     const platDisplay = (game.plataforma || '').split(',').map(p => p.trim()).join(' / ');
                     document.getElementById('orderSummary').innerHTML = `
@@ -564,7 +627,7 @@
                     document.getElementById('deliveryNotice').style.display = 'block';
 
                     // Pre-select payment method from URL if provided
-                    const methodMap = { 'transferencia': 'transferencia', 'mercadopago': 'mercadopago_saldo', 'tarjeta': 'uala', 'uala': 'uala' };
+                    const methodMap = { 'transferencia': 'transferencia', 'mercadopago': 'mercadopago_saldo', 'tarjeta': 'uala', 'uala': 'uala', 'binance': 'binance' };
                     const initialMethod = methodMap[urlMethod] || 'transferencia';
                     selectPayment(initialMethod);
 
@@ -593,14 +656,17 @@
             });
 
             document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
+            document.getElementById('binanceDetails').style.display = method === 'binance' ? 'block' : 'none';
             document.getElementById('mpBrickSection').style.display = 'none';
-            document.getElementById('comprobanteSection').style.display = method === 'transferencia' ? 'block' : 'none';
+            const needsComprobante = (method === 'transferencia' || method === 'binance');
+            document.getElementById('comprobanteSection').style.display = needsComprobante ? 'block' : 'none';
 
             // Update summary price based on method
             const summaryPrice = document.getElementById('summaryPrice');
             if (summaryPrice) {
                 if (method === 'transferencia') summaryPrice.textContent = formatPrice(precioTransferencia);
                 else if (method === 'mercadopago_saldo') summaryPrice.textContent = formatPrice(precioSaldoMP);
+                else if (method === 'binance') summaryPrice.textContent = (precioUsdt ? precioUsdt.toFixed(2) : '0') + ' USDT';
                 else summaryPrice.textContent = formatPrice(precioTarjeta);
             }
 
@@ -613,6 +679,8 @@
                 btn.textContent = 'Continuar pago con MercadoPago';
             } else if (method === 'uala') {
                 btn.textContent = '💳 Pagar con tarjeta (Ualá)';
+            } else if (method === 'binance') {
+                btn.textContent = 'Confirmar pedido (Binance Pay)';
             } else {
                 btn.textContent = 'Confirmar pedido';
             }
@@ -779,11 +847,11 @@
                 }
             }
 
-            if (selectedPayment === 'transferencia') {
+            if (selectedPayment === 'transferencia' || selectedPayment === 'binance') {
                 const ref = document.getElementById('comprobanteRef').value.trim();
                 const file = document.getElementById('comprobanteFile').files[0];
                 if (!ref && !file) {
-                    document.getElementById('comprobanteError').textContent = 'Debés enviar al menos un ID de comprobante o imagen.';
+                    document.getElementById('comprobanteError').textContent = 'Debés enviar al menos un ID/Nº de pago o imagen del comprobante.';
                     document.getElementById('comprobanteError').style.display = 'block';
                     return;
                 }
@@ -798,14 +866,13 @@
             btn.textContent = 'Procesando...';
 
             try {
-                let precioCobrado = precioTarjeta;  // default: card price
-                let paymentMethodName = selectedPayment;
+                let precioCobrado = precioTarjeta;
 
-                if (selectedPayment === 'transferencia') {
+                if (selectedPayment === 'transferencia' || selectedPayment === 'binance') {
                     precioCobrado = precioTransferencia;
                 }
 
-                if (selectedPayment === 'transferencia') {
+                if (selectedPayment === 'transferencia' || selectedPayment === 'binance') {
                     const orderResp = await fetch('/api/orders', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -813,7 +880,7 @@
                             game_id: gameData.id, game_titulo: gameData.titulo,
                             game_plataforma: gameData.plataforma, tipo_producto: tipoProducto,
                             buyer_email: email, buyer_phone: phone,
-                            payment_method: 'transferencia',
+                            payment_method: selectedPayment,
                             precio_base: precioTarjeta, precio_cobrado: precioCobrado, surcharge: 0
                         })
                     });
@@ -829,7 +896,7 @@
                     const compResp = await fetch(`/api/orders/${orderData.order_id}/comprobante`, { method: 'POST', body: formData });
                     if (!compResp.ok) { const err = await compResp.json(); throw new Error(err.error); }
 
-                    showConfirmation(orderData.order_id, 'transferencia');
+                    showConfirmation(orderData.order_id, selectedPayment);
 
                 } else if (selectedPayment === 'uala') {
                     const ualaResp = await fetch('/api/uala/create', {
@@ -869,6 +936,11 @@
                            <p style="margin-top:0.5rem;">La entrega puede ser inmediata o realizarse dentro del horario de atención (<strong>8:00 a 22:00</strong>).</p>`;
                 statusClass = 'status-pendiente';
                 statusText = '⏳ Pendiente de aprobación manual';
+            } else if (method === 'binance') {
+                message = `<p>Tu pedido fue registrado. Apenas verifiquemos el pago en Binance Pay, recibirás tu juego.</p>
+                           <p style="margin-top:0.5rem;">La entrega puede ser inmediata o realizarse dentro del horario de atención (<strong>8:00 a 22:00</strong>).</p>`;
+                statusClass = 'status-pendiente';
+                statusText = '⏳ Esperando confirmación Binance Pay';
             } else if (method === 'mercadopago') {
                 message = `<p>Tu pago se está procesando. Recibirás tu juego en breve.</p>
                            <p style="margin-top:0.5rem;">La entrega puede ser inmediata o realizarse dentro del horario de atención (<strong>8:00 a 22:00</strong>).</p>`;

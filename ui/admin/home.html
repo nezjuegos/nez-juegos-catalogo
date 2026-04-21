@@ -119,6 +119,19 @@
                 </div>
             </div>
 
+            <div class="form-group" style="margin-top: 3rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">💰 Binance Pay (USDT)</h3>
+
+                <label>Cotización USDT → ARS</label>
+                <input type="number" id="inputUsdtRate" value="1440" min="1" step="1" placeholder="Ej: 1440">
+                <span class="help-text">Se usa para convertir el precio de transferencia a USDT en el checkout.
+                    Ejemplo: si un juego cuesta $30.000 por transferencia y la tasa es 1.440, el cliente paga 20,84 USDT.</span>
+
+                <label style="margin-top: 1rem;">Binance Pay ID</label>
+                <input type="text" id="inputBinanceId" value="192 236 539" placeholder="Ej: 192 236 539">
+                <span class="help-text">El ID que ve el cliente para enviar el pago.</span>
+            </div>
+
             <div style="margin-top: 3rem; text-align: right;">
                 <button class="btn btn-primary" id="btnSave">Guardar Cambios de la Home</button>
             </div>
@@ -142,6 +155,9 @@
                 
                 if (config.glass_card_title) document.getElementById('inputGlassTitle').value = config.glass_card_title;
                 if (config.glass_card_price) document.getElementById('inputGlassPrice').value = config.glass_card_price;
+
+                if (config.usdt_rate) document.getElementById('inputUsdtRate').value = config.usdt_rate;
+                if (config.binance_pay_id) document.getElementById('inputBinanceId').value = config.binance_pay_id;
                 
                 if (config.img_juegos) document.getElementById('labelJuegos').innerText = "Actual: " + config.img_juegos;
                 if (config.img_packs) document.getElementById('labelPacks').innerText = "Actual: " + config.img_packs;
@@ -185,12 +201,8 @@
             formData.append('hero_img_3', document.getElementById('inputHeroImg3').value);
             formData.append('glass_card_title', document.getElementById('inputGlassTitle').value);
             formData.append('glass_card_price', document.getElementById('inputGlassPrice').value);
-            formData.append('titulo_principal', document.getElementById('inputTitle').value);
-            formData.append('subtitulo', document.getElementById('inputSubtitle').value);
-            formData.append('enlace_whatsapp', document.getElementById('inputWa').value);
-            formData.append('hero_img_1', document.getElementById('inputHeroImg1').value);
-            formData.append('hero_img_2', document.getElementById('inputHeroImg2').value);
-            formData.append('hero_img_3', document.getElementById('inputHeroImg3').value);
+            formData.append('usdt_rate', document.getElementById('inputUsdtRate').value);
+            formData.append('binance_pay_id', document.getElementById('inputBinanceId').value);
 
             const fileJuegos = document.getElementById('inputFileJuegos').files[0];
             if (fileJuegos) formData.append('file_img_juegos', fileJuegos);

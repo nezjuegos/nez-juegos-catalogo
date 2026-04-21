@@ -159,6 +159,10 @@ class Database:
             # If it exists but is empty, set the default number
             cursor.execute("UPDATE config SET value = '5491160120337' WHERE key = 'numero_whatsapp' AND (value IS NULL OR value = '')")
 
+            # USDT conversion rate for Binance Pay (ARS per 1 USDT, applied to the transfer price)
+            cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_rate', '1440')")
+            cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('binance_pay_id', '192 236 539')")
+
             # Table: orders (Checkout orders)
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS orders (

@@ -461,7 +461,7 @@ def api_create_order():
         return jsonify({"error": "El email es requerido para compras de PlayStation"}), 400
     
     # Validate payment method
-    if data['payment_method'] not in ('transferencia', 'uala', 'mercadopago'):
+    if data['payment_method'] not in ('transferencia', 'uala', 'mercadopago', 'binance'):
         return jsonify({"error": "Método de pago inválido"}), 400
     
     order_id = db.create_order(data)
@@ -647,10 +647,20 @@ def api_pricing():
     # DB stores the transfer (minimum) price; card and MP are calculated upward from it
     precio_tarjeta = int(precio_transfer / (1 - DESCUENTO_TRANSFERENCIA))
     precio_saldo_mp = int(precio_tarjeta * (1 - DESCUENTO_SALDO_MP))
+
+    cfg = db.get_all_config()
+    try:
+        usdt_rate = float(cfg.get('usdt_rate', '1440') or '1440')
+    except ValueError:
+        usdt_rate = 1440.0
+    precio_usdt = round(precio_transfer / usdt_rate, 2) if usdt_rate > 0 else 0
+
     return jsonify({
         "precio_transferencia": precio_transfer,
         "precio_saldo_mp": precio_saldo_mp,
         "precio_tarjeta": precio_tarjeta,
+        "precio_usdt": precio_usdt,
+        "usdt_rate": usdt_rate,
         "descuento_saldo_pct": int(DESCUENTO_SALDO_MP * 100),
         "descuento_transfer_pct": int(DESCUENTO_TRANSFERENCIA * 100)
     })

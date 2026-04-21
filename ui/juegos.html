@@ -145,8 +145,8 @@
         /* Grid */
         .games-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.25rem;
         }
 
         /* Game Card */
@@ -167,7 +167,7 @@
         }
 
         .game-cover {
-            height: 180px;
+            height: 150px;
             position: relative;
         }
 
@@ -195,16 +195,86 @@
         .plat-mix  { background: rgba(10,10,12,0.82); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.15); color: #fff; }
 
         .game-info {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border);
+            padding: 0.9rem 1rem;
         }
 
         .game-title {
-            font-size: 1.4rem;
+            font-size: 1rem;
             font-weight: 800;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.35rem;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 2.4em;
+        }
+
+        .price-range-box {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.25);
+            border-radius: 8px;
+            padding: 0.4rem 0.55rem;
+            margin-top: 0.35rem;
+        }
+        .price-range-label {
+            font-size: 0.62rem;
+            color: #86efac;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            line-height: 1;
+        }
+        .price-range-amount {
+            font-family: 'Outfit';
+            font-size: 1.05rem;
+            font-weight: 900;
+            color: #22c55e;
+            line-height: 1.1;
+        }
+        .price-range-card {
+            font-size: 0.7rem;
+            color: var(--text-muted);
             line-height: 1.2;
         }
+        .price-range-card strong { color: #e5e5e5; font-weight: 700; }
+
+        .card-cta {
+            padding: 0.7rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .btn-card-primary {
+            display: block;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            padding: 0.55rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-card-primary:hover { filter: brightness(1.1); }
+        .btn-card-ghost {
+            display: block;
+            text-align: center;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 0.45rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-card-ghost:hover { background: rgba(255,255,255,0.04); color: #fff; }
 
         /* Pricing Table */
         .pricing-list {
@@ -440,16 +510,39 @@
             }
 
             .games-grid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.7rem;
             }
 
             .game-cover {
-                height: 140px;
+                height: 110px;
+            }
+
+            .game-info {
+                padding: 0.6rem 0.7rem;
             }
 
             .game-title {
-                font-size: 1.2rem;
+                font-size: 0.85rem;
+                min-height: 2.3em;
+            }
+
+            .price-range-amount { font-size: 0.95rem; }
+            .price-range-card { font-size: 0.65rem; }
+            .price-range-box { padding: 0.35rem 0.45rem; }
+
+            .card-cta {
+                padding: 0.5rem 0.6rem;
+                gap: 0.3rem;
+            }
+            .btn-card-primary { font-size: 0.72rem; padding: 0.45rem 0.5rem; }
+            .btn-card-ghost { font-size: 0.65rem; padding: 0.35rem 0.5rem; }
+
+            .platform-badge {
+                font-size: 0.6rem;
+                padding: 0.15rem 0.45rem;
+                top: 0.4rem;
+                right: 0.4rem;
             }
 
             .pricing-list {
@@ -908,51 +1001,51 @@
 
                 const discountBadge = maxPct > 0 ? `<div style="position: absolute; top: 0.75rem; left: 0.75rem; background: #eab308; color: black; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; z-index: 2; box-shadow: 0 4px 12px rgba(234,179,8,0.3);">- ${maxPct}% OFF</div>` : '';
 
+                const saleKeys = isPS
+                    ? ['primaria_ps5','primaria_ps4','secundaria_ps5']
+                    : ['codigo_digital','primaria','secundaria','alquiler'];
+                const actualPrices = saleKeys
+                    .map(k => game.precios['oferta_'+k] || game.precios[k])
+                    .filter(Boolean);
+
+                let priceRangeHtml = '';
+                if (actualPrices.length) {
+                    const minTransfer = Math.min(...actualPrices);
+                    const maxTransfer = Math.max(...actualPrices);
+                    const minCard = Math.round(minTransfer / (1 - DESCUENTO_TRANSFER));
+                    const maxCard = Math.round(maxTransfer / (1 - DESCUENTO_TRANSFER));
+                    const isRange = minTransfer !== maxTransfer;
+                    const transferLine = isRange
+                        ? `${formatPrice(minTransfer)} <span style="color:var(--text-muted); font-weight:600; font-size:0.8em;">– ${formatPrice(maxTransfer)}</span>`
+                        : `${formatPrice(minTransfer)}`;
+                    const cardLine = isRange
+                        ? `Con tarjeta: <strong>${formatPrice(minCard)}</strong> – <strong>${formatPrice(maxCard)}</strong>`
+                        : `Con tarjeta: <strong>${formatPrice(minCard)}</strong>`;
+                    priceRangeHtml = `
+                        <div class="price-range-box">
+                            <span class="price-range-label">🏦 Transferencia ${isRange ? 'desde' : ''}</span>
+                            <span class="price-range-amount">${transferLine}</span>
+                            <span class="price-range-card">${cardLine}</span>
+                        </div>`;
+                }
+
+                const gameSlug = generateSlug(game.titulo, game.plataforma);
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 card.innerHTML = `
-                    <div class="game-cover" style="position: relative; cursor: pointer; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}" onclick="window.location.href='/juegos/${generateSlug(game.titulo, game.plataforma)}'">
+                    <div class="game-cover" style="position: relative; cursor: pointer; ${cover ? `background-image: url('${cover}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #312e81, #1e1b4b); display: flex; align-items: center; justify-content: center; font-size: 3rem;'}" onclick="window.location.href='/juegos/${gameSlug}'">
                         ${discountBadge}
                         ${!cover ? '🎮' : ''}
                         ${platformBadgeHtml(game.plataforma)}
                     </div>
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
-                        ${(() => {
-                            const saleKeys = isPS 
-                                ? ['primaria_ps5','primaria_ps4','secundaria_ps5'] 
-                                : ['codigo_digital','primaria','secundaria','alquiler'];
-                            const actualPrices = saleKeys
-                                .map(k => game.precios['oferta_'+k] || game.precios[k])
-                                .filter(Boolean);
-                            if (!actualPrices.length) return '';
-                            const minTransfer = Math.min(...actualPrices);  // DB stores transfer price
-                            const minCard = Math.round(minTransfer / (1 - DESCUENTO_TRANSFER));
-
-                            return `
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
-                                <div>
-                                    <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>
-                                    <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e;">${formatPrice(minTransfer)}</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-muted);">Con tarjeta: ${formatPrice(minCard)}</div>
-                                </div>
-                            </div>`;
-                        })()
-                        }
+                        ${priceRangeHtml}
                     </div>
-                    <div class="pricing-list">
-                        ${isPS
-                            ? createPriceOption(game, 'PRIMARIA PS5', 'primaria_ps5', 'Tu perfil principal en PS5 (Permanente)', true)
-                            + createPriceOption(game, 'PRIMARIA PS4', 'primaria_ps4', 'Tu perfil principal en PS4 (Permanente)')
-                            + createPriceOption(game, 'SECUNDARIA PS5', 'secundaria_ps5', 'Perfil alterno en PS5 (Permanente)')
-                            : createPriceOption(game, 'CÓDIGO DIGITAL', 'codigo_digital', 'Canjeable en tu cuenta', true)
-                            + createPriceOption(game, 'CUENTA PRIMARIA', 'primaria', 'Jugás con tu usuario (Permanente)')
-                            + createPriceOption(game, 'CUENTA SECUNDARIA', 'secundaria', 'Jugás con perfil alterno (Permanente)')
-                            + createPriceOption(game, 'ALQUILER 30 DÍAS', 'alquiler', 'Cuenta prestada por 1 mes')
-                        }
+                    <div class="card-cta">
+                        <a href="/juegos/${gameSlug}" class="btn-card-primary" onclick="fbq('track','ViewContent')">Ver versiones y comprar</a>
+                        <button class="btn-card-ghost" onclick="shareGame(${JSON.stringify(game).replace(/"/g, '&quot;')})">📋 Compartir precios</button>
                     </div>
-                    <button class="btn-share" onclick="shareGame(${JSON.stringify(game).replace(/"/g, '&quot;')})">📋 Compartir precios</button>
-                    <a href="/juegos/${generateSlug(game.titulo, game.plataforma)}" class="btn-ver-juego">🔗 Ver página del juego</a>
                 `;
                 container.appendChild(card);
             });
