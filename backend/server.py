@@ -1074,11 +1074,16 @@ def api_admin_ps_accounts():
         if len(keys) != 10:
             return jsonify({"error": f"Se requieren exactamente 10 activation keys, recibí {len(keys)}"}), 400
         
+        # Accept either a single game_id or a list of game_ids
+        game_ids = data.get('game_ids')
+        if game_ids is None and data.get('game_id'):
+            game_ids = [data.get('game_id')]
         new_id = db.add_ps_account(
             data['email'], data['password'], keys,
             data.get('notes', ''),
             game_id=data.get('game_id'),
-            game_titulo=data.get('game_titulo')
+            game_titulo=data.get('game_titulo'),
+            game_ids=game_ids
         )
         return jsonify({"status": "ok", "id": new_id})
 
@@ -1096,6 +1101,8 @@ def api_admin_manage_ps_account(account_id):
         if data.get('email'): updates['email'] = data['email']
         if data.get('password'): updates['password'] = data['password']
         if 'notes' in data: updates['notes'] = data['notes']
+        if 'game_ids' in data and isinstance(data['game_ids'], list):
+            updates['game_ids'] = data['game_ids']
         if not updates:
             return jsonify({"error": "Nada que actualizar"}), 400
         db.update_ps_account(account_id, updates)

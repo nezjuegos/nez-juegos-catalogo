@@ -207,6 +207,7 @@ class Database:
             ''')
             # Migrations for existing DBs
             for col in ['game_id INTEGER', 'game_titulo TEXT',
+                        'game_ids TEXT',
                         'primaria_total INTEGER DEFAULT 1', 'primaria_used INTEGER DEFAULT 0',
                         'primaria_ps4_total INTEGER DEFAULT 1', 'primaria_ps4_used INTEGER DEFAULT 0',
                         'secundaria_total INTEGER DEFAULT 2', 'secundaria_used INTEGER DEFAULT 0']:
@@ -214,6 +215,17 @@ class Database:
                     cursor.execute(f'ALTER TABLE ps_accounts ADD COLUMN {col}')
                 except Exception:
                     pass
+
+            # Backfill game_ids JSON from existing game_id where missing
+            try:
+                cursor.execute("SELECT id, game_id, game_ids FROM ps_accounts WHERE game_ids IS NULL OR game_ids = ''")
+                for row in cursor.fetchall():
+                    gid = row['game_id']
+                    new_ids = json.dumps([gid]) if gid else json.dumps([])
+                    cursor.execute("UPDATE ps_accounts SET game_ids = ? WHERE id = ?", (new_ids, row['id']))
+                conn.commit()
+            except Exception:
+                pass
 
             # Table: ps_delivery_log (Tracks each individual key delivery)
             cursor.execute('''
@@ -814,18 +826,36 @@ class Database:
             return dict(row) if row else None
 
     # --- PS ACCOUNTS CRUD ---
+    @staticmethod
+    def _parse_game_ids(raw):
+        """Parse game_ids JSON column -> list of ints."""
+        if not raw:
+            return []
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [int(x) for x in parsed if x is not None]
+        except Exception:
+            pass
+        return []
+
     def add_ps_account(self, email, password, keys_list, notes='', game_id=None, game_titulo=None,
-                       primaria_total=1, primaria_ps4_total=1, secundaria_total=2):
-        """Add a PS account with 10 activation keys, linked to a game.
+                       primaria_total=1, primaria_ps4_total=1, secundaria_total=2, game_ids=None):
+        """Add a PS account with 10 activation keys, linked to one or more games.
+        game_ids: list of int game IDs. If None, falls back to [game_id].
         Default: 1 primaria PS5 + 1 primaria PS4 + 2 secundaria = 4 slots."""
+        if game_ids is None:
+            game_ids = [game_id] if game_id else []
+        game_ids = [int(x) for x in game_ids if x is not None]
+        primary_gid = game_ids[0] if game_ids else game_id
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT INTO ps_accounts (email, password, activation_keys, notes, game_id, game_titulo,
-                                         primaria_total, primaria_ps4_total, secundaria_total)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (email, password, json.dumps(keys_list), notes, game_id, game_titulo,
-                  primaria_total, primaria_ps4_total, secundaria_total))
+                                         game_ids, primaria_total, primaria_ps4_total, secundaria_total)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (email, password, json.dumps(keys_list), notes, primary_gid, game_titulo,
+                  json.dumps(game_ids), primaria_total, primaria_ps4_total, secundaria_total))
             conn.commit()
             return cursor.lastrowid
 
@@ -837,20 +867,28 @@ class Database:
             for row in cursor.fetchall():
                 d = dict(row)
                 d['activation_keys_list'] = json.loads(d['activation_keys'])
+                d['game_ids_list'] = self._parse_game_ids(d.get('game_ids'))
                 # Get delivery log for this account
                 cursor2 = conn.cursor()
                 cursor2.execute('SELECT * FROM ps_delivery_log WHERE ps_account_id = ? ORDER BY key_index', (d['id'],))
                 d['deliveries'] = [dict(r) for r in cursor2.fetchall()]
+                # Fetch titles of linked games for convenience
+                if d['game_ids_list']:
+                    placeholders = ','.join('?' * len(d['game_ids_list']))
+                    cursor2.execute(f"SELECT id, titulo, plataforma FROM juegos WHERE id IN ({placeholders})", d['game_ids_list'])
+                    d['linked_games'] = [dict(r) for r in cursor2.fetchall()]
+                else:
+                    d['linked_games'] = []
                 results.append(d)
             return results
 
     def get_available_ps_key(self, game_id=None, sale_type='primaria'):
         """Get the next available activation key from the pool, filtered by game_id and sale type.
+        Looks up accounts whose game_ids JSON contains the given game_id (or legacy game_id column match).
         sale_type: 'primaria' (PS5), 'primaria_ps4', or 'secundaria'.
         Returns (account_dict, key_index, activation_key) or (None, None, None) if no stock."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            # Determine which slot columns to check
             if sale_type == 'secundaria':
                 slot_filter = 'secundaria_used < secundaria_total'
             elif sale_type == 'primaria_ps4':
@@ -859,10 +897,21 @@ class Database:
                 slot_filter = 'primaria_used < primaria_total'
 
             if game_id:
-                cursor.execute(f"SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ? AND {slot_filter} ORDER BY added_at ASC LIMIT 1", (game_id,))
+                cursor.execute(
+                    f"SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND {slot_filter} ORDER BY added_at ASC"
+                )
+                row = None
+                for candidate in cursor.fetchall():
+                    linked = self._parse_game_ids(candidate['game_ids'])
+                    if not linked and candidate['game_id']:
+                        linked = [candidate['game_id']]
+                    if int(game_id) in linked:
+                        row = candidate
+                        break
             else:
                 cursor.execute(f"SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND {slot_filter} ORDER BY added_at ASC LIMIT 1")
-            row = cursor.fetchone()
+                row = cursor.fetchone()
+
             if not row:
                 return None, None, None
             
@@ -947,16 +996,30 @@ class Database:
             return True
 
     def update_ps_account(self, account_id, updates):
-        """Update email, password and/or notes of a PS account."""
+        """Update email, password, notes and/or linked game_ids of a PS account."""
         allowed = {'email', 'password', 'notes'}
         fields = {k: v for k, v in updates.items() if k in allowed}
-        if not fields:
-            return False
-        set_clause = ', '.join(f'{k} = ?' for k in fields)
-        values = list(fields.values()) + [account_id]
+        game_ids = updates.get('game_ids')
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(f'UPDATE ps_accounts SET {set_clause} WHERE id = ?', values)
+            if fields:
+                set_clause = ', '.join(f'{k} = ?' for k in fields)
+                values = list(fields.values()) + [account_id]
+                cursor.execute(f'UPDATE ps_accounts SET {set_clause} WHERE id = ?', values)
+            if game_ids is not None:
+                clean_ids = [int(x) for x in game_ids if x is not None]
+                primary_gid = clean_ids[0] if clean_ids else None
+                # Look up primary title for legacy display column
+                primary_titulo = None
+                if primary_gid:
+                    cursor.execute("SELECT titulo FROM juegos WHERE id = ?", (primary_gid,))
+                    r = cursor.fetchone()
+                    if r:
+                        primary_titulo = r['titulo']
+                cursor.execute(
+                    "UPDATE ps_accounts SET game_ids = ?, game_id = ?, game_titulo = ? WHERE id = ?",
+                    (json.dumps(clean_ids), primary_gid, primary_titulo, account_id)
+                )
             conn.commit()
         return True
 
@@ -985,17 +1048,26 @@ class Database:
 
     def check_ps_game_stock(self, game_id):
         """Check if a specific game has PS accounts with available slots.
-        Returns dict with availability per sale type."""
+        Returns dict with availability per sale type.
+        Considers game_ids JSON membership (falls back to legacy game_id column)."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""SELECT 
-                SUM(CASE WHEN primaria_used < primaria_total THEN 1 ELSE 0 END) as pri5,
-                SUM(CASE WHEN primaria_ps4_used < primaria_ps4_total THEN 1 ELSE 0 END) as pri4,
-                SUM(CASE WHEN secundaria_used < secundaria_total THEN 1 ELSE 0 END) as sec
-                FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10 AND game_id = ?""", (game_id,))
-            row = cursor.fetchone()
+            cursor.execute("SELECT * FROM ps_accounts WHERE status = 'disponible' AND keys_used < 10")
+            pri5 = pri4 = sec = 0
+            for row in cursor.fetchall():
+                linked = self._parse_game_ids(row['game_ids'])
+                if not linked and row['game_id']:
+                    linked = [row['game_id']]
+                if int(game_id) not in linked:
+                    continue
+                if row['primaria_used'] < row['primaria_total']:
+                    pri5 += 1
+                if (row['primaria_ps4_used'] or 0) < (row['primaria_ps4_total'] or 1):
+                    pri4 += 1
+                if row['secundaria_used'] < row['secundaria_total']:
+                    sec += 1
             return {
-                'primaria': (row['pri5'] or 0) > 0,
-                'primaria_ps4': (row['pri4'] or 0) > 0,
-                'secundaria': (row['sec'] or 0) > 0
+                'primaria': pri5 > 0,
+                'primaria_ps4': pri4 > 0,
+                'secundaria': sec > 0
             }
