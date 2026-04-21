@@ -405,18 +405,26 @@
             if (cfg.usdt_rate) usdtRate = parseFloat(cfg.usdt_rate) || 1440;
         }).catch(() => {});
 
-        function platformBarHtml(titulo, plataforma) {
-            const t = (titulo || '').toLowerCase();
-            const p = (plataforma || '').trim();
-            const isSecundaria = t.includes('secundaria');
-            if (p.includes('PS5'))
-                return isSecundaria
-                    ? `<span class="platform-bar pb-secundaria-ps5">Secundaria PS5</span>`
-                    : `<span class="platform-bar pb-primaria-ps5">Primaria PS5</span>`;
-            if (p.includes('PS4'))
-                return isSecundaria
-                    ? `<span class="platform-bar pb-secundaria-ps4">Secundaria PS4</span>`
-                    : `<span class="platform-bar pb-primaria-ps4">Primaria PS4</span>`;
+        function platformBarHtml(game) {
+            const p = (game.plataforma || '').trim();
+            const pr = game.precios || {};
+            const hasPrice = (key) => !!(pr[key] || pr['oferta_' + key]);
+
+            const isPS = p.includes('PS4') || p.includes('PS5') || p === 'PlayStation';
+            if (isPS) {
+                const hasPriPS5 = hasPrice('primaria_ps5');
+                const hasPriPS4 = hasPrice('primaria_ps4');
+                const hasSecPS5 = hasPrice('secundaria_ps5');
+                const activeCount = [hasPriPS5, hasPriPS4, hasSecPS5].filter(Boolean).length;
+                if (activeCount === 1) {
+                    if (hasPriPS5) return `<span class="platform-bar pb-primaria-ps5">Primaria PS5</span>`;
+                    if (hasPriPS4) return `<span class="platform-bar pb-primaria-ps4">Primaria PS4</span>`;
+                    if (hasSecPS5) return `<span class="platform-bar pb-secundaria-ps5">Secundaria PS5</span>`;
+                }
+                if (p.includes('PS5')) return `<span class="platform-bar pb-primaria-ps5">PS5</span>`;
+                if (p.includes('PS4')) return `<span class="platform-bar pb-primaria-ps4">PS4</span>`;
+                return `<span class="platform-bar pb-other">PlayStation</span>`;
+            }
             if (p.includes('Switch 2') || p.includes('Nintendo Switch 2'))
                 return `<span class="platform-bar pb-nsw2">Nintendo Switch 2</span>`;
             if (p.includes('Switch') || p.includes('Nintendo'))
@@ -491,7 +499,7 @@
                     <div class="game-cover">${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}</div>
                     <div class="game-meta">
                         <h1>${game.titulo}</h1>
-                        ${platformBarHtml(game.titulo, game.plataforma)}
+                        ${platformBarHtml(game)}
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
                             <div style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>

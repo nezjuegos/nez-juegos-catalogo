@@ -1041,28 +1041,37 @@
             return plat.includes('PS4') || plat.includes('PS5') || plat === 'PlayStation';
         }
 
-        function platformBarHtml(titulo, plataforma) {
-            const t = (titulo || '').toLowerCase();
-            const p = (plataforma || '').trim();
-            const isSecundaria = t.includes('secundaria');
+        function platformBarHtml(game) {
+            const p = (game.plataforma || '').trim();
+            const pr = game.precios || {};
+            const hasPrice = (key) => !!(pr[key] || pr['oferta_' + key]);
 
-            if (p.includes('PS5')) {
-                return isSecundaria
-                    ? `<div class="platform-bar pb-secundaria-ps5">Secundaria PS5</div>`
-                    : `<div class="platform-bar pb-primaria-ps5">Primaria PS5</div>`;
+            // PlayStation: decide by which sale-type price is set
+            const isPS = p.includes('PS4') || p.includes('PS5') || p === 'PlayStation';
+            if (isPS) {
+                const hasPriPS5 = hasPrice('primaria_ps5');
+                const hasPriPS4 = hasPrice('primaria_ps4');
+                const hasSecPS5 = hasPrice('secundaria_ps5');
+
+                // Exactly one variant set → show that one
+                const activeCount = [hasPriPS5, hasPriPS4, hasSecPS5].filter(Boolean).length;
+                if (activeCount === 1) {
+                    if (hasPriPS5) return `<div class="platform-bar pb-primaria-ps5">Primaria PS5</div>`;
+                    if (hasPriPS4) return `<div class="platform-bar pb-primaria-ps4">Primaria PS4</div>`;
+                    if (hasSecPS5) return `<div class="platform-bar pb-secundaria-ps5">Secundaria PS5</div>`;
+                }
+                // Multiple / none → fall back to platform label
+                if (p.includes('PS5')) return `<div class="platform-bar pb-primaria-ps5">PS5</div>`;
+                if (p.includes('PS4')) return `<div class="platform-bar pb-primaria-ps4">PS4</div>`;
+                return `<div class="platform-bar pb-other">PlayStation</div>`;
             }
-            if (p.includes('PS4')) {
-                return isSecundaria
-                    ? `<div class="platform-bar pb-secundaria-ps4">Secundaria PS4</div>`
-                    : `<div class="platform-bar pb-primaria-ps4">Primaria PS4</div>`;
-            }
+
             if (p.includes('Switch 2') || p.includes('Nintendo Switch 2')) {
                 return `<div class="platform-bar pb-nsw2">Nintendo Switch 2</div>`;
             }
             if (p.includes('Switch') || p.includes('Nintendo')) {
                 return `<div class="platform-bar pb-nsw">Nintendo Switch</div>`;
             }
-            // Fallback: show platform text
             const parts = p.split(',').map(s => s.trim()).filter(Boolean);
             return `<div class="platform-bar pb-other">${parts.join(' / ')}</div>`;
         }
@@ -1135,7 +1144,7 @@
                         ${discountBadge}
                         ${!cover ? '🎮' : ''}
                     </div>
-                    ${platformBarHtml(game.titulo, game.plataforma)}
+                    ${platformBarHtml(game)}
                     <div class="game-info">
                         <h2 class="game-title" ${game.is_dlc ? 'style="color: var(--secondary);"' : ''}>${titlePrefix}${game.titulo}</h2>
                         ${priceRangeHtml}
