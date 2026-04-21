@@ -90,21 +90,25 @@
             line-height: 1.2; margin-bottom: 0.5rem;
         }
 
-        .platform-badge {
-            display: inline-block;
+        /* Platform bar – same style as catalog */
+        .platform-bar {
+            display: inline-flex;
+            align-items: center;
             border-radius: 6px;
-            padding: 0.25rem 0.65rem;
+            padding: 0.25rem 0.75rem;
             font-size: 0.75rem;
             font-weight: 800;
             letter-spacing: 0.03em;
             text-transform: uppercase;
             margin-bottom: 0.75rem;
         }
-        .plat-ps5  { background: #fff; color: #000; }
-        .plat-ps4  { background: #003087; color: #fff; }
-        .plat-nsw  { background: #e4000f; color: #fff; }
-        .plat-nsw2 { background: #000; color: #e4000f; border: 1px solid #e4000f; }
-        .plat-mix  { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--primary); }
+        .pb-primaria-ps5   { background: #fff; color: #000; }
+        .pb-secundaria-ps5 { background: #111; color: #fff; border: 1px solid #444; }
+        .pb-primaria-ps4   { background: #003087; color: #fff; }
+        .pb-secundaria-ps4 { background: #001a5c; color: #bcc8e8; }
+        .pb-nsw   { background: #e4000f; color: #fff; }
+        .pb-nsw2  { background: #0d0d0d; color: #e4000f; border: 1px solid #333; }
+        .pb-other { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--primary); }
 
         .store-price {
             display: flex; align-items: center; gap: 0.5rem;
@@ -401,15 +405,24 @@
             if (cfg.usdt_rate) usdtRate = parseFloat(cfg.usdt_rate) || 1440;
         }).catch(() => {});
 
-        function platformBadgeHtml(plataforma) {
-            const parts = (plataforma || '').split(',').map(p => p.trim()).filter(Boolean);
-            if (parts.length > 1) return `<span class="platform-badge plat-mix">${parts.join(' / ')}</span>`;
-            const p = parts[0] || '';
-            if (p.includes('PS5'))    return `<span class="platform-badge plat-ps5">PS5</span>`;
-            if (p.includes('PS4'))    return `<span class="platform-badge plat-ps4">PS4</span>`;
-            if (p.includes('Switch 2')) return `<span class="platform-badge plat-nsw2">Switch 2</span>`;
-            if (p.includes('Switch') || p.includes('Nintendo')) return `<span class="platform-badge plat-nsw">Switch</span>`;
-            return `<span class="platform-badge plat-mix">${p}</span>`;
+        function platformBarHtml(titulo, plataforma) {
+            const t = (titulo || '').toLowerCase();
+            const p = (plataforma || '').trim();
+            const isSecundaria = t.includes('secundaria');
+            if (p.includes('PS5'))
+                return isSecundaria
+                    ? `<span class="platform-bar pb-secundaria-ps5">Secundaria PS5</span>`
+                    : `<span class="platform-bar pb-primaria-ps5">Primaria PS5</span>`;
+            if (p.includes('PS4'))
+                return isSecundaria
+                    ? `<span class="platform-bar pb-secundaria-ps4">Secundaria PS4</span>`
+                    : `<span class="platform-bar pb-primaria-ps4">Primaria PS4</span>`;
+            if (p.includes('Switch 2') || p.includes('Nintendo Switch 2'))
+                return `<span class="platform-bar pb-nsw2">Nintendo Switch 2</span>`;
+            if (p.includes('Switch') || p.includes('Nintendo'))
+                return `<span class="platform-bar pb-nsw">Nintendo Switch</span>`;
+            const parts = p.split(',').map(s => s.trim()).filter(Boolean);
+            return `<span class="platform-bar pb-other">${parts.join(' / ')}</span>`;
         }
 
         function renderGame(game) {
@@ -478,7 +491,7 @@
                     <div class="game-cover">${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}</div>
                     <div class="game-meta">
                         <h1>${game.titulo}</h1>
-                        ${platformBadgeHtml(game.plataforma)}
+                        ${platformBarHtml(game.titulo, game.plataforma)}
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;">
                             <div style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.5rem 0.75rem;">
                                 <div style="font-size: 0.7rem; color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Desde (transferencia)</div>
