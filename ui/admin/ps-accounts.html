@@ -514,12 +514,11 @@
                 list.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;padding:0.5rem;">Sin resultados</div>';
             } else {
                 list.innerHTML = filtered.map(g => {
-                    const plat = (g.plataforma || '').replace(/,/g, ' / ');
                     const checked = selected.has(g.id) ? 'checked' : '';
                     const selectedCls = selected.has(g.id) ? 'selected' : '';
                     return `<label class="game-opt ${selectedCls}">
                         <input type="checkbox" value="${g.id}" ${checked} onchange="togglePickerGame('${kind}', ${g.id}, this.checked)">
-                        <span>${g.titulo} <span style="color:var(--text-muted);font-size:0.75rem;">(${plat})</span></span>
+                        <span>${g.titulo}</span>
                     </label>`;
                 }).join('');
             }
