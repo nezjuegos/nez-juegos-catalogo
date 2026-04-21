@@ -1036,6 +1036,41 @@ def api_admin_retry_delivery(order_id):
         return jsonify({"error": "Aún no hay stock disponible para este juego/tipo. Agregá la cuenta primero."}), 400
 
 
+@app.route('/api/admin/orders/<int:order_id>/remap-game', methods=['POST'])
+@admin_required
+def api_admin_remap_order_game(order_id):
+    """Point an old order at a different (current) game_id — useful for orders
+    placed before a game was split into multiple versions. Also triggers a
+    delivery retry when the order is PS and in pendiente/pendiente_stock."""
+    data = request.json or {}
+    new_game_id = data.get('game_id')
+    if not new_game_id:
+        return jsonify({"error": "game_id requerido"}), 400
+
+    order = db.get_order(order_id)
+    if not order:
+        return jsonify({"error": "Pedido no encontrado"}), 404
+
+    ok = db.remap_order_game(order_id, int(new_game_id))
+    if not ok:
+        return jsonify({"error": "Juego destino no existe"}), 400
+
+    # Auto-retry delivery for PS orders waiting on stock
+    updated = db.get_order(order_id)
+    plat = (updated.get('game_plataforma') or '').upper()
+    is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
+    retried = False
+    if is_ps and updated['payment_status'] in ('pendiente_stock', 'aprobado'):
+        retried = _deliver_ps_order(order_id)
+
+    msg = f"Pedido remapeado a '{updated['game_titulo']}'"
+    if retried:
+        msg += " y credenciales enviadas por email."
+    elif is_ps and updated['payment_status'] == 'pendiente_stock':
+        msg += ". Seguís sin stock — revisá que la cuenta PS esté vinculada al juego nuevo."
+    return jsonify({"status": "ok", "message": msg, "delivered": retried})
+
+
 @app.route('/api/admin/orders/<int:order_id>/nintendo-account', methods=['POST'])
 @admin_required
 def api_admin_nintendo_account(order_id):

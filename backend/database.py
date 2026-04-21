@@ -1030,6 +1030,24 @@ class Database:
             cursor.execute('UPDATE orders SET notes = ? WHERE id = ?', (notes, order_id))
             conn.commit()
 
+    def remap_order_game(self, order_id, new_game_id):
+        """Point an existing order at a different (current) game.
+        Useful when a game was split into multiple versions and old orders still
+        reference the deleted/merged original. Also refreshes game_titulo and
+        game_plataforma from the target game's current data."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT titulo, plataforma FROM juegos WHERE id = ?', (new_game_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            cursor.execute(
+                'UPDATE orders SET game_id = ?, game_titulo = ?, game_plataforma = ? WHERE id = ?',
+                (new_game_id, row['titulo'], row['plataforma'], order_id)
+            )
+            conn.commit()
+            return True
+
 
     def get_ps_stock_count(self):
         """Count total available sales across all accounts."""

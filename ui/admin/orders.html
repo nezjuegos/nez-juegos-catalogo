@@ -124,6 +124,26 @@
         <div class="modal" id="modalContent"></div>
     </div>
 
+    <!-- Remap Game Modal -->
+    <div class="modal-overlay" id="remapModal" onclick="if(event.target===this)closeRemapModal()">
+        <div class="modal">
+            <h3>🔗 Remapear pedido a otro juego</h3>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+                Útil para pedidos creados antes de dividir el catálogo. Al cambiar el juego destino,
+                la entrega automática se reintenta con las cuentas PS vinculadas al nuevo juego.
+            </p>
+            <div id="remapOrderInfo" style="font-size:0.85rem;margin-bottom:0.75rem;padding:0.6rem;background:rgba(139,92,246,0.06);border-radius:6px;"></div>
+            <input type="search" id="remapFilter" placeholder="Filtrar juegos..." oninput="renderRemapList()"
+                   style="width:100%;padding:0.5rem 0.75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-main);font-size:0.9rem;margin-bottom:0.5rem;">
+            <div id="remapGamesList" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.25rem;">
+                <div style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">Cargando juegos...</div>
+            </div>
+            <div class="actions" style="justify-content:flex-end;">
+                <button class="action-btn" onclick="closeRemapModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
@@ -190,6 +210,7 @@
                         ` : ''}
                         ${o.payment_status === 'pendiente_stock' ? `
                             <button class="action-btn approve" onclick="retryDelivery(${o.id})" title="Reintentar entrega">🔄</button>
+                            <button class="action-btn" onclick="openRemapModal(${o.id})" title="Remapear a otro juego" style="border-color:rgba(139,92,246,0.4);color:#a78bfa;">🔗</button>
                         ` : ''}
                     </td>
                 </tr>
@@ -231,6 +252,7 @@
                     ` : ''}
                     ${o.payment_status === 'pendiente_stock' ? `
                         <button class="action-btn approve" onclick="retryDelivery(${o.id});closeModal();">🔄 Reintentar entrega</button>
+                        <button class="action-btn" onclick="closeModal();openRemapModal(${o.id});" style="border-color:rgba(139,92,246,0.4);color:#a78bfa;">🔗 Remapear juego</button>
                     ` : ''}
                     <button class="action-btn" onclick="closeModal()">Cerrar</button>
                 </div>
@@ -276,6 +298,73 @@
                 showToast(data.error || 'Error en la entrega', true);
             }
             loadOrders();
+        }
+
+        // --- Remap order -> new game_id ---
+        let _remapOrderId = null;
+        let _remapGames = [];
+
+        async function openRemapModal(orderId) {
+            _remapOrderId = orderId;
+            const order = allOrders.find(o => o.id === orderId);
+            document.getElementById('remapOrderInfo').innerHTML = order
+                ? `<strong>Pedido #${order.id}</strong> — ${order.game_titulo} <span style="color:var(--text-muted);">(${order.tipo_producto})</span>`
+                : `Pedido #${orderId}`;
+            document.getElementById('remapFilter').value = '';
+            document.getElementById('remapModal').classList.add('active');
+            if (_remapGames.length === 0) {
+                try {
+                    const resp = await fetch('/api/juegos');
+                    const data = await resp.json();
+                    _remapGames = (data.results || [])
+                        .filter(g => /PS\s?[345]|PlayStation/i.test(g.plataforma || ''))
+                        .sort((a, b) => a.titulo.localeCompare(b.titulo));
+                } catch (e) {
+                    showToast('Error cargando juegos', true);
+                }
+            }
+            renderRemapList();
+        }
+
+        function renderRemapList() {
+            const q = (document.getElementById('remapFilter').value || '').toLowerCase();
+            const list = document.getElementById('remapGamesList');
+            const filtered = _remapGames.filter(g =>
+                !q || g.titulo.toLowerCase().includes(q) || String(g.id) === q
+            );
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;padding:0.5rem;">Sin resultados</div>';
+                return;
+            }
+            list.innerHTML = filtered.map(g => `
+                <button class="action-btn" style="text-align:left;width:100%;padding:0.6rem 0.75rem;"
+                        onclick="confirmRemap(${g.id}, '${g.titulo.replace(/'/g, "\\'")}')">
+                    <div style="font-weight:700;font-size:0.9rem;">${g.titulo}</div>
+                    <div style="color:var(--text-muted);font-size:0.75rem;">${g.plataforma || ''}</div>
+                </button>
+            `).join('');
+        }
+
+        async function confirmRemap(gameId, gameTitle) {
+            if (!confirm(`¿Remapear el pedido a "${gameTitle}" y reintentar entrega?`)) return;
+            const resp = await fetch(`/api/admin/orders/${_remapOrderId}/remap-game`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_id: gameId })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(data.message || 'Remapeado');
+                closeRemapModal();
+                loadOrders();
+            } else {
+                showToast(data.error || 'Error al remapear', true);
+            }
+        }
+
+        function closeRemapModal() {
+            document.getElementById('remapModal').classList.remove('active');
+            _remapOrderId = null;
         }
 
         // Nintendo account modal
