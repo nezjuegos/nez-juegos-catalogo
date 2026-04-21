@@ -44,6 +44,55 @@
         .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
 
         .container { max-width: 600px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+        @media (min-width: 900px) {
+            .container { max-width: 760px; }
+        }
+
+        /* Binance Pay — large scannable QR (especially desktop) */
+        .binance-pay-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        @media (min-width: 640px) {
+            .binance-pay-layout {
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 1.75rem;
+            }
+        }
+        .binance-qr-wrap {
+            flex-shrink: 0;
+            text-align: center;
+            line-height: 0;
+        }
+        .binance-qr-img {
+            width: min(92vw, 260px);
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        @media (min-width: 640px) {
+            .binance-qr-img { width: 280px; }
+        }
+        @media (min-width: 900px) {
+            .binance-qr-img { width: 320px; }
+        }
+        .binance-pay-side {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            max-width: 340px;
+        }
+        @media (min-width: 640px) {
+            .binance-pay-side { max-width: none; }
+        }
 
         .back-link { color: var(--primary); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 1.25rem; }
 
@@ -332,9 +381,11 @@
 
                 <!-- Binance Pay details -->
                 <div class="transfer-details" id="binanceDetails" style="display:none; border-color: rgba(240,185,11,0.35); background: linear-gradient(180deg, rgba(240,185,11,0.06), rgba(240,185,11,0.02));">
-                    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.75rem;">
-                        <img src="/binance-qr.png" alt="QR Binance Pay" style="width:150px; height:150px; border-radius:8px; background:#fff; padding:6px; object-fit:contain;">
-                        <div style="flex:1; min-width:180px;">
+                    <div class="binance-pay-layout">
+                        <div class="binance-qr-wrap">
+                            <img src="/binance-qr.png" class="binance-qr-img" alt="Código QR Binance Pay" width="543" height="541" loading="lazy">
+                        </div>
+                        <div class="binance-pay-side">
                             <div class="label-sm">Binance Pay ID</div>
                             <div class="value-mono" id="binanceIdDisplay">
                                 192 236 539
