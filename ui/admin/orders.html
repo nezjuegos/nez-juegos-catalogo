@@ -68,10 +68,83 @@
 
         .empty { text-align: center; padding: 3rem; color: var(--text-muted); }
 
-        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
-        .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; }
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 999; max-width: calc(100vw - 2rem); }
+        .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; word-break: break-word; }
         .toast.error { border-color: var(--error); }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ── Mobile ── */
+        @media (max-width: 680px) {
+            .nav { padding: 0.75rem 1rem; }
+            .nav-links { gap: 0.75rem; overflow-x: auto; padding-bottom: 2px; }
+            .nav-links a { font-size: 0.75rem; white-space: nowrap; }
+
+            .container { padding: 0.85rem; }
+            h1 { font-size: 1.25rem; }
+
+            .stats { gap: 0.4rem; }
+            .stat { padding: 0.5rem 0.65rem; min-width: 70px; }
+            .stat .num { font-size: 1.1rem; }
+            .stat .label { font-size: 0.65rem; }
+
+            .filters { gap: 0.35rem; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+            .filter-btn { white-space: nowrap; padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+
+            /* Table → card stack */
+            table { border: none; background: transparent; border-radius: 0; }
+            thead { display: none; }
+            tbody tr {
+                display: block;
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                margin-bottom: 0.65rem;
+                overflow: hidden;
+            }
+            tbody tr:hover td { background: transparent; }
+            td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0.85rem;
+                border-bottom: 1px solid rgba(39,39,42,0.5);
+                font-size: 0.82rem;
+                max-width: 100%;
+            }
+            td:last-child { border-bottom: none; }
+            td::before {
+                content: attr(data-label);
+                color: var(--text-muted);
+                font-size: 0.68rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                font-weight: 700;
+                flex-shrink: 0;
+                margin-right: 0.65rem;
+            }
+            td[data-label="Juego"] {
+                white-space: normal;
+                word-break: break-word;
+            }
+            td[data-label="Acciones"] {
+                flex-wrap: wrap;
+                gap: 0.35rem;
+                justify-content: flex-end;
+            }
+            td[data-label="Acciones"]::before { margin-right: auto; }
+            .action-btn { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+            /* Modals full-screen on mobile */
+            .modal-overlay { align-items: flex-end; }
+            .modal {
+                width: 100%;
+                max-width: 100%;
+                max-height: 90vh;
+                border-radius: var(--radius-md) var(--radius-md) 0 0;
+            }
+            .modal .actions { flex-wrap: wrap; }
+            .modal .actions .action-btn { flex: 1; min-width: 120px; text-align: center; padding: 0.6rem; }
+        }
     </style>
 </head>
 <body>
@@ -190,27 +263,28 @@
                 body.innerHTML = '<tr><td colspan="8" class="empty">No hay pedidos</td></tr>';
                 return;
             }
+            const payIcon = m => m === 'transferencia' ? '🏦 Transfer' : (m === 'mercadopago' ? '💳 MP' : '💳 Ualá');
             body.innerHTML = allOrders.map(o => `
                 <tr>
-                    <td>#${o.id}</td>
-                    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.game_titulo}</td>
-                    <td>${o.tipo_producto}</td>
-                    <td style="font-size:0.8rem;">${o.buyer_email}</td>
-                    <td>${o.payment_method === 'transferencia' ? '🏦' : '💳'}</td>
-                    <td><span class="badge badge-${o.payment_status}">${o.payment_status}</span></td>
-                    <td style="font-size:0.8rem;">${formatDate(o.created_at)}</td>
-                    <td>
-                        <button class="action-btn" onclick="showDetail(${o.id})">👁️</button>
+                    <td data-label="#">#${o.id}</td>
+                    <td data-label="Juego">${o.game_titulo}</td>
+                    <td data-label="Tipo">${o.tipo_producto}</td>
+                    <td data-label="Email" style="font-size:0.8rem;word-break:break-all;">${o.buyer_email}</td>
+                    <td data-label="Pago">${payIcon(o.payment_method)}</td>
+                    <td data-label="Estado"><span class="badge badge-${o.payment_status}">${o.payment_status}</span></td>
+                    <td data-label="Fecha" style="font-size:0.8rem;">${formatDate(o.created_at)}</td>
+                    <td data-label="Acciones">
+                        <button class="action-btn" onclick="showDetail(${o.id})">👁️ Ver</button>
                         ${o.payment_status === 'pendiente' ? `
-                            <button class="action-btn approve" onclick="approveOrder(${o.id})">✓</button>
-                            <button class="action-btn reject" onclick="rejectOrder(${o.id})">✗</button>
+                            <button class="action-btn approve" onclick="approveOrder(${o.id})">✓ Aprobar</button>
+                            <button class="action-btn reject" onclick="rejectOrder(${o.id})">✗ Rechazar</button>
                         ` : ''}
                         ${o.payment_status === 'aprobado' ? `
-                            <button class="action-btn deliver" onclick="deliverOrder(${o.id})">📦</button>
+                            <button class="action-btn deliver" onclick="deliverOrder(${o.id})">📦 Entregar</button>
                         ` : ''}
                         ${o.payment_status === 'pendiente_stock' ? `
-                            <button class="action-btn approve" onclick="retryDelivery(${o.id})" title="Reintentar entrega">🔄</button>
-                            <button class="action-btn" onclick="openRemapModal(${o.id})" title="Remapear a otro juego" style="border-color:rgba(139,92,246,0.4);color:#a78bfa;">🔗</button>
+                            <button class="action-btn approve" onclick="retryDelivery(${o.id})" title="Reintentar entrega">🔄 Reintentar</button>
+                            <button class="action-btn" onclick="openRemapModal(${o.id})" title="Remapear a otro juego" style="border-color:rgba(139,92,246,0.4);color:#a78bfa;">🔗 Remapear</button>
                         ` : ''}
                     </td>
                 </tr>

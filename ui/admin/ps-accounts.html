@@ -120,7 +120,7 @@
         .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; cursor: pointer; }
         .toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
 
-        .delete-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: var(--error); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; cursor: pointer; margin-left: 0.5rem; }
+        .delete-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: var(--error); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.75rem; cursor: pointer; margin-left: 0.35rem; }
         .delete-btn:hover { background: rgba(239,68,68,0.1); }
 
         .credential-row { display: flex; gap: 1rem; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted); }
@@ -137,11 +137,59 @@
         /* Edit modal */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
         .modal-overlay.active { display: flex; }
-        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 440px; }
+        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.5rem; width: 90%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
         .modal h3 { font-family: 'Outfit', sans-serif; margin-bottom: 1rem; color: var(--primary); }
-        .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
-        .modal .btn-save { background: linear-gradient(135deg,var(--primary),var(--secondary)); color:white; border:none; border-radius:8px; padding:0.55rem 1.2rem; font-weight:700; cursor:pointer; }
+        .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .modal .btn-save { background: linear-gradient(135deg,var(--primary),var(--secondary)); color:white; border:none; border-radius:8px; padding:0.55rem 1.2rem; font-weight:700; cursor:pointer; flex:1; }
         .modal .btn-cancel { background:none; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; padding:0.55rem 1rem; cursor:pointer; }
+
+        /* ── Mobile ── */
+        @media (max-width: 680px) {
+            .nav { padding: 0.75rem 1rem; }
+            .nav-links { gap: 0.75rem; overflow-x: auto; padding-bottom: 2px; }
+            .nav-links a { font-size: 0.75rem; white-space: nowrap; }
+
+            .container { padding: 0.85rem; }
+            h1 { font-size: 1.25rem; }
+
+            .stock-banner { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+            .stock-banner > div:last-child { margin-left: 0 !important; width: 100%; justify-content: space-between; }
+
+            .card { padding: 1rem; }
+
+            /* Account card header: stack buttons below email */
+            .account-header { flex-direction: column; align-items: flex-start; gap: 0.65rem; }
+            .account-header > div:last-child {
+                display: flex; flex-wrap: wrap; gap: 0.4rem; width: 100%;
+            }
+            .account-header .toggle-btn,
+            .account-header .delete-btn {
+                flex: 1; min-width: 80px; text-align: center;
+                padding: 0.45rem 0.5rem; font-size: 0.78rem;
+            }
+
+            /* Key rows: stack key value */
+            .key-row {
+                flex-direction: column; align-items: flex-start; gap: 0.2rem;
+                padding: 0.5rem 0;
+            }
+            .key-row .key-value { word-break: break-all; font-size: 0.75rem; }
+            .key-row .key-status { font-size: 0.72rem; }
+
+            /* Modal full-screen bottom sheet */
+            .modal-overlay { align-items: flex-end; }
+            .modal {
+                width: 100%; max-width: 100%;
+                max-height: 92vh;
+                border-radius: var(--radius-md) var(--radius-md) 0 0;
+                padding: 1.25rem 1rem;
+            }
+
+            .btn-add { width: 100%; text-align: center; }
+
+            .toast-container { right: 0.5rem; left: 0.5rem; }
+            .toast { font-size: 0.8rem; padding: 0.6rem 1rem; }
+        }
     </style>
 </head>
 <body>
@@ -322,10 +370,10 @@
                                 </span>
                             </div>
                             <div>
-                                <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Ver keys</button>
-                                <button class="toggle-btn" onclick="addSlots(${acc.id})" style="margin-left:0.35rem;">➕ Ampliar</button>
-                                <button class="toggle-btn" onclick="openEditModalFromData(${acc.id})" style="margin-left:0.35rem;">✏️ Editar</button>
-                                ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑 Eliminar</button>` : ''}
+                                <button class="toggle-btn" onclick="toggleKeys(${i})">🔑 Keys</button>
+                                <button class="toggle-btn" onclick="addSlots(${acc.id})">➕ Ampliar</button>
+                                <button class="toggle-btn" onclick="openEditModalFromData(${acc.id})">✏️ Editar</button>
+                                ${acc.keys_used === 0 ? `<button class="delete-btn" onclick="deleteAccount(${acc.id})">🗑</button>` : ''}
                             </div>
                         </div>
                         <div class="credential-row">
