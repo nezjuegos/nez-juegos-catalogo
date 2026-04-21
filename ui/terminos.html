@@ -78,6 +78,17 @@
             color: var(--text-main);
         }
 
+        .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; cursor: pointer; padding: 8px; border: none; background: none; border-radius: 8px; z-index: 1100; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: var(--text-main); border-radius: 2px; transition: transform 0.3s, opacity 0.3s; }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+        .mobile-menu { display: none; position: fixed; inset: 0; background: rgba(10,10,12,0.97); backdrop-filter: blur(20px); z-index: 1050; flex-direction: column; align-items: center; justify-content: center; gap: 2.5rem; }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a { font-size: 1.6rem; font-weight: 700; color: #f8fafc; text-decoration: none; font-family: 'Outfit', sans-serif; transition: color 0.2s; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu-close { position: absolute; top: 1.5rem; right: 1.5rem; font-size: 2rem; background: none; border: none; color: #f8fafc; cursor: pointer; line-height: 1; }
+
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -214,8 +225,8 @@
             .container { padding: 1.25rem 1rem 3rem; }
             h1 { font-size: 1.5rem; }
             .nav { padding: 0.75rem 1rem; }
-            .nav-links { gap: 1rem; }
-            .nav-links a { font-size: 0.8rem; }
+            .hamburger { display: flex; }
+            .nav-links { display: none !important; }
         }
     </style>
 </head>
@@ -226,9 +237,19 @@
         <div class="nav-links">
             <a href="/playstation">PlayStation</a>
             <a href="/nintendo">Nintendo Switch</a>
-            <a href="/packs">Packs</a>
+            <a href="/terminos-y-condiciones">T&C</a>
         </div>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú">
+            <span></span><span></span><span></span>
+        </button>
     </nav>
+    <div class="mobile-menu" id="mobileMenu">
+        <button class="mobile-menu-close" id="mobileMenuClose">✕</button>
+        <a href="/">🏠 Inicio</a>
+        <a href="/playstation">🎮 PlayStation</a>
+        <a href="/nintendo">🔴 Nintendo Switch</a>
+        <a href="/terminos-y-condiciones">📄 T&C</a>
+    </div>
 
     <div class="container">
         <h1>Términos y Condiciones</h1>
@@ -328,6 +349,17 @@
     <a href="https://wa.me/5491160120337?text=Hola%2C%20tengo%20una%20consulta%20sobre%20Nez%20Juegos" target="_blank" class="whatsapp-float" title="¿Dudas? Escribinos por WhatsApp">
         <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.766-6.145-2.058l-.43-.324-2.655.89.89-2.655-.324-.43A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
     </a>
+    <script>
+        (function() {
+            const btn = document.getElementById('hamburgerBtn');
+            const menu = document.getElementById('mobileMenu');
+            const close = document.getElementById('mobileMenuClose');
+            if (!btn || !menu) return;
+            btn.addEventListener('click', () => { menu.classList.add('open'); btn.classList.add('open'); document.body.style.overflow = 'hidden'; });
+            close.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; });
+            menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; }));
+        })();
+    </script>
 </body>
 
 </html>

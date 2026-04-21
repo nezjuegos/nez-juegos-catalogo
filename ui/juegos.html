@@ -116,6 +116,63 @@
             color: white;
         }
 
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            z-index: 1100;
+        }
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-main);
+            border-radius: 2px;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10,10,12,0.97);
+            backdrop-filter: blur(20px);
+            z-index: 1050;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2.5rem;
+        }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #f8fafc;
+            text-decoration: none;
+            font-family: 'Outfit', sans-serif;
+            transition: color 0.2s;
+        }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            background: none;
+            border: none;
+            color: #f8fafc;
+            cursor: pointer;
+            line-height: 1;
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -487,10 +544,8 @@
                 font-size: 1.2rem;
             }
 
-            .nav-links {
-                gap: 1rem;
-                font-size: 0.85rem;
-            }
+            .hamburger { display: flex; }
+            .nav-links { display: none !important; }
 
             .container {
                 padding: 1rem 0.75rem;
@@ -786,10 +841,20 @@
         <nav class="nav-links">
             <a href="/playstation" id="navPS">PlayStation</a>
             <a href="/nintendo" id="navNS">Nintendo Switch</a>
-            <a href="/packs">Packs</a>
             <a href="/terminos-y-condiciones">T&C</a>
         </nav>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú">
+            <span></span><span></span><span></span>
+        </button>
     </header>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Cerrar menú">✕</button>
+        <a href="/">🏠 Inicio</a>
+        <a href="/playstation">🎮 PlayStation</a>
+        <a href="/nintendo">🔴 Nintendo Switch</a>
+        <a href="/terminos-y-condiciones">📄 T&C</a>
+    </div>
 
     <div class="container">
         <h1>Juegos Individuales</h1>
@@ -1220,6 +1285,17 @@
             c.appendChild(t);
             setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 2500);
         }
+
+        // Hamburger menu
+        (function() {
+            const btn = document.getElementById('hamburgerBtn');
+            const menu = document.getElementById('mobileMenu');
+            const close = document.getElementById('mobileMenuClose');
+            if (!btn || !menu) return;
+            btn.addEventListener('click', () => { menu.classList.add('open'); btn.classList.add('open'); document.body.style.overflow = 'hidden'; });
+            close.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; });
+            menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; }));
+        })();
     </script>
 
     <!-- WhatsApp Float Button -->

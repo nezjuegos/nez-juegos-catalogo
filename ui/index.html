@@ -120,6 +120,83 @@
             color: white;
         }
 
+        /* Hamburger */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            z-index: 1100;
+        }
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-main);
+            border-radius: 2px;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10,10,12,0.97);
+            backdrop-filter: blur(20px);
+            z-index: 1050;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2.5rem;
+        }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu a {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #f8fafc;
+            text-decoration: none;
+            font-family: 'Outfit', sans-serif;
+            transition: color 0.2s;
+        }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            background: none;
+            border: none;
+            color: #f8fafc;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        /* Hero catalog buttons */
+        .btn-ps {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.9rem 1.6rem; border-radius: 12px; font-weight: 700;
+            font-size: 1rem; text-decoration: none; transition: all 0.2s;
+            background: linear-gradient(135deg, #003087, #0070d1);
+            color: #fff; border: 1px solid rgba(0,112,209,0.4);
+        }
+        .btn-ps:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,112,209,0.35); }
+        .btn-ns {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.9rem 1.6rem; border-radius: 12px; font-weight: 700;
+            font-size: 1rem; text-decoration: none; transition: all 0.2s;
+            background: linear-gradient(135deg, #c0001c, #e60012);
+            color: #fff; border: 1px solid rgba(230,0,18,0.4);
+        }
+        .btn-ns:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(230,0,18,0.35); }
+
         /* Hero */
         .hero {
             display: grid;
@@ -345,43 +422,63 @@
 
         @media (max-width: 768px) {
             header {
-                padding: 0 1.5rem;
+                padding: 0 1.25rem;
                 height: 60px;
             }
 
+            .hamburger { display: flex; }
+            .nav-links { display: none !important; }
+
             .hero {
-                padding: 100px 1.5rem 2rem 1.5rem;
+                grid-template-columns: 1fr;
+                padding: 80px 1.25rem 2rem;
+                gap: 2rem;
+                min-height: auto;
             }
 
             .hero-text h1 {
-                font-size: 2.2rem;
+                font-size: 1.8rem;
+                line-height: 1.2;
+            }
+
+            .hero-text p {
+                font-size: 0.9rem;
+                margin: 0.75rem 0 1.25rem;
+            }
+
+            .hero-btns {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            .hero-btns a {
+                padding: 0.85rem 1.4rem !important;
+                font-size: 0.95rem !important;
+                width: 100%;
+                justify-content: center;
+                text-align: center;
             }
 
             .hero-visual {
-                height: 300px;
+                height: 220px;
             }
 
             .features {
-                padding: 2rem 1.5rem;
+                padding: 1.5rem 1.25rem;
                 grid-template-columns: 1fr;
+                gap: 1rem;
             }
 
             .feature-card {
-                padding: 2rem;
+                padding: 1.5rem;
             }
 
             .community {
-                margin: 3rem 1.5rem;
-                padding: 2rem;
+                margin: 2rem 1.25rem;
+                padding: 1.75rem;
             }
 
             .community h2 {
-                font-size: 1.8rem;
-            }
-
-            .nav-links {
-                gap: 0.8rem;
-                font-size: 0.8rem;
+                font-size: 1.6rem;
             }
 
             .hide-mobile {
@@ -408,10 +505,20 @@
         <nav class="nav-links">
             <a href="/playstation">PlayStation</a>
             <a href="/nintendo">Nintendo Switch</a>
-            <a href="/packs">Packs</a>
-            <a href="/terminos-y-condiciones" class="hide-mobile">T&C</a>
+            <a href="/terminos-y-condiciones">T&C</a>
         </nav>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú">
+            <span></span><span></span><span></span>
+        </button>
     </header>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Cerrar menú">✕</button>
+        <a href="/">🏠 Inicio</a>
+        <a href="/playstation">🎮 PlayStation</a>
+        <a href="/nintendo">🔴 Nintendo Switch</a>
+        <a href="/terminos-y-condiciones">📄 T&C</a>
+    </div>
 
     <main class="hero">
         <div class="hero-text">
@@ -419,15 +526,17 @@
             <p id="hero-subtitle">Descubre el catálogo más amplio de juegos digitales. Cuentas primarias, secundarias,
                 códigos canjeables y alquileres con entrega inmediata.</p>
             <div class="hero-btns" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <a href="/playstation" class="btn-primary"
-                    style="padding: 1rem 1.5rem; font-size: 1.1rem; text-align: center;">🎮 Ver Catálogo</a>
-                <a href="/packs" class="btn-primary"
-                    style="background: var(--secondary); border: 1px solid rgba(217, 70, 239, 0.5); padding: 1rem 1.5rem; font-size: 1.1rem; text-align: center;">📦
-                    Packs en Oferta</a>
-                <a href="#" class="btn-wa" id="btn-wa-hero" style="padding: 1rem 1.5rem; font-size: 1.1rem;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+                <a href="/playstation" class="btn-ps">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.5 2C8.4 2 7.5 2.9 7.5 4v10.6L5.2 14c-1.1-.4-2.2.1-2.7 1.1L2 16.6l7.5 2.7V4c0-.3.2-.5.5-.5s.5.2.5.5v15.5l4.3 1.5c2 .7 3.2-.2 3.2-2.1V7.8c0-1.1-.7-2.1-1.8-2.4L9.5 2z"/></svg>
+                    PlayStation
+                </a>
+                <a href="/nintendo" class="btn-ns">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.04 20.4H6.6A6.6 6.6 0 0 1 6.6 7.2h3.44l5.92 12.87A6.6 6.6 0 0 1 10.04 20.4zm3.92-6.33L11.62 8.9h2.74A4.98 4.98 0 0 1 17.4 13.8a4.98 4.98 0 0 1-3.04 4.9l-1.7-3.7.03-.07-.73-1.53v1.97zM6.6 8.82a5 5 0 0 0 0 10h2.44L5.6 9.63a4.97 4.97 0 0 0-.7.93l2.44 5.3V8.82zm4.4.85l3.37 7.32A4.98 4.98 0 0 0 17.4 13.8a5 5 0 0 0-5-5h-.88l-.52-1.13z"/></svg>
+                    Nintendo Switch
+                </a>
+                <a href="#" class="btn-wa" id="btn-wa-hero" style="padding: 0.9rem 1.4rem; font-size: 1rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
                     </svg>
                     Comunidad
                 </a>
@@ -457,21 +566,22 @@
     </main> <!-- Close .hero container properly -->
 
     <section class="features">
-        <a href="/playstation" class="feature-card">
-            <div id="featureImgJuegos" class="feature-img"
-                style="background: url('https://assets.nintendo.com/image/upload/c_fill,w_1200/q_auto:best/f_auto/dpr_1.5/ncom/es_LA/categories/switch') center/cover;">
+        <a href="/playstation" class="feature-card" style="border-color: rgba(0,112,209,0.25);">
+            <div class="feature-img"
+                style="background: linear-gradient(135deg, #001f5c 0%, #003087 50%, #0070d1 100%); display:flex; align-items:center; justify-content:center;">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M9.5 2C8.4 2 7.5 2.9 7.5 4v10.6L5.2 14c-1.1-.4-2.2.1-2.7 1.1L2 16.6l7.5 2.7V4c0-.3.2-.5.5-.5s.5.2.5.5v15.5l4.3 1.5c2 .7 3.2-.2 3.2-2.1V7.8c0-1.1-.7-2.1-1.8-2.4L9.5 2z"/></svg>
             </div>
-            <h3>Juegos Individuales <span>↗</span></h3>
-            <p>Buscá juegos específicos para PlayStation y Nintendo Switch. Elegí la modalidad que mejor se adapte a tu estilo.</p>
+            <h3>PlayStation <span>↗</span></h3>
+            <p>Juegos PS4 y PS5 con cuentas primarias y secundarias. Descarga directa, entrega inmediata.</p>
         </a>
 
-        <a href="/packs" class="feature-card" style="border-color: rgba(217, 70, 239, 0.2);">
-            <div id="featureImgPacks" class="feature-img"
-                style="background: url('https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/c_scale,w_1200/ncom/en_US/articles/2021/celebrate-mar10-day-with-savings-on-select-games/mar10-sale_1920x1080_article') center/cover;">
+        <a href="/nintendo" class="feature-card" style="border-color: rgba(230,0,18,0.25);">
+            <div class="feature-img"
+                style="background: linear-gradient(135deg, #8b0000 0%, #c0001c 50%, #e60012 100%); display:flex; align-items:center; justify-content:center;">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M10.04 20.4H6.6A6.6 6.6 0 0 1 6.6 7.2h3.44l5.92 12.87A6.6 6.6 0 0 1 10.04 20.4zm3.92-6.33L11.62 8.9h2.74A4.98 4.98 0 0 1 17.4 13.8a4.98 4.98 0 0 1-3.04 4.9l-1.7-3.7.03-.07-.73-1.53v1.97zM6.6 8.82a5 5 0 0 0 0 10h2.44L5.6 9.63a4.97 4.97 0 0 0-.7.93l2.44 5.3V8.82zm4.4.85l3.37 7.32A4.98 4.98 0 0 0 17.4 13.8a5 5 0 0 0-5-5h-.88l-.52-1.13z"/></svg>
             </div>
-            <h3>Packs de Juegos <span>↗</span></h3>
-            <p>Combos armados de varios juegos a precios bajos. Si buscás llevarte una biblioteca completa de golpe,
-                este es tu lugar.</p>
+            <h3>Nintendo Switch <span>↗</span></h3>
+            <p>Juegos para Nintendo Switch y Switch 2. Cuentas primarias, secundarias y códigos digitales.</p>
         </a>
     </section>
 
@@ -640,6 +750,17 @@
                 });
             }
         }).catch(err => console.error("Error loading featured items:", err));
+
+        // Hamburger menu
+        (function() {
+            const btn = document.getElementById('hamburgerBtn');
+            const menu = document.getElementById('mobileMenu');
+            const close = document.getElementById('mobileMenuClose');
+            if (!btn || !menu) return;
+            btn.addEventListener('click', () => { menu.classList.add('open'); btn.classList.add('open'); document.body.style.overflow = 'hidden'; });
+            close.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; });
+            menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('open'); document.body.style.overflow = ''; }));
+        })();
     </script>
 </body>
 
