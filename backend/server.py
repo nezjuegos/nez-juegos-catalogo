@@ -923,6 +923,46 @@ def api_mp_failure():
     """
 
 
+def _ps_stock_diagnostic(game_id, sale_type):
+    """Return a human-readable explanation of why no key was available for
+    (game_id, sale_type). Used by the admin UI when a delivery fails."""
+    accounts = db.get_ps_accounts()
+    linked = [a for a in accounts if game_id in (a.get('game_ids_list') or [])]
+    if not linked:
+        return "Ninguna cuenta PS está vinculada a este juego. Abrí una cuenta en 'Cuentas PS' y vinculala."
+
+    slot_cols = {
+        'secundaria': ('secundaria_used', 'secundaria_total'),
+        'primaria_ps4': ('primaria_ps4_used', 'primaria_ps4_total'),
+        'primaria': ('primaria_used', 'primaria_total'),
+    }
+    used_col, total_col = slot_cols.get(sale_type, slot_cols['primaria'])
+    label = {'primaria': 'Primaria PS5', 'primaria_ps4': 'Primaria PS4', 'secundaria': 'Secundaria'}[sale_type]
+
+    usable = [a for a in linked
+              if a['status'] == 'disponible' and a['keys_used'] < 10
+              and (a.get(used_col) or 0) < (a.get(total_col) or 0)]
+    if usable:
+        return None  # there IS stock; caller shouldn't be here
+
+    details = []
+    for a in linked:
+        used = a.get(used_col) or 0
+        total = a.get(total_col) or 0
+        reasons = []
+        if a['status'] != 'disponible':
+            reasons.append(f"cuenta {a['status']}")
+        if a['keys_used'] >= 10:
+            reasons.append("10/10 keys usadas")
+        if used >= total:
+            reasons.append(f"slot {label} lleno ({used}/{total})")
+        details.append(f"{a['email']}: {', '.join(reasons) or 'ok'}")
+
+    return (f"No hay slot '{label}' libre en las cuentas vinculadas a este juego. "
+            f"Podés usar '+ Ampliar' en la cuenta para agregar otro slot, o vincular una cuenta nueva. "
+            f"Detalle: {' | '.join(details)}")
+
+
 def _deliver_ps_order(order_id):
     """Internal: Deliver PS credentials via email."""
     order = db.get_order(order_id)
@@ -942,8 +982,10 @@ def _deliver_ps_order(order_id):
         game_id=order.get('game_id'), sale_type=sale_type
     )
     if not account:
-        logging.warning(f"No PS stock for order {order_id} (type={sale_type}). Queued as pendiente_stock.")
+        reason = _ps_stock_diagnostic(order.get('game_id'), sale_type)
+        logging.warning(f"No PS stock for order {order_id} (type={sale_type}): {reason}")
         db.update_order_status(order_id, 'pendiente_stock')
+        _deliver_ps_order.last_reason = reason
         return False
     
     success = send_ps_credentials(
@@ -1033,7 +1075,8 @@ def api_admin_retry_delivery(order_id):
     if success:
         return jsonify({"status": "ok", "message": "Credenciales enviadas por email exitosamente."})
     else:
-        return jsonify({"error": "Aún no hay stock disponible para este juego/tipo. Agregá la cuenta primero."}), 400
+        reason = getattr(_deliver_ps_order, 'last_reason', None) or "Aún no hay stock disponible para este juego/tipo."
+        return jsonify({"error": reason}), 400
 
 
 @app.route('/api/admin/orders/<int:order_id>/remap-game', methods=['POST'])
@@ -1067,7 +1110,8 @@ def api_admin_remap_order_game(order_id):
     if retried:
         msg += " y credenciales enviadas por email."
     elif is_ps and updated['payment_status'] == 'pendiente_stock':
-        msg += ". Seguís sin stock — revisá que la cuenta PS esté vinculada al juego nuevo."
+        reason = getattr(_deliver_ps_order, 'last_reason', None)
+        msg += f". Sin stock: {reason}" if reason else ". Sin stock disponible."
     return jsonify({"status": "ok", "message": msg, "delivered": retried})
 
 
