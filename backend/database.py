@@ -729,14 +729,55 @@ class Database:
             return title_slug
         return f"{title_slug}-{plat_slug}"
 
+    # Sellable modalities used to disambiguate slugs when multiple game rows
+    # share the same (titulo, plataforma) — e.g., Primaria PS5 vs Secundaria PS5.
+    _PS_MODALITY_KEYS = (
+        ('primaria_ps5',   'primaria-ps5'),
+        ('secundaria_ps5', 'secundaria-ps5'),
+        ('primaria_ps4',   'primaria-ps4'),
+    )
+    _NIN_MODALITY_KEYS = (
+        ('primaria',       'primaria'),
+        ('secundaria',     'secundaria'),
+        ('codigo_digital', 'codigo-digital'),
+        ('alquiler',       'alquiler'),
+    )
+
+    @staticmethod
+    def _active_modalities(game):
+        """Return the list of active sellable modality slugs for a game."""
+        precios = game.get('precios') or {}
+        plataforma = (game.get('plataforma') or '').upper()
+        is_ps = any(tok in plataforma for tok in ('PS5', 'PS4', 'PLAYSTATION'))
+        keys = JuegosDB._PS_MODALITY_KEYS if is_ps else JuegosDB._NIN_MODALITY_KEYS
+        return [mod for k, mod in keys if precios.get(k) or precios.get(f'oferta_{k}')]
+
+    @staticmethod
+    def generate_game_slug(game):
+        """Generate URL slug for a game, disambiguating rows that share the same
+        (titulo, plataforma) by appending the modality when only one is active.
+        Falls back to the legacy title+platform slug otherwise (backwards-compatible
+        for games that bundle multiple modalities in a single row)."""
+        base = JuegosDB.generate_slug(game.get('titulo', ''), game.get('plataforma', '') or '')
+        active = JuegosDB._active_modalities(game)
+        if len(active) == 1:
+            return f"{base}-{active[0]}"
+        return base
+
     # --- GAME BY SLUG ---
     def get_game_by_slug(self, slug):
         """Find a game whose generated slug matches the provided slug.
-        Uses get_all_juegos() to ensure full data (precios, title_tags) is returned."""
+        Tries the modality-aware slug first, then the legacy title+platform slug
+        for backwards compatibility with older URLs and ambiguous rows."""
         all_games = self.get_all_juegos()
+        # First pass: exact modality-aware match
         for game in all_games:
-            game_slug = self.generate_slug(game['titulo'], game.get('plataforma', ''))
-            if game_slug == slug:
+            if self.generate_game_slug(game) == slug:
+                return game
+        # Fallback: legacy slug (title + platform). Only use as a last resort so
+        # that ambiguous rows (same titulo+plataforma) still resolve to *something*.
+        for game in all_games:
+            if self.generate_slug(game['titulo'], game.get('plataforma', '')) == slug:
                 return game
         return None
 

@@ -181,7 +181,7 @@ def get_game_modalities(game):
             ('alquiler',       'Alquiler',       pr('alquiler',       'oferta_alquiler')),
         ]
 
-    game_slug = db.generate_slug(game['titulo'], game.get('plataforma', ''))
+    game_slug = db.generate_game_slug(game)
     modalities = []
     for mod_slug, label, precio_transfer in candidates:
         if not precio_transfer:
@@ -559,7 +559,7 @@ def api_get_game_by_slug(slug):
     if not game:
         return jsonify({"error": "Juego no encontrado"}), 404
     # Add slug to response
-    game['slug'] = db.generate_slug(game['titulo'], game.get('plataforma', ''))
+    game['slug'] = db.generate_game_slug(game)
     # For PS games, include stock availability per sale type
     plat = (game.get('plataforma') or '').upper()
     if 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat:

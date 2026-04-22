@@ -1,0 +1,17 @@
+fix: disambiguate slugs for split PS rows (primaria vs secundaria)
+
+Two game rows that share the same (titulo, plataforma) - e.g. EA SPORTS
+FC 26 "Primaria PS5" vs "Secundaria PS5" - collapsed to the same slug
+(ea-sports-fc-26-ps5), so get_game_by_slug always returned the first
+match, sending Secundaria clicks to the Primaria page.
+
+The split rows each have exactly one active sellable modality. Use that
+to extend the slug (e.g. ea-sports-fc-26-secundaria-ps5). Old bundled
+rows (multiple modalities in one row) still get the legacy slug, and
+get_game_by_slug keeps a legacy fallback so existing shared URLs
+continue to resolve.
+
+- backend/database.py: new generate_game_slug(game) + _active_modalities
+- backend/server.py: use generate_game_slug when emitting URLs
+- ui/juegos.html: mirror the same logic client-side so catalog cards
+  link to the right page

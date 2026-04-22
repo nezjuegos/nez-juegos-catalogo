@@ -1005,12 +1005,44 @@
             return '$' + val.toLocaleString('es-AR');
         }
 
-        function generateSlug(titulo, plataforma) {
-            function slugify(s) {
-                return (s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                    .toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
+        function slugify(s) {
+            return (s || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-').replace(/^-|-$/g, '');
+        }
+
+        // Modality-aware slug: mirrors backend JuegosDB.generate_game_slug().
+        // When a game row has exactly one sellable modality (typical for split
+        // PS rows like "Primaria PS5" vs "Secundaria PS5"), the modality is
+        // appended to disambiguate rows that share the same (titulo, plataforma).
+        const _PS_MODALITY_KEYS = [
+            ['primaria_ps5',   'primaria-ps5'],
+            ['secundaria_ps5', 'secundaria-ps5'],
+            ['primaria_ps4',   'primaria-ps4'],
+        ];
+        const _NIN_MODALITY_KEYS = [
+            ['primaria',       'primaria'],
+            ['secundaria',     'secundaria'],
+            ['codigo_digital', 'codigo-digital'],
+            ['alquiler',       'alquiler'],
+        ];
+        function _activeModalities(game) {
+            const p = game.precios || {};
+            const plat = (game.plataforma || '').toUpperCase();
+            const isPS = ['PS5', 'PS4', 'PLAYSTATION'].some(t => plat.includes(t));
+            const keys = isPS ? _PS_MODALITY_KEYS : _NIN_MODALITY_KEYS;
+            return keys.filter(([k]) => p[k] || p[`oferta_${k}`]).map(([, mod]) => mod);
+        }
+        function generateSlug(tituloOrGame, plataforma) {
+            if (tituloOrGame && typeof tituloOrGame === 'object') {
+                const game = tituloOrGame;
+                const titleSlug = slugify(game.titulo);
+                const platSlug = slugify(game.plataforma);
+                let base = (!platSlug || titleSlug.includes(platSlug))
+                    ? titleSlug : `${titleSlug}-${platSlug}`;
+                const active = _activeModalities(game);
+                return active.length === 1 ? `${base}-${active[0]}` : base;
             }
-            const titleSlug = slugify(titulo);
+            const titleSlug = slugify(tituloOrGame);
             const platSlug = slugify(plataforma);
             if (!platSlug || titleSlug.includes(platSlug)) return titleSlug;
             return `${titleSlug}-${platSlug}`;
@@ -1073,7 +1105,7 @@
 
             const isPS = gameIsPS(game);
 
-            const buyBtn = `<a href="/checkout?game=${generateSlug(game.titulo, game.plataforma)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration:none;" onclick="fbq('track','InitiateCheckout')">🛒 Comprar</a>`;
+            const buyBtn = `<a href="/checkout?game=${generateSlug(game)}&tipo=${encodeURIComponent(priceKey)}" class="btn-checkout" style="text-decoration:none;" onclick="fbq('track','InitiateCheckout')">🛒 Comprar</a>`;
 
             return `
                 <div class="price-row">
@@ -1196,7 +1228,7 @@
                         </div>`;
                 }
 
-                const gameSlug = generateSlug(game.titulo, game.plataforma);
+                const gameSlug = generateSlug(game);
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 card.innerHTML = `
@@ -1264,7 +1296,7 @@
                 addPriceLine('Alquiler 30 días', 'alquiler');
             }
 
-            text += `🛒 Ver más: https://nezjuegos.com/juegos/${generateSlug(game.titulo, game.plataforma)}`;
+            text += `🛒 Ver más: https://nezjuegos.com/juegos/${generateSlug(game)}`;
             navigator.clipboard.writeText(text).then(() => {
                 showToast('¡Precios copiados al portapapeles!');
             }).catch(err => console.error('Error:', err));
