@@ -133,6 +133,126 @@ def get_juegos():
     featured = request.args.get('featured', 'false').lower() == 'true'
     return jsonify({"results": db.get_all_juegos(featured_only=featured)})
 
+
+# --- Google Merchant Center Feed ---
+
+MODALITY_MAP = [
+    # (precio_field,         oferta_field,              slug,             label)
+    ('precio_primaria_ps5',  'oferta_primaria_ps5',     'primaria-ps5',   'Primaria PS5'),
+    ('precio_secundaria_ps5','oferta_secundaria_ps5',   'secundaria-ps5', 'Secundaria PS5'),
+    ('precio_primaria_ps4',  'oferta_primaria_ps4',     'primaria-ps4',   'Primaria PS4'),
+    ('precio_primaria',      'oferta_primaria',         'primaria',       'Primaria'),
+    ('precio_secundaria',    'oferta_secundaria',       'secundaria',     'Secundaria'),
+    ('precio_codigo',        'oferta_codigo',           'codigo-digital', 'Codigo Digital'),
+    ('precio_alquiler',      'oferta_alquiler',         'alquiler',       'Alquiler'),
+    ('precio_eshop',         None,                      'eshop',          'eShop'),
+]
+
+DESCUENTO_TRANSFERENCIA = 0.32  # transfer price is 32% cheaper than card
+
+def get_game_modalities(game):
+    """Return list of active modalities for a game.
+    Each entry: {slug, label, precio_transfer, precio_tarjeta, url}
+    precio stored in DB is the transfer (minimum) price.
+    Card price = precio_transfer / (1 - DESCUENTO_TRANSFERENCIA).
+    """
+    modalities = []
+    p = game.get('precios') or {}
+    # Map precios dict keys back to raw values, also check direct game keys
+    precio_key_map = {
+        'primaria-ps5':   p.get('primaria_ps5'),
+        'secundaria-ps5': p.get('secundaria_ps5'),
+        'primaria-ps4':   p.get('primaria_ps4'),
+        'primaria':       p.get('primaria'),
+        'secundaria':     p.get('secundaria'),
+        'codigo-digital': p.get('codigo_digital'),
+        'alquiler':       p.get('alquiler'),
+        'eshop':          p.get('eshop'),
+    }
+    slug_to_label = {
+        'primaria-ps5':   'Primaria PS5',
+        'secundaria-ps5': 'Secundaria PS5',
+        'primaria-ps4':   'Primaria PS4',
+        'primaria':       'Primaria',
+        'secundaria':     'Secundaria',
+        'codigo-digital': 'Codigo Digital',
+        'alquiler':       'Alquiler',
+        'eshop':          'eShop',
+    }
+    game_slug = db.generate_slug(game['titulo'], game.get('plataforma', ''))
+    for mod_slug, label in slug_to_label.items():
+        precio_transfer = precio_key_map.get(mod_slug)
+        if not precio_transfer:
+            continue
+        precio_tarjeta = int(round(precio_transfer / (1 - DESCUENTO_TRANSFERENCIA)))
+        modalities.append({
+            'slug': mod_slug,
+            'label': label,
+            'precio_transfer': int(precio_transfer),
+            'precio_tarjeta': precio_tarjeta,
+            'url': f"{SITE_URL}/juegos/{game_slug}",
+            'feed_id': f"nez-{game['id']}-{mod_slug}",
+        })
+    return modalities
+
+
+def _xml_escape(s):
+    """Escape characters that are invalid in XML text/attribute values."""
+    return (str(s)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;'))
+
+
+@app.route('/google-feed.xml')
+def google_merchant_feed():
+    """Google Merchant Center product feed (RSS 2.0 / Google Base format).
+    One item per active modality per game.
+    Prices: g:price = card price (tachado), g:sale_price = transfer price (~32% OFF).
+    """
+    games = db.get_all_juegos()
+    items_xml = []
+    for game in games:
+        modalities = get_game_modalities(game)
+        if not modalities:
+            continue
+        titulo = game.get('titulo', '')
+        if game.get('imagen_filename'):
+            image_url = f"{SITE_URL}/uploads/{game['imagen_filename']}"
+        else:
+            image_url = f"{SITE_URL}/nez-logo.jpg"
+
+        for mod in modalities:
+            item = f"""    <item>
+      <g:id>{_xml_escape(mod['feed_id'])}</g:id>
+      <g:title>{_xml_escape(titulo + ' - ' + mod['label'])}</g:title>
+      <g:description>Juego digital para {_xml_escape(mod['label'])}. Entrega inmediata. Hasta 6 cuotas sin interes con Uala Bis.</g:description>
+      <g:link>{_xml_escape(mod['url'])}</g:link>
+      <g:image_link>{_xml_escape(image_url)}</g:image_link>
+      <g:price>{mod['precio_tarjeta']}.00 ARS</g:price>
+      <g:sale_price>{mod['precio_transfer']}.00 ARS</g:price>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:brand>Nez Juegos</g:brand>
+      <g:google_product_category>471</g:google_product_category>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>"""
+            items_xml.append(item)
+
+    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>Nez Juegos</title>
+    <link>{SITE_URL}</link>
+    <description>Juegos digitales Nintendo Switch y PlayStation con entrega inmediata.</description>
+{chr(10).join(items_xml)}
+  </channel>
+</rss>"""
+
+    from flask import Response
+    return Response(feed, mimetype='application/xml; charset=utf-8')
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     if filename.startswith('comprobante_') and not session.get('is_admin'):

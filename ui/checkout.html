@@ -710,6 +710,20 @@
                     window.dataLayer = window.dataLayer || [];
                     window.dataLayer.push({ ecommerce: null });
                     window.dataLayer.push({ event: "begin_checkout", ecommerce: { currency: "ARS", value: precioTarjeta, items: [{ item_name: `${game.titulo} ${platDisplay}`, item_id: game.id.toString(), price: precioTarjeta, item_brand: "Nez Juegos", item_category: platDisplay }] } });
+
+                    // Google Ads Dynamic Remarketing
+                    const _coSlugMap = {
+                        primaria_ps5: 'primaria-ps5', secundaria_ps5: 'secundaria-ps5',
+                        primaria_ps4: 'primaria-ps4', primaria: 'primaria',
+                        secundaria: 'secundaria', codigo_digital: 'codigo-digital',
+                        alquiler: 'alquiler', eshop: 'eshop'
+                    };
+                    const _coModSlug = _coSlugMap[tipoProducto] || tipoProducto;
+                    window.dataLayer.push({
+                        ecomm_pagetype: 'cart',
+                        ecomm_prodid: `nez-${game.id}-${_coModSlug}`,
+                        ecomm_totalvalue: precioBase
+                    });
                 })
                 .catch(() => {
                     document.getElementById('mainContainer').innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-muted);"><h2>Juego no encontrado</h2><a href="/playstation" style="color:var(--primary);">← Volver al catálogo</a></div>';
@@ -1048,6 +1062,20 @@
                     transaction_id: orderId.toString(), currency: "ARS", value: finalPrice,
                     items: [{ item_name: `${gameData.titulo} ${platDisplay}`, item_id: gameData.id.toString(), price: finalPrice, item_brand: "Nez Juegos", item_category: platDisplay }]
                 }
+            });
+
+            // Google Ads Dynamic Remarketing — purchase
+            const _scSlugMap = {
+                primaria_ps5: 'primaria-ps5', secundaria_ps5: 'secundaria-ps5',
+                primaria_ps4: 'primaria-ps4', primaria: 'primaria',
+                secundaria: 'secundaria', codigo_digital: 'codigo-digital',
+                alquiler: 'alquiler', eshop: 'eshop'
+            };
+            const _scModSlug = _scSlugMap[tipoProducto] || tipoProducto;
+            window.dataLayer.push({
+                ecomm_pagetype: 'purchase',
+                ecomm_prodid: `nez-${gameData.id}-${_scModSlug}`,
+                ecomm_totalvalue: finalPrice
             });
         }
 

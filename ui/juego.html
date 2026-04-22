@@ -520,6 +520,21 @@
             window.dataLayer.push({ ecommerce: null });
             window.dataLayer.push({ event: "view_item", ecommerce: { items: [{ item_name: `${game.titulo} ${platDisplay}`, item_id: game.id.toString(), price: minPrice, item_brand: "Nez Juegos", item_category: platDisplay }] } });
 
+            // Google Ads Dynamic Remarketing — must match g:id in /google-feed.xml
+            const _modSlugMap = {
+                primaria_ps5: 'primaria-ps5', secundaria_ps5: 'secundaria-ps5',
+                primaria_ps4: 'primaria-ps4', primaria: 'primaria',
+                secundaria: 'secundaria', codigo_digital: 'codigo-digital',
+                alquiler: 'alquiler', eshop: 'eshop'
+            };
+            const _firstMod = priceOptions[0];
+            const _modalitySlug = _modSlugMap[_firstMod.key] || _firstMod.key;
+            window.dataLayer.push({
+                ecomm_pagetype: 'product',
+                ecomm_prodid: `nez-${game.id}-${_modalitySlug}`,
+                ecomm_totalvalue: _firstMod.currentPrice
+            });
+
             let html = `
                 <div class="game-header">
                     <div class="game-cover">${cover ? `<img src="${cover}" alt="${game.titulo}" loading="lazy">` : '🎮'}</div>
