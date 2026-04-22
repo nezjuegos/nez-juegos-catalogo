@@ -151,37 +151,35 @@ MODALITY_MAP = [
 DESCUENTO_TRANSFERENCIA = 0.32  # transfer price is 32% cheaper than card
 
 def get_game_modalities(game):
-    """Return list of active modalities for a game.
+    """Return list of active modalities FOR SALE for a game.
     Each entry: {slug, label, precio_transfer, precio_tarjeta, url}
-    precio stored in DB is the transfer (minimum) price.
-    Card price = precio_transfer / (1 - DESCUENTO_TRANSFERENCIA).
+    - DB stores the transfer (minimum) price as precio.
+    - Card price = precio_transfer / (1 - DESCUENTO_TRANSFERENCIA).
+    - precio_eshop is the PS Store / eShop REFERENCE price (for the struck-through UI),
+      it's NOT a sale modality and is never emitted as a feed item.
+    - PS games only emit PS modalities; Nintendo games only emit Nintendo modalities.
     """
-    modalities = []
     p = game.get('precios') or {}
-    # Map precios dict keys back to raw values, also check direct game keys
-    precio_key_map = {
-        'primaria-ps5':   p.get('primaria_ps5'),
-        'secundaria-ps5': p.get('secundaria_ps5'),
-        'primaria-ps4':   p.get('primaria_ps4'),
-        'primaria':       p.get('primaria'),
-        'secundaria':     p.get('secundaria'),
-        'codigo-digital': p.get('codigo_digital'),
-        'alquiler':       p.get('alquiler'),
-        'eshop':          p.get('eshop'),
-    }
-    slug_to_label = {
-        'primaria-ps5':   'Primaria PS5',
-        'secundaria-ps5': 'Secundaria PS5',
-        'primaria-ps4':   'Primaria PS4',
-        'primaria':       'Primaria',
-        'secundaria':     'Secundaria',
-        'codigo-digital': 'Codigo Digital',
-        'alquiler':       'Alquiler',
-        'eshop':          'eShop',
-    }
+    plataforma = (game.get('plataforma') or '').upper()
+    is_ps = any(tok in plataforma for tok in ('PS5', 'PS4', 'PLAYSTATION'))
+
+    if is_ps:
+        candidates = [
+            ('primaria-ps5',   'Primaria PS5',   p.get('primaria_ps5')),
+            ('secundaria-ps5', 'Secundaria PS5', p.get('secundaria_ps5')),
+            ('primaria-ps4',   'Primaria PS4',   p.get('primaria_ps4')),
+        ]
+    else:
+        candidates = [
+            ('primaria',       'Primaria',       p.get('primaria')),
+            ('secundaria',     'Secundaria',     p.get('secundaria')),
+            ('codigo-digital', 'Codigo Digital', p.get('codigo_digital')),
+            ('alquiler',       'Alquiler',       p.get('alquiler')),
+        ]
+
     game_slug = db.generate_slug(game['titulo'], game.get('plataforma', ''))
-    for mod_slug, label in slug_to_label.items():
-        precio_transfer = precio_key_map.get(mod_slug)
+    modalities = []
+    for mod_slug, label, precio_transfer in candidates:
         if not precio_transfer:
             continue
         precio_tarjeta = int(round(precio_transfer / (1 - DESCUENTO_TRANSFERENCIA)))
