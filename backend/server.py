@@ -163,18 +163,22 @@ def get_game_modalities(game):
     plataforma = (game.get('plataforma') or '').upper()
     is_ps = any(tok in plataforma for tok in ('PS5', 'PS4', 'PLAYSTATION'))
 
+    # Prefer oferta (active sale) over precio (regular). Same logic the UI uses.
+    def pr(key, oferta_key):
+        return p.get(oferta_key) or p.get(key)
+
     if is_ps:
         candidates = [
-            ('primaria-ps5',   'Primaria PS5',   p.get('primaria_ps5')),
-            ('secundaria-ps5', 'Secundaria PS5', p.get('secundaria_ps5')),
-            ('primaria-ps4',   'Primaria PS4',   p.get('primaria_ps4')),
+            ('primaria-ps5',   'Primaria PS5',   pr('primaria_ps5',   'oferta_primaria_ps5')),
+            ('secundaria-ps5', 'Secundaria PS5', pr('secundaria_ps5', 'oferta_secundaria_ps5')),
+            ('primaria-ps4',   'Primaria PS4',   pr('primaria_ps4',   'oferta_primaria_ps4')),
         ]
     else:
         candidates = [
-            ('primaria',       'Primaria',       p.get('primaria')),
-            ('secundaria',     'Secundaria',     p.get('secundaria')),
-            ('codigo-digital', 'Codigo Digital', p.get('codigo_digital')),
-            ('alquiler',       'Alquiler',       p.get('alquiler')),
+            ('primaria',       'Primaria',       pr('primaria',       'oferta_primaria')),
+            ('secundaria',     'Secundaria',     pr('secundaria',     'oferta_secundaria')),
+            ('codigo-digital', 'Codigo Digital', pr('codigo_digital', 'oferta_codigo_digital')),
+            ('alquiler',       'Alquiler',       pr('alquiler',       'oferta_alquiler')),
         ]
 
     game_slug = db.generate_slug(game['titulo'], game.get('plataforma', ''))
@@ -217,7 +221,9 @@ def google_merchant_feed():
             continue
         titulo = game.get('titulo', '')
         if game.get('imagen_filename'):
-            image_url = f"{SITE_URL}/uploads/{game['imagen_filename']}"
+            from urllib.parse import quote
+            safe_name = quote(game['imagen_filename'], safe='')
+            image_url = f"{SITE_URL}/uploads/{safe_name}"
         else:
             image_url = f"{SITE_URL}/nez-logo.jpg"
 
