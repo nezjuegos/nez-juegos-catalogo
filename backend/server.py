@@ -231,7 +231,7 @@ def google_merchant_feed():
       <g:link>{_xml_escape(mod['url'])}</g:link>
       <g:image_link>{_xml_escape(image_url)}</g:image_link>
       <g:price>{mod['precio_tarjeta']}.00 ARS</g:price>
-      <g:sale_price>{mod['precio_transfer']}.00 ARS</g:price>
+      <g:sale_price>{mod['precio_transfer']}.00 ARS</g:sale_price>
       <g:availability>in_stock</g:availability>
       <g:condition>new</g:condition>
       <g:brand>Nez Juegos</g:brand>
