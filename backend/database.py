@@ -749,7 +749,7 @@ class Database:
         precios = game.get('precios') or {}
         plataforma = (game.get('plataforma') or '').upper()
         is_ps = any(tok in plataforma for tok in ('PS5', 'PS4', 'PLAYSTATION'))
-        keys = JuegosDB._PS_MODALITY_KEYS if is_ps else JuegosDB._NIN_MODALITY_KEYS
+        keys = Database._PS_MODALITY_KEYS if is_ps else Database._NIN_MODALITY_KEYS
         return [mod for k, mod in keys if precios.get(k) or precios.get(f'oferta_{k}')]
 
     @staticmethod
@@ -758,8 +758,8 @@ class Database:
         (titulo, plataforma) by appending the modality when only one is active.
         Falls back to the legacy title+platform slug otherwise (backwards-compatible
         for games that bundle multiple modalities in a single row)."""
-        base = JuegosDB.generate_slug(game.get('titulo', ''), game.get('plataforma', '') or '')
-        active = JuegosDB._active_modalities(game)
+        base = Database.generate_slug(game.get('titulo', ''), game.get('plataforma', '') or '')
+        active = Database._active_modalities(game)
         if len(active) == 1:
             return f"{base}-{active[0]}"
         return base
