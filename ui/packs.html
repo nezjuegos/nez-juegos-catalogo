@@ -634,7 +634,7 @@
             const ars = Number(priceLocal) || 0;
             if (!(usdtRate > 0 && ars > 0)) return '';
             const u = (ars / usdtRate).toFixed(2);
-            return `\n💱 *Equivalente (~):* ~${u} USDT _(Binance Pay / misma cotización que el catálogo)_`;
+            return `\n🪙 *Binance Pay:* ${u} USDT`;
         }
 
         // Create autocomplete suggestions container
