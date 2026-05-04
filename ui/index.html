@@ -738,7 +738,7 @@
                                 <div style="${headerBg} padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; margin-bottom: 1rem;">${headerText}</div>
                                 ${imgsHtml}
                                 <div style="font-size: 1.3rem; font-family: 'Outfit'; font-weight: 700; color: white;">Pack #${pack.id}</div>
-                                <div style="color: var(--primary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600;">$${pack.price_local.toLocaleString('es-AR')}</div>
+                                ${pack.price_local_original ? `<div style="margin-top: 0.5rem;"><span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.95rem; margin-right: 0.45rem;">$${pack.price_local_original.toLocaleString('es-AR')}</span><span style="color: var(--primary); font-size: 1.1rem; font-weight: 600;">$${pack.price_local.toLocaleString('es-AR')}</span></div>` : `<div style="color: var(--primary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600;">$${pack.price_local.toLocaleString('es-AR')}</div>`}
                                 ${gamesList}
                             </a>
                         `;

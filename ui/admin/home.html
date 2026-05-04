@@ -132,6 +132,15 @@
                 <span class="help-text">El ID que ve el cliente para enviar el pago.</span>
             </div>
 
+            <div class="form-group" style="margin-top: 3rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">📦 Packs — descuento global</h3>
+                <label>Descuento en catálogo de packs (%)</label>
+                <input type="number" id="inputPackGlobalDiscount" value="0" min="0" max="90" step="1" placeholder="0">
+                <span class="help-text">Porcentaje que se resta al precio listado de <strong>todos</strong> los packs en la web pública (/packs y packs destacados en la home).
+                    Los precios scrapeados en la base no cambian: solo se muestra el precio promocional.
+                    Poné <strong>0</strong> para desactivar. Máximo 90%.</span>
+            </div>
+
             <div style="margin-top: 3rem; text-align: right;">
                 <button class="btn btn-primary" id="btnSave">Guardar Cambios de la Home</button>
             </div>
@@ -158,6 +167,9 @@
 
                 if (config.usdt_rate) document.getElementById('inputUsdtRate').value = config.usdt_rate;
                 if (config.binance_pay_id) document.getElementById('inputBinanceId').value = config.binance_pay_id;
+                if (config.pack_global_discount_pct !== undefined && config.pack_global_discount_pct !== null) {
+                    document.getElementById('inputPackGlobalDiscount').value = config.pack_global_discount_pct;
+                }
                 
                 if (config.img_juegos) document.getElementById('labelJuegos').innerText = "Actual: " + config.img_juegos;
                 if (config.img_packs) document.getElementById('labelPacks').innerText = "Actual: " + config.img_packs;
@@ -203,6 +215,7 @@
             formData.append('glass_card_price', document.getElementById('inputGlassPrice').value);
             formData.append('usdt_rate', document.getElementById('inputUsdtRate').value);
             formData.append('binance_pay_id', document.getElementById('inputBinanceId').value);
+            formData.append('pack_global_discount_pct', document.getElementById('inputPackGlobalDiscount').value || '0');
 
             const fileJuegos = document.getElementById('inputFileJuegos').files[0];
             if (fileJuegos) formData.append('file_img_juegos', fileJuegos);

@@ -162,6 +162,8 @@ class Database:
             # USDT conversion rate for Binance Pay (ARS per 1 USDT, applied to the transfer price)
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_rate', '1440')")
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('binance_pay_id', '192 236 539')")
+            # Global % discount on pack list prices (public catalog only; DB keeps scraped price)
+            cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pack_global_discount_pct', '0')")
 
             # Table: orders (Checkout orders)
             cursor.execute('''

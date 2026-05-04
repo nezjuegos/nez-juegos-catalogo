@@ -2,6 +2,7 @@ import threading
 import asyncio
 import os
 import json
+import math
 import time
 import logging
 from functools import wraps
@@ -111,6 +112,41 @@ def get_config():
 def api_config_mp():
     return jsonify({"public_key": MP_PUBLIC_KEY})
 
+
+def _pack_global_discount_pct(cfg):
+    """Integer 0–90: percent subtracted from public pack prices (DB unchanged)."""
+    try:
+        pct = int(float(str(cfg.get('pack_global_discount_pct') or 0).replace(',', '.')))
+    except (ValueError, TypeError):
+        pct = 0
+    return max(0, min(90, pct))
+
+
+def _inflate_price_max_for_pack_filter(price_max, pct):
+    """Widen SQL price filter so packs that end up ≤ price_max after discount are not dropped."""
+    if price_max is None or pct <= 0:
+        return price_max
+    factor = 1 - pct / 100.0
+    if factor <= 0:
+        return price_max
+    return max(1, int(math.ceil(price_max / factor)))
+
+
+def _apply_pack_global_discount(packs, pct):
+    if pct <= 0:
+        return packs
+    factor = 1 - pct / 100.0
+    for p in packs:
+        orig = int(p.get('price_local') or 0)
+        if orig <= 0:
+            continue
+        discounted = max(1, int(round(orig * factor)))
+        if discounted < orig:
+            p['price_local_original'] = orig
+            p['price_local'] = discounted
+    return packs
+
+
 @app.route('/api/packs')
 def search_packs():
     query = request.args.get('q', '')
@@ -119,9 +155,23 @@ def search_packs():
     price_max = request.args.get('price_max', type=int)
     dlc_only = request.args.get('dlc_only', 'false').lower() == 'true'
     featured = request.args.get('featured', 'false').lower() == 'true'
-    
+
+    cfg = db.get_all_config()
+    discount_pct = _pack_global_discount_pct(cfg)
+    is_admin = bool(session.get('is_admin'))
+
+    if not is_admin and discount_pct > 0 and price_max is not None:
+        price_max = _inflate_price_max_for_pack_filter(price_max, discount_pct)
+
     results = db.get_packs(query=query, exclude=exclude, price_max=price_max, dlc_only=dlc_only, featured_only=featured, limit=limit)
-    return jsonify({"results": results})
+
+    if not is_admin:
+        results = _apply_pack_global_discount(results, discount_pct)
+
+    return jsonify({
+        "results": results,
+        "pack_global_discount_pct": discount_pct,
+    })
 
 @app.route('/api/packs/suggestions')
 def pack_suggestions():
