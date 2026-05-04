@@ -263,6 +263,33 @@
             color: white;
         }
 
+        .pack-prices-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.3rem;
+            text-align: right;
+        }
+
+        .pack-usdt-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: rgba(240, 185, 11, 0.1);
+            border: 1px solid rgba(240, 185, 11, 0.28);
+            border-radius: 6px;
+            padding: 0.2rem 0.45rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: #f0b90b;
+            letter-spacing: 0.01em;
+            line-height: 1.2;
+        }
+
+        .pack-usdt-chip svg {
+            flex-shrink: 0;
+        }
+
         .pack-games {
             color: var(--text-muted);
             font-size: 0.95rem;
@@ -438,6 +465,10 @@
                 font-size: 1.3rem;
             }
 
+            .pack-usdt-chip {
+                font-size: 0.7rem;
+            }
+
             .pack-games {
                 font-size: 0.85rem;
                 line-height: 1.5;
@@ -586,7 +617,25 @@
         const clearBtn = document.getElementById('btnLimpiar');
 
         let waNumber = '';  // loaded from config
+        /** Same ARS/USDT cotización que admin/home (usdt_rate) — Binance Pay. */
+        let usdtRate = 1440;
         let hotTitlesList = []; // loaded from public API
+
+        const BINANCE_MINI_SVG = `<svg width="11" height="11" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="#F0B90B"/><path d="M12.116 13.884L16 10l3.886 3.886-2.26 2.26-1.626-1.626-1.624 1.626-2.26-2.262zM10 16l2.26-2.26L14.52 16l-2.26 2.26L10 16zm6 6-3.884-3.884 2.26-2.262L16 17.48l1.626-1.626 2.26 2.262L16 22zm4.48-4.74L22.74 16l-2.26-2.26 2.26-2.26L25.04 14l.002.002L25 16l-2.26 2.26H22.74l-.26-.26v.26zM17.48 16l-1.482-1.48L14.52 16l1.478 1.48L17.48 16z" fill="#fff"/></svg>`;
+
+        function usdtChipForPrice(priceLocal) {
+            const ars = Number(priceLocal) || 0;
+            if (!(usdtRate > 0 && ars > 0)) return '';
+            const u = (ars / usdtRate).toFixed(2);
+            return `<span class="pack-usdt-chip">${BINANCE_MINI_SVG}${u} USDT</span>`;
+        }
+
+        function usdtLineForText(priceLocal) {
+            const ars = Number(priceLocal) || 0;
+            if (!(usdtRate > 0 && ars > 0)) return '';
+            const u = (ars / usdtRate).toFixed(2);
+            return `\n💱 *Equivalente (~):* ~${u} USDT _(Binance Pay / misma cotización que el catálogo)_`;
+        }
 
         // Create autocomplete suggestions container
         const suggestionsBox = document.createElement('div');
@@ -611,7 +660,9 @@
                     text += `• ${prefix}${nameStr}\n`;
                 });
             }
-            text += `\n💰 *Precio:* ${formatPrice(pack.price_local)}\n`;
+            text += `\n💰 *Precio:* ${formatPrice(pack.price_local)}`;
+            text += usdtLineForText(pack.price_local);
+            text += '\n';
             return text;
         }
 
@@ -712,7 +763,10 @@
                 <div class="pack-content">
                     <div class="pack-header">
                         <span class="pack-id">ID: ${pack.id}</span>
-                        <span class="pack-price">${formatPrice(pack.price_local)}</span>
+                        <div class="pack-prices-wrap">
+                            <span class="pack-price">${formatPrice(pack.price_local)}</span>
+                            ${usdtChipForPrice(pack.price_local)}
+                        </div>
                     </div>
                     <div class="pack-games">
                         ${gamesHtml}
@@ -784,6 +838,7 @@
             fetch('/api/config').then(r => r.json()),
         ]).then(([cfg]) => {
             waNumber = cfg.numero_whatsapp || '';
+            if (cfg.usdt_rate) usdtRate = parseFloat(cfg.usdt_rate) || 1440;
             fetchPacks();
         }).catch(() => {
             fetchPacks();
