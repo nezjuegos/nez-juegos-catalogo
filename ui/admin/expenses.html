@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario de Pagos | Admin — Nez Juegos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c; --bg-card: #131318; --bg-soft: #18181d;
+            --primary: #8b5cf6; --primary-soft: rgba(139,92,246,0.15);
+            --secondary: #d946ef; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --border: #27272a; --success: #22c55e; --warning: #eab308; --error: #ef4444;
+            --radius-md: 16px; --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; }
+        a { text-decoration: none; color: inherit; }
+        button { font-family: inherit; }
+
+        /* Top nav (matches orders.html for consistency) */
+        .nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: rgba(10,10,12,0.9); }
+        .nav-logo { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.3rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { color: var(--text-muted); font-size: 0.85rem; }
+        .nav-links a:hover { color: var(--text-main); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+        h1 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 0.25rem; }
+        .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        /* Stats cards */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.25rem; }
+        .stat .label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+        .stat .num { font-size: 1.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; }
+        .stat .num.ars { color: #facc15; }
+        .stat .num.usd { color: #22c55e; }
+        .stat .num.count { color: var(--primary); }
+
+        .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5rem; align-items: start; }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+        /* Calendar */
+        .calendar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; }
+        .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .cal-title { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 600; text-transform: capitalize; }
+        .cal-nav { display: flex; gap: 0.4rem; }
+        .cal-nav button { background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-main); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: 0.15s; }
+        .cal-nav button:hover { border-color: var(--primary); color: var(--primary); }
+        .cal-nav .today-btn { width: auto; padding: 0 0.85rem; font-size: 0.8rem; }
+
+        .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+        .cal-weekdays div { text-align: center; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0.4rem 0; font-weight: 600; }
+
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-day {
+            background: var(--bg-soft);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            padding: 0.45rem 0.5rem;
+            min-height: 78px;
+            display: flex;
+            flex-direction: column;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.15s;
+            position: relative;
+        }
+        .cal-day:hover { border-color: var(--primary); }
+        .cal-day.empty { background: transparent; cursor: default; }
+        .cal-day.empty:hover { border-color: transparent; }
+        .cal-day .day-num { font-weight: 700; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        .cal-day.today { background: var(--primary-soft); border-color: var(--primary); }
+        .cal-day.today .day-num { color: var(--primary); }
+        .cal-day.has-expense { background: rgba(217,70,239,0.08); border-color: rgba(217,70,239,0.25); }
+        .cal-day.has-expense.today { background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(217,70,239,0.18)); }
+        .cal-day.past { opacity: 0.55; }
+
+        .exp-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.2rem 0.4rem;
+            font-size: 0.68rem;
+            margin-bottom: 2px;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .exp-pill .pill-amount { color: var(--secondary); font-weight: 600; }
+        .exp-pill.usd .pill-amount { color: var(--success); }
+
+        /* Form + list */
+        .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; }
+        .panel h2 { font-family: 'Outfit', sans-serif; font-size: 1.05rem; margin-bottom: 1rem; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .form-grid .full { grid-column: 1 / -1; }
+        .form-grid label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.3rem; font-weight: 600; }
+        .form-grid input, .form-grid select, .form-grid textarea {
+            width: 100%;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+        }
+        .form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus { outline: none; border-color: var(--primary); }
+        .form-grid textarea { resize: vertical; min-height: 60px; }
+
+        .form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .btn { border: none; border-radius: var(--radius-sm); padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: 0.15s; }
+        .btn-primary { background: var(--primary); color: white; flex: 1; }
+        .btn-primary:hover { background: #7c3aed; }
+        .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-ghost:hover { color: var(--text-main); border-color: var(--text-muted); }
+
+        .expense-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+        .expense-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem 0.75rem;
+            transition: 0.15s;
+        }
+        .expense-row:hover { border-color: var(--primary); }
+        .expense-row.inactive { opacity: 0.55; }
+        .expense-day {
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 700;
+            border-radius: 6px;
+            min-width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            flex-shrink: 0;
+        }
+        .expense-info { flex: 1; min-width: 0; }
+        .expense-name { font-weight: 600; font-size: 0.9rem; word-break: break-word; }
+        .expense-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+        .expense-amount { font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.95rem; flex-shrink: 0; }
+        .expense-amount.usd { color: var(--success); }
+        .expense-amount.ars { color: #facc15; }
+        .expense-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+        .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { color: var(--text-main); border-color: var(--primary); }
+        .icon-btn.danger:hover { color: var(--error); border-color: var(--error); }
+
+        .empty { text-align: center; color: var(--text-muted); padding: 2rem 1rem; font-size: 0.85rem; }
+
+        /* Toasts */
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 999; max-width: calc(100vw - 2rem); }
+        .toast { background: var(--bg-card); border: 1px solid var(--primary); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; animation: slideIn 0.3s ease; }
+        .toast.error { border-color: var(--error); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Mobile */
+        @media (max-width: 680px) {
+            .nav { padding: 0.75rem 1rem; }
+            .nav-links { gap: 0.75rem; overflow-x: auto; padding-bottom: 2px; }
+            .nav-links a { font-size: 0.75rem; white-space: nowrap; }
+            .container { padding: 0.85rem; }
+            h1 { font-size: 1.25rem; }
+            .cal-day { min-height: 60px; padding: 0.3rem 0.35rem; }
+            .cal-day .day-num { font-size: 0.75rem; }
+            .exp-pill { font-size: 0.6rem; padding: 0.12rem 0.3rem; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a class="nav-logo" href="/admin">Nez Admin</a>
+        <div class="nav-links">
+            <a href="/admin">Dashboard</a>
+            <a href="/admin/orders">Pedidos</a>
+            <a href="/admin/ps-accounts">Cuentas PS</a>
+            <a href="/admin/juegos">Juegos</a>
+            <a href="/admin/expenses" style="color: var(--primary);">Pagos</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📅 Calendario de Pagos</h1>
+        <p class="subtitle">Recordatorios mensuales de gastos recurrentes del negocio.</p>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="label">Gastos activos</div>
+                <div class="num count" id="statCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="label">Total mensual ARS</div>
+                <div class="num ars" id="statARS">$0</div>
+            </div>
+            <div class="stat">
+                <div class="label">Total mensual USD</div>
+                <div class="num usd" id="statUSD">U$D 0</div>
+            </div>
+            <div class="stat">
+                <div class="label">Próximo pago</div>
+                <div class="num count" id="statNext" style="font-size: 1.05rem;">—</div>
+            </div>
+        </div>
+
+        <div class="layout">
+            <!-- Calendar -->
+            <div class="calendar-card">
+                <div class="cal-header">
+                    <div class="cal-title" id="calTitle">—</div>
+                    <div class="cal-nav">
+                        <button id="prevMonth" title="Mes anterior">‹</button>
+                        <button class="today-btn" id="todayBtn" title="Hoy">Hoy</button>
+                        <button id="nextMonth" title="Mes siguiente">›</button>
+                    </div>
+                </div>
+                <div class="cal-weekdays">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                </div>
+                <div class="cal-grid" id="calGrid"></div>
+            </div>
+
+            <!-- Form + list -->
+            <div>
+                <div class="panel">
+                    <h2 id="formTitle">➕ Nuevo gasto recurrente</h2>
+                    <form id="expenseForm">
+                        <input type="hidden" id="expenseId" value="">
+                        <div class="form-grid">
+                            <div class="full">
+                                <label for="expName">Nombre</label>
+                                <input type="text" id="expName" placeholder="Ej: Servidor Railway" required maxlength="120">
+                            </div>
+                            <div>
+                                <label for="expDay">Día del mes</label>
+                                <input type="number" id="expDay" min="1" max="31" required placeholder="1-31">
+                            </div>
+                            <div>
+                                <label for="expCurrency">Moneda</label>
+                                <select id="expCurrency">
+                                    <option value="ARS">ARS ($)</option>
+                                    <option value="USD">USD (U$D)</option>
+                                </select>
+                            </div>
+                            <div class="full">
+                                <label for="expAmount">Monto estimado</label>
+                                <input type="number" id="expAmount" min="0" step="0.01" required placeholder="0">
+                            </div>
+                            <div class="full">
+                                <label for="expNotes">Notas (opcional)</label>
+                                <textarea id="expNotes" placeholder="Detalles, link, recordatorio..." maxlength="500"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">Guardar</button>
+                            <button type="button" class="btn btn-ghost" id="cancelBtn" style="display:none;">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel" style="margin-top: 1rem;">
+                    <h2>Gastos configurados</h2>
+                    <div class="expense-list" id="expenseList">
+                        <div class="empty">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        let expenses = [];
+        // Calendar cursor — first day of the month being viewed
+        let viewDate = new Date();
+        viewDate.setDate(1);
+
+        // ── DOM refs ──
+        const calGrid = document.getElementById('calGrid');
+        const calTitle = document.getElementById('calTitle');
+        const expenseList = document.getElementById('expenseList');
+        const form = document.getElementById('expenseForm');
+        const expIdInput = document.getElementById('expenseId');
+        const expName = document.getElementById('expName');
+        const expDay = document.getElementById('expDay');
+        const expAmount = document.getElementById('expAmount');
+        const expCurrency = document.getElementById('expCurrency');
+        const expNotes = document.getElementById('expNotes');
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+
+        document.getElementById('prevMonth').addEventListener('click', () => { viewDate.setMonth(viewDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('nextMonth').addEventListener('click', () => { viewDate.setMonth(viewDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('todayBtn').addEventListener('click', () => { viewDate = new Date(); viewDate.setDate(1); renderCalendar(); });
+
+        // ── Helpers ──
+        function showToast(msg, isError = false) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        function formatMoney(amount, currency) {
+            const n = Number(amount || 0);
+            if (currency === 'USD') {
+                return 'U$D ' + n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
+            }
+            return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+        }
+
+        function lastDayOf(year, monthIdx) {
+            // monthIdx is 0-based; Date(year, m+1, 0) returns last day of month m
+            return new Date(year, monthIdx + 1, 0).getDate();
+        }
+
+        function effectiveDay(dayOfMonth, year, monthIdx) {
+            // Clamp dayOfMonth to last day of the given month (e.g. Feb 30 → Feb 28/29).
+            return Math.min(dayOfMonth, lastDayOf(year, monthIdx));
+        }
+
+        function expensesOnDay(day, year, monthIdx) {
+            return expenses.filter(e => e.is_active && effectiveDay(e.day_of_month, year, monthIdx) === day);
+        }
+
+        // ── Calendar render ──
+        function renderCalendar() {
+            const y = viewDate.getFullYear();
+            const m = viewDate.getMonth();
+            calTitle.textContent = `${MONTHS_ES[m]} ${y}`;
+
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === y && today.getMonth() === m;
+
+            // First weekday of the month, with Monday as column 0
+            const firstWeekday = new Date(y, m, 1).getDay(); // 0=Sun..6=Sat
+            const offset = (firstWeekday + 6) % 7; // 0=Mon..6=Sun
+            const totalDays = lastDayOf(y, m);
+
+            calGrid.innerHTML = '';
+            for (let i = 0; i < offset; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'cal-day empty';
+                calGrid.appendChild(empty);
+            }
+            for (let d = 1; d <= totalDays; d++) {
+                const cell = document.createElement('div');
+                cell.className = 'cal-day';
+                const todays = expensesOnDay(d, y, m);
+                if (todays.length) cell.classList.add('has-expense');
+                if (isCurrentMonth && d === today.getDate()) cell.classList.add('today');
+                if (isCurrentMonth && d < today.getDate()) cell.classList.add('past');
+
+                const num = document.createElement('div');
+                num.className = 'day-num';
+                num.textContent = d;
+                cell.appendChild(num);
+
+                todays.forEach(e => {
+                    const pill = document.createElement('div');
+                    pill.className = 'exp-pill' + (e.currency === 'USD' ? ' usd' : '');
+                    pill.title = e.name + ' — ' + formatMoney(e.amount, e.currency);
+                    pill.innerHTML = `${e.name} <span class="pill-amount">${formatMoney(e.amount, e.currency)}</span>`;
+                    cell.appendChild(pill);
+                });
+
+                cell.addEventListener('click', () => {
+                    expDay.value = d;
+                    expDay.focus();
+                });
+                calGrid.appendChild(cell);
+            }
+        }
+
+        // ── List + stats ──
+        function renderList() {
+            expenseList.innerHTML = '';
+            if (!expenses.length) {
+                expenseList.innerHTML = '<div class="empty">Aún no agregaste ningún gasto recurrente.</div>';
+                return;
+            }
+            expenses.forEach(e => {
+                const row = document.createElement('div');
+                row.className = 'expense-row' + (e.is_active ? '' : ' inactive');
+                row.innerHTML = `
+                    <div class="expense-day">${e.day_of_month}</div>
+                    <div class="expense-info">
+                        <div class="expense-name">${escapeHtml(e.name)}</div>
+                        <div class="expense-meta">
+                            Día ${e.day_of_month} de cada mes
+                            ${e.notes ? ' · ' + escapeHtml(e.notes) : ''}
+                            ${!e.is_active ? ' · <span style="color:var(--warning)">PAUSADO</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="expense-amount ${e.currency === 'USD' ? 'usd' : 'ars'}">${formatMoney(e.amount, e.currency)}</div>
+                    <div class="expense-actions">
+                        <button class="icon-btn" data-edit="${e.id}" title="Editar">✏️</button>
+                        <button class="icon-btn danger" data-del="${e.id}" title="Eliminar">🗑️</button>
+                    </div>
+                `;
+                expenseList.appendChild(row);
+            });
+            expenseList.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => startEdit(parseInt(b.dataset.edit))));
+            expenseList.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteExpense(parseInt(b.dataset.del))));
+        }
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function renderStats() {
+            const active = expenses.filter(e => e.is_active);
+            document.getElementById('statCount').textContent = active.length;
+            const totalARS = active.filter(e => e.currency === 'ARS').reduce((s, e) => s + Number(e.amount || 0), 0);
+            const totalUSD = active.filter(e => e.currency === 'USD').reduce((s, e) => s + Number(e.amount || 0), 0);
+            document.getElementById('statARS').textContent = formatMoney(totalARS, 'ARS');
+            document.getElementById('statUSD').textContent = formatMoney(totalUSD, 'USD');
+
+            // Next upcoming payment from today
+            const today = new Date();
+            const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+            let bestDate = null;
+            let bestExp = null;
+            active.forEach(e => {
+                for (let monthOffset = 0; monthOffset < 2; monthOffset++) {
+                    const yy = (m + monthOffset > 11) ? y + 1 : y;
+                    const mm = (m + monthOffset) % 12;
+                    const dd = effectiveDay(e.day_of_month, yy, mm);
+                    const candidate = new Date(yy, mm, dd);
+                    if (candidate >= new Date(y, m, d)) {
+                        if (!bestDate || candidate < bestDate) {
+                            bestDate = candidate;
+                            bestExp = e;
+                        }
+                        break;
+                    }
+                }
+            });
+            const nextEl = document.getElementById('statNext');
+            if (bestExp && bestDate) {
+                const daysUntil = Math.round((bestDate - new Date(y, m, d)) / (1000 * 60 * 60 * 24));
+                const label = daysUntil === 0 ? 'hoy' : daysUntil === 1 ? 'mañana' : `en ${daysUntil} días`;
+                nextEl.textContent = `${bestExp.name} (${label})`;
+            } else {
+                nextEl.textContent = '—';
+            }
+        }
+
+        // ── Form ──
+        function resetForm() {
+            form.reset();
+            expIdInput.value = '';
+            expCurrency.value = 'ARS';
+            formTitle.textContent = '➕ Nuevo gasto recurrente';
+            submitBtn.textContent = 'Guardar';
+            cancelBtn.style.display = 'none';
+        }
+
+        function startEdit(id) {
+            const e = expenses.find(x => x.id === id);
+            if (!e) return;
+            expIdInput.value = e.id;
+            expName.value = e.name;
+            expDay.value = e.day_of_month;
+            expAmount.value = e.amount;
+            expCurrency.value = e.currency || 'ARS';
+            expNotes.value = e.notes || '';
+            formTitle.textContent = '✏️ Editar gasto';
+            submitBtn.textContent = 'Actualizar';
+            cancelBtn.style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        cancelBtn.addEventListener('click', resetForm);
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const payload = {
+                name: expName.value.trim(),
+                day_of_month: parseInt(expDay.value),
+                amount: parseFloat(expAmount.value),
+                currency: expCurrency.value,
+                notes: expNotes.value.trim(),
+                is_active: 1,
+            };
+            const id = expIdInput.value;
+            try {
+                const url = id ? `/api/admin/expenses/${id}` : '/api/admin/expenses';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.error || 'Error al guardar', true);
+                    return;
+                }
+                showToast(id ? 'Gasto actualizado' : 'Gasto agregado');
+                resetForm();
+                await loadExpenses();
+            } catch (err) {
+                showToast('Error de red', true);
+            }
+        });
+
+        async function deleteExpense(id) {
+            const e = expenses.find(x => x.id === id);
+            if (!confirm(`¿Eliminar "${e ? e.name : 'este gasto'}"?`)) return;
+            try {
+                const res = await fetch(`/api/admin/expenses/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.error || 'Error al eliminar', true);
+                    return;
+                }
+                showToast('Gasto eliminado');
+                await loadExpenses();
+            } catch (err) {
+                showToast('Error de red', true);
+            }
+        }
+
+        // ── Load ──
+        async function loadExpenses() {
+            try {
+                const res = await fetch('/api/admin/expenses?include_inactive=1');
+                const data = await res.json();
+                expenses = data.expenses || [];
+                renderCalendar();
+                renderList();
+                renderStats();
+            } catch (err) {
+                showToast('Error al cargar gastos', true);
+            }
+        }
+
+        loadExpenses();
+    </script>
+</body>
+</html>

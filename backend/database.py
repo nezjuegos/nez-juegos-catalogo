@@ -250,7 +250,23 @@ class Database:
                 cursor.execute("ALTER TABLE ps_delivery_log ADD COLUMN sale_type TEXT DEFAULT 'primaria'")
             except Exception:
                 pass
-                
+
+            # Table: recurring_expenses (monthly business payments calendar)
+            # day_of_month is 1..31 — for months without that day (e.g. Feb 30) the UI
+            # clamps to the last day of that month when rendering the calendar.
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS recurring_expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                day_of_month INTEGER NOT NULL,
+                amount REAL NOT NULL DEFAULT 0,
+                currency TEXT NOT NULL DEFAULT 'ARS',
+                notes TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+
             conn.commit()
 
     # --- CONFIG CRUD ---
@@ -1153,3 +1169,88 @@ class Database:
                 'primaria_ps4': pri4 > 0,
                 'secundaria': sec > 0
             }
+
+    # --- RECURRING EXPENSES CRUD ---
+    def get_expenses(self, include_inactive=False):
+        """Return all recurring expenses, ordered by day_of_month then name."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if include_inactive:
+                cursor.execute(
+                    'SELECT * FROM recurring_expenses ORDER BY day_of_month ASC, name COLLATE NOCASE ASC'
+                )
+            else:
+                cursor.execute(
+                    'SELECT * FROM recurring_expenses WHERE is_active = 1 '
+                    'ORDER BY day_of_month ASC, name COLLATE NOCASE ASC'
+                )
+            return [dict(r) for r in cursor.fetchall()]
+
+    @staticmethod
+    def _validate_expense(data):
+        """Normalize and validate expense input. Returns (clean_dict, error_or_None)."""
+        name = (data.get('name') or '').strip()
+        if not name:
+            return None, 'name requerido'
+        try:
+            day = int(data.get('day_of_month'))
+        except (TypeError, ValueError):
+            return None, 'day_of_month debe ser un numero'
+        if not 1 <= day <= 31:
+            return None, 'day_of_month debe estar entre 1 y 31'
+        try:
+            amount = float(data.get('amount') or 0)
+        except (TypeError, ValueError):
+            return None, 'amount invalido'
+        if amount < 0:
+            return None, 'amount no puede ser negativo'
+        currency = (data.get('currency') or 'ARS').upper().strip()
+        if currency not in ('ARS', 'USD'):
+            return None, 'currency debe ser ARS o USD'
+        notes = (data.get('notes') or '').strip() or None
+        is_active = 1 if data.get('is_active', 1) else 0
+        return {
+            'name': name,
+            'day_of_month': day,
+            'amount': amount,
+            'currency': currency,
+            'notes': notes,
+            'is_active': is_active,
+        }, None
+
+    def add_expense(self, data):
+        clean, err = self._validate_expense(data)
+        if err:
+            return None, err
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT INTO recurring_expenses (name, day_of_month, amount, currency, notes, is_active) '
+                'VALUES (?, ?, ?, ?, ?, ?)',
+                (clean['name'], clean['day_of_month'], clean['amount'],
+                 clean['currency'], clean['notes'], clean['is_active'])
+            )
+            conn.commit()
+            return cursor.lastrowid, None
+
+    def update_expense(self, expense_id, data):
+        clean, err = self._validate_expense(data)
+        if err:
+            return False, err
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE recurring_expenses SET name=?, day_of_month=?, amount=?, '
+                'currency=?, notes=?, is_active=? WHERE id=?',
+                (clean['name'], clean['day_of_month'], clean['amount'],
+                 clean['currency'], clean['notes'], clean['is_active'], expense_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0, None
+
+    def delete_expense(self, expense_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM recurring_expenses WHERE id=?', (expense_id,))
+            conn.commit()
+            return cursor.rowcount > 0

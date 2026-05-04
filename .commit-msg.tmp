@@ -1,0 +1,18 @@
+feat(admin): add monthly expenses calendar with CRUD
+
+New admin tool to track recurring business payments (servidor, dominio,
+suscripciones). Visual monthly calendar with prev/next navigation, today
+highlight, expense pills on each due day, and clamp logic for months
+without day 31. Side panel with add/edit/delete form, ARS/USD support,
+optional notes, and live stats (count, ARS total, USD total, next
+payment countdown).
+
+- backend/database.py: new recurring_expenses table + CRUD methods
+  (get_expenses, add_expense, update_expense, delete_expense) with
+  shared input validation.
+- backend/server.py: /api/admin/expenses (GET, POST) and
+  /api/admin/expenses/<id> (PUT, DELETE), all admin_required.
+- ui/admin/expenses.html: full calendar UI with form, list, stats.
+  Auto-served by the admin router (no extra Flask route needed).
+- ui/admin/index.html: dashboard card linking to the new page.
+- ui/admin/orders.html, ps-accounts.html, hot_titles.html: nav links.

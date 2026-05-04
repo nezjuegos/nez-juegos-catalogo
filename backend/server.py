@@ -1265,6 +1265,36 @@ def api_admin_nintendo_account(order_id):
     return jsonify({"status": "ok"})
 
 
+# --- Admin: Recurring Expenses ---
+
+@app.route('/api/admin/expenses', methods=['GET', 'POST'])
+@admin_required
+def api_admin_expenses():
+    if request.method == 'GET':
+        include_inactive = request.args.get('include_inactive') in ('1', 'true', 'yes')
+        return jsonify({"expenses": db.get_expenses(include_inactive=include_inactive)})
+    new_id, err = db.add_expense(request.json or {})
+    if err:
+        return jsonify({"error": err}), 400
+    return jsonify({"status": "ok", "id": new_id})
+
+
+@app.route('/api/admin/expenses/<int:expense_id>', methods=['PUT', 'DELETE'])
+@admin_required
+def api_admin_expense_detail(expense_id):
+    if request.method == 'DELETE':
+        ok = db.delete_expense(expense_id)
+        if not ok:
+            return jsonify({"error": "No encontrado"}), 404
+        return jsonify({"status": "ok"})
+    ok, err = db.update_expense(expense_id, request.json or {})
+    if err:
+        return jsonify({"error": err}), 400
+    if not ok:
+        return jsonify({"error": "No encontrado"}), 404
+    return jsonify({"status": "ok"})
+
+
 # --- Admin: PS Account Pool ---
 
 @app.route('/api/admin/ps-accounts', methods=['GET', 'POST'])
