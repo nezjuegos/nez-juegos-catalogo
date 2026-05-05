@@ -5,9 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout | Nez Juegos</title>
-    <meta name="description" content="Finalizá tu compra en Nez Juegos. Pago por transferencia bancaria, tarjeta o Binance Pay.">
+    <meta name="description" content="Finalizá tu compra en Nez Juegos. Transferencia, tarjeta (Ualá) o Binance Pay.">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         :root {
             --bg-dark: #0a0a0c;
@@ -352,18 +351,6 @@
                             <div id="transferPriceDisplay" style="font-weight: 800; font-size: 1rem; color: #22c55e; margin-top: 0.2rem;"></div>
                         </div>
                     </div>
-                    <div class="payment-option" onclick="selectPayment('mercadopago_saldo')">
-                        <input type="radio" name="payment" value="mercadopago_saldo">
-                        <div class="radio-dot"></div>
-                        <div class="pay-info">
-                            <div class="pay-name">💰 MercadoPago</div>
-                            <div class="pay-desc">Saldo en cuenta o Cuotas sin Tarjeta</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <span class="pay-badge badge-free">-26%</span>
-                            <div id="saldoPriceDisplay" style="font-weight: 800; font-size: 1rem; color: #3b82f6; margin-top: 0.2rem;"></div>
-                        </div>
-                    </div>
                     <div class="payment-option" onclick="selectPayment('binance')">
                         <input type="radio" name="payment" value="binance">
                         <div class="radio-dot"></div>
@@ -423,11 +410,6 @@
                     <div style="padding:0.6rem 0.8rem; border-radius:8px; background:rgba(240,185,11,0.08); border:1px solid rgba(240,185,11,0.25); font-size:0.85rem;">
                         Monto a enviar: <strong style="color:#f0b90b; font-size:1rem;" id="binanceAmountDisplay">— USDT</strong>
                     </div>
-                </div>
-
-                <!-- MercadoPago Brick container -->
-                <div id="mpBrickSection" style="display: none; margin-top: 0.75rem;">
-                    <div id="paymentBrick_container"></div>
                 </div>
             </div>
 
@@ -529,19 +511,12 @@
         let precioBase = 0;       // transfer price (stored in DB — the minimum)
         let precioTarjeta = 0;    // card price = precioBase / 0.68
         let precioTransferencia = 0;
-        let precioSaldoMP = 0;
         let precioUsdt = 0;
         let usdtRate = 1440;
         let tipoProducto = '';
         let isNintendo = false;
 
-        let mpPublicKey = null;
-        let mp = null;
-        let paymentBrickController = null;
-        let mpOrderId = null;
-
         const DESCUENTO_TRANSFER = 0.32;
-        const DESCUENTO_SALDO = 0.26;
 
         function formatPrice(val) {
             if (!val) return '$0';
@@ -570,7 +545,7 @@
                     <h3>📖 Cómo instalar — PlayStation</h3>
                     <div class="install-step">
                         <div class="install-step-num">1</div>
-                        <div class="install-step-text">Vas a recibir un <strong>correo electrónico</strong> con las credenciales y un código de acceso. Si pagás con MercadoPago o tarjeta el mail llega <strong>al instante</strong>; con transferencia hay que esperar aprobación.</div>
+                        <div class="install-step-text">Vas a recibir un <strong>correo electrónico</strong> con las credenciales y un código de acceso. Con tarjeta el mail puede llegar <strong>al instante</strong>; con transferencia o Binance Pay hay que esperar aprobación.</div>
                     </div>
                     <div class="install-step">
                         <div class="install-step-num">2</div>
@@ -631,11 +606,9 @@
                     precioBase = off || reg || 0;          // transfer price (DB minimum)
                     precioTransferencia = precioBase;
                     precioTarjeta = Math.round(precioBase / (1 - DESCUENTO_TRANSFER));
-                    precioSaldoMP = Math.round(precioTarjeta * (1 - DESCUENTO_SALDO));
 
                     // Display prices on each payment option
                     document.getElementById('transferPriceDisplay').textContent = formatPrice(precioTransferencia);
-                    document.getElementById('saldoPriceDisplay').textContent = formatPrice(precioSaldoMP);
                     document.getElementById('ualaPriceDisplay').textContent = formatPrice(precioTarjeta);
 
                     // Fetch USDT rate & Binance Pay ID from server
@@ -703,7 +676,7 @@
                     document.getElementById('deliveryNotice').style.display = 'block';
 
                     // Pre-select payment method from URL if provided
-                    const methodMap = { 'transferencia': 'transferencia', 'mercadopago': 'mercadopago_saldo', 'tarjeta': 'uala', 'uala': 'uala', 'binance': 'binance' };
+                    const methodMap = { 'transferencia': 'transferencia', 'tarjeta': 'uala', 'uala': 'uala', 'binance': 'binance' };
                     const initialMethod = methodMap[urlMethod] || 'transferencia';
                     selectPayment(initialMethod);
 
@@ -747,7 +720,6 @@
 
             document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
             document.getElementById('binanceDetails').style.display = method === 'binance' ? 'block' : 'none';
-            document.getElementById('mpBrickSection').style.display = 'none';
             const needsComprobante = (method === 'transferencia' || method === 'binance');
             document.getElementById('comprobanteSection').style.display = needsComprobante ? 'block' : 'none';
 
@@ -755,7 +727,6 @@
             const summaryPrice = document.getElementById('summaryPrice');
             if (summaryPrice) {
                 if (method === 'transferencia') summaryPrice.textContent = formatPrice(precioTransferencia);
-                else if (method === 'mercadopago_saldo') summaryPrice.textContent = formatPrice(precioSaldoMP);
                 else if (method === 'binance') summaryPrice.textContent = (precioUsdt ? precioUsdt.toFixed(2) : '0') + ' USDT';
                 else summaryPrice.textContent = formatPrice(precioTarjeta);
             }
@@ -765,135 +736,12 @@
             document.getElementById('buyerEmail').disabled = false;
             document.getElementById('buyerPhone').disabled = false;
 
-            if (method === 'mercadopago_saldo') {
-                btn.textContent = 'Continuar pago con MercadoPago';
-            } else if (method === 'uala') {
+            if (method === 'uala') {
                 btn.textContent = '💳 Pagar con tarjeta (Ualá)';
             } else if (method === 'binance') {
                 btn.textContent = 'Confirmar pedido (Binance Pay)';
             } else {
                 btn.textContent = 'Confirmar pedido';
-            }
-        }
-        
-        async function loadMercadoPagoBrick() {
-            const errorDiv = document.getElementById('formError');
-            errorDiv.style.display = 'none';
-
-            let email = document.getElementById('buyerEmail').value.trim();
-            let phone = isNintendo ? document.getElementById('buyerPhone').value.trim() : null;
-
-            if (!isNintendo && (!email || !email.includes('@'))) {
-                errorDiv.textContent = 'Ingresá un email válido para recibir tu juego.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            if (isNintendo && (!phone || phone.length < 8)) {
-                errorDiv.textContent = 'Ingresá un número de WhatsApp válido para contactarte.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            if (!email) email = 'comprador@nezjuegos.com';
-
-            const precioCobrado = precioSaldoMP;  // MP always charges the saldo price
-            const btn = document.getElementById('submitBtn');
-            btn.style.display = 'none';
-
-            const section = document.getElementById('mpBrickSection');
-            section.style.display = 'block';
-            const container = document.getElementById('paymentBrick_container');
-
-            if (!paymentBrickController) {
-                container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted);">Cargando formulario seguro...</div>';
-            }
-
-            document.getElementById('buyerEmail').disabled = true;
-            document.getElementById('buyerPhone').disabled = true;
-
-            if (!mpPublicKey) {
-                const resp = await fetch('/api/config/mp');
-                const conf = await resp.json();
-                mpPublicKey = conf.public_key;
-                if (mpPublicKey === 'TEST-public-key') {
-                    mpPublicKey = 'TEST-12345678-abcd-1234-abcd-123456789abc';
-                }
-                mp = new MercadoPago(mpPublicKey);
-            }
-            if (paymentBrickController) {
-                paymentBrickController.unmount();
-            }
-
-            try {
-                const prefResp = await fetch("/api/mp/preference", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        game_id: gameData.id,
-                        game_titulo: gameData.titulo,
-                        game_plataforma: gameData.plataforma,
-                        tipo_producto: tipoProducto,
-                        buyer_email: email,
-                        buyer_phone: phone,
-                        precio_base: precioBase,
-                        precio_cobrado: precioCobrado,
-                        surcharge: 0,
-                        site_url: window.location.origin
-                    })
-                });
-                const prefData = await prefResp.json();
-                if (prefData.error) throw new Error(prefData.error);
-                mpOrderId = prefData.order_id;
-
-                container.innerHTML = '';
-
-                const paymentMethods = { mercadoPago: "all" };
-
-                const settings = {
-                    initialization: {
-                        amount: precioCobrado,
-                        preferenceId: prefData.preference_id,
-                        payer: { email: email }
-                    },
-                    customization: {
-                        paymentMethods: paymentMethods,
-                        visual: { style: { theme: "dark", customVariables: { baseColor: "#8b5cf6" } } }
-                    },
-                    callbacks: {
-                        onReady: () => {},
-                        onSubmit: (formData) => {
-                            return new Promise((resolve, reject) => {
-                                if (!formData.token) { resolve(); return; }
-                                fetch("/api/mp/create", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        order_id: mpOrderId, buyer_email: email,
-                                        precio_cobrado: precioCobrado, mp_token: formData.token,
-                                        mp_installments: formData.installments,
-                                        mp_payment_method_id: formData.payment_method_id
-                                    }),
-                                })
-                                .then(response => response.json())
-                                .then(result => {
-                                    if (result.error) { errorDiv.textContent = result.error; errorDiv.style.display = 'block'; reject(); }
-                                    else { resolve(); showConfirmation(result.order_id, 'mercadopago'); }
-                                })
-                                .catch(() => { errorDiv.textContent = "Error interno de procesamiento."; errorDiv.style.display = 'block'; reject(); });
-                            });
-                        },
-                        onError: (error) => { console.error(error); },
-                    },
-                };
-
-                const bricksBuilder = mp.bricks();
-                paymentBrickController = await bricksBuilder.create("payment", "paymentBrick_container", settings);
-
-            } catch (e) {
-                console.error("Error loading MP Brick", e);
-                container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--error);">Error al iniciar pago. ' + e.message + '</div>';
-                document.getElementById('buyerEmail').disabled = false;
-                document.getElementById('buyerPhone').disabled = false;
-                btn.style.display = 'block';
             }
         }
 
@@ -945,11 +793,6 @@
                     document.getElementById('comprobanteError').style.display = 'block';
                     return;
                 }
-            }
-
-            if (selectedPayment === 'mercadopago_saldo') {
-                loadMercadoPagoBrick();
-                return;
             }
 
             btn.disabled = true;
@@ -1031,11 +874,6 @@
                            <p style="margin-top:0.5rem;">La entrega puede ser inmediata o realizarse dentro del horario de atención (<strong>8:00 a 22:00</strong>).</p>`;
                 statusClass = 'status-pendiente';
                 statusText = '⏳ Esperando confirmación Binance Pay';
-            } else if (method === 'mercadopago') {
-                message = `<p>Tu pago se está procesando. Recibirás tu juego en breve.</p>
-                           <p style="margin-top:0.5rem;">La entrega puede ser inmediata o realizarse dentro del horario de atención (<strong>8:00 a 22:00</strong>).</p>`;
-                statusClass = 'status-aprobado';
-                statusText = '💳 Procesando por Mercado Pago';
             }
 
             const backLink = isNintendo ? '/nintendo' : '/playstation';
@@ -1051,8 +889,7 @@
 
             const platDisplay = (gameData.plataforma || '').split(',').map(p => p.trim()).join(' / ');
             let finalPrice = precioTarjeta;
-            if (method === 'transferencia') finalPrice = precioTransferencia;
-            else if (selectedPayment === 'mercadopago_saldo') finalPrice = precioSaldoMP;
+            if (method === 'transferencia' || method === 'binance') finalPrice = precioTransferencia;
 
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({ ecommerce: null });
@@ -1090,14 +927,6 @@
             document.addEventListener('click', (e) => { if (!menu.contains(e.target) && e.target !== btn) close(); });
         })();
     </script>
-
-    <!-- Install instructions modal -->
-    <div class="install-modal-overlay" id="installModal" onclick="if(event.target===this)this.style.display='none'">
-        <div class="install-modal">
-            <button class="install-modal-close" onclick="document.getElementById('installModal').style.display='none'">&times;</button>
-            <div id="installModalContent"></div>
-        </div>
-    </div>
 </body>
 
 </html>

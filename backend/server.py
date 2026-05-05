@@ -14,8 +14,6 @@ from uala_bis import UalaBis
 from email_sender import send_ps_credentials
 import requests
 import uuid
-import hmac
-import hashlib
 
 logging.basicConfig(level=logging.INFO)
 
@@ -40,11 +38,6 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 db = Database()
 scraper = NintendoScraper(db)
 
-# MP Config
-MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN', 'APP_USR-test')
-MP_PUBLIC_KEY = os.getenv('MP_PUBLIC_KEY', 'TEST-public-key')
-MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', 'test-secret')
-DESCUENTO_SALDO_MP = float(os.getenv('DESCUENTO_SALDO_MP', '0.26'))
 DESCUENTO_TRANSFERENCIA = float(os.getenv('DESCUENTO_TRANSFERENCIA', '0.32'))
 
 
@@ -107,11 +100,6 @@ def logout():
 def get_config():
     """Return CMS homepage configuration"""
     return jsonify(db.get_all_config())
-
-@app.route('/api/config/mp')
-def api_config_mp():
-    return jsonify({"public_key": MP_PUBLIC_KEY})
-
 
 def _pack_global_discount_pct(cfg):
     """Integer 0–90: percent subtracted from public pack prices (DB unchanged)."""
@@ -635,7 +623,7 @@ def api_create_order():
         return jsonify({"error": "El email es requerido para compras de PlayStation"}), 400
     
     # Validate payment method
-    if data['payment_method'] not in ('transferencia', 'uala', 'mercadopago', 'binance'):
+    if data['payment_method'] not in ('transferencia', 'uala', 'binance'):
         return jsonify({"error": "Método de pago inválido"}), 400
     
     order_id = db.create_order(data)
@@ -810,17 +798,13 @@ def api_uala_webhook():
 
     return '', 200
 
-# --- Mercado Pago Payment API ---
-
 @app.route('/api/pricing')
 def api_pricing():
-    """Calculate all price tiers from the base (card) price stored in DB."""
+    """Calculate card price and USDT from the transfer (minimum) price stored in DB."""
     precio_transfer = request.args.get('precio', type=int)
     if not precio_transfer:
         return jsonify({"error": "precio requerido"}), 400
-    # DB stores the transfer (minimum) price; card and MP are calculated upward from it
     precio_tarjeta = int(precio_transfer / (1 - DESCUENTO_TRANSFERENCIA))
-    precio_saldo_mp = int(precio_tarjeta * (1 - DESCUENTO_SALDO_MP))
 
     cfg = db.get_all_config()
     try:
@@ -831,280 +815,19 @@ def api_pricing():
 
     return jsonify({
         "precio_transferencia": precio_transfer,
-        "precio_saldo_mp": precio_saldo_mp,
         "precio_tarjeta": precio_tarjeta,
         "precio_usdt": precio_usdt,
         "usdt_rate": usdt_rate,
-        "descuento_saldo_pct": int(DESCUENTO_SALDO_MP * 100),
         "descuento_transfer_pct": int(DESCUENTO_TRANSFERENCIA * 100)
     })
 
-@app.route('/api/mp/preference', methods=['POST'])
-def api_mp_preference():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Datos requeridos"}), 400
-        
-    required = ['game_id', 'game_titulo', 'tipo_producto', 'precio_base', 'precio_cobrado']
-    for field in required:
-        if not data.get(field):
-            return jsonify({"error": f"Campo requerido: {field}"}), 400
 
-    # Crear la orden como "iniciada". Si abandona el brick, queda así en DB.
-    order_id = db.create_order({
-        'game_id': data['game_id'],
-        'game_titulo': data['game_titulo'],
-        'game_plataforma': data.get('game_plataforma', ''),
-        'tipo_producto': data['tipo_producto'],
-        'buyer_email': data.get('buyer_email', 'comprador-wallet@nezjuegos.com'),
-        'buyer_phone': data.get('buyer_phone'),
-        'payment_method': 'mercadopago',
-        'precio_base': data['precio_base'],
-        'precio_cobrado': data['precio_cobrado'],
-        'surcharge': data.get('surcharge', 0)
-    })
-    
-    # Cambiamos forzando a 'iniciado' asumiendo que db.create_order devuelve pendiente, lo acomodamos despues
-    # Fallback to host_url for local testing, but prefer site_url from frontend for proxy safety in Railway
-    site_url = data.get('site_url', request.host_url).rstrip('/')
-    
-    payload = {
-        "items": [{
-            "id": str(data['game_id']),
-            "title": data['game_titulo'],
-            "quantity": 1,
-            "unit_price": float(data['precio_cobrado'])
-        }],
-        "payer": {
-            "email": data.get('buyer_email', 'comprador-wallet@nezjuegos.com')
-        },
-        "back_urls": {
-            "success": f"{site_url}/mp/success",
-            "pending": f"{site_url}/mp/pending",
-            "failure": f"{site_url}/mp/failure"
-        },
-        "auto_return": "approved",
-        "external_reference": f"nez-{order_id}"
-    }
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {MP_ACCESS_TOKEN}'
-    }
-    
-    try:
-        resp = requests.post('https://api.mercadopago.com/checkout/preferences', json=payload, headers=headers, timeout=15)
-        resp_data = resp.json()
-        
-        if resp.status_code >= 400:
-            logging.error(f"MP Preference error: {resp.text}")
-            # Try to extract a clean message from MP if possible, else return the raw text
-            error_msg = resp_data.get('message', resp.text)
-            return jsonify({"error": f"MP Rechazó: {error_msg}"}), 400
-            
-        return jsonify({"status": "ok", "preference_id": resp_data['id'], "order_id": order_id})
-    except Exception as e:
-        logging.error(f"Failed to call MP Preferences: {e}")
-        return jsonify({"error": "Error de conexión con procesador de pagos"}), 500
-
-@app.route('/api/mp/create', methods=['POST'])
-def api_mp_create():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Datos requeridos"}), 400
-    
-    # Required for brick processing
-    required = ['buyer_email', 'precio_cobrado', 'mp_token', 'mp_installments', 'mp_payment_method_id', 'order_id']
-    for field in required:
-        if not data.get(field):
-            return jsonify({"error": f"Campo requerido: {field}"}), 400
-            
-    order_id = data['order_id']
-    order = db.get_order(order_id)
-    if not order:
-        return jsonify({"error": "Orden no encontrada"}), 404
-            
-    # Update some info if it was missing during preference creation (like the real email)
-    if order['buyer_email'] == 'comprador-wallet@nezjuegos.com' and data.get('buyer_email'):
-        order['buyer_email'] = data['buyer_email']
-    
-    # We still use the Orders API to process the payment transparently as long as we have the token
-    payload = {
-      "type": "online",
-      "processing_mode": "automatic",
-      "total_amount": str(data['precio_cobrado']),
-      "external_reference": f"nez-{order_id}",
-      "payer": { "email": order['buyer_email'] },
-      "transactions": {
-        "payments": [{
-          "amount": str(data['precio_cobrado']),
-          "payment_method": {
-            "id": data['mp_payment_method_id'],
-            "type": "credit_card",
-            "token": data['mp_token'],
-            "installments": int(data['mp_installments'])
-          }
-        }]
-      }
-    }
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': str(uuid.uuid4()),
-        'Authorization': f'Bearer {MP_ACCESS_TOKEN}'
-    }
-    
-    try:
-        resp = requests.post('https://api.mercadopago.com/v1/orders', json=payload, headers=headers, timeout=15)
-        resp_data = resp.json()
-        
-        if resp.status_code >= 400:
-            logging.error(f"MP Order error: {resp.text}")
-            import traceback
-            traceback.print_exc()
-            return jsonify({"error": "Error interno al procesar el pago con MP"}), 400
-            
-        mp_order_id = resp_data.get('id')
-        db.update_order_notes(order_id, f"MP_ORDER_V2:{mp_order_id}")
-        
-        txs = resp_data.get('transactions', {}).get('payments', [])
-        payment_status = txs[0].get('status') if txs else 'unknown'
-        
-        return jsonify({"status": "ok", "order_id": order_id, "mp_status": payment_status})
-        
-    except Exception as e:
-        logging.error(f"Failed to call MP: {e}")
-        return jsonify({"error": "Error de conexión con procesador de pagos"}), 500
-
-@app.route('/api/mp/webhook', methods=['POST'])
-def api_mp_webhook():
-    # 1. Parse Query and Header
-    data_id = request.args.get('data.id', '')
-    if not data_id:
-        return 'OK', 200
-        
-    x_request_id = request.headers.get('x-request-id', '')
-    x_signature = request.headers.get('x-signature', '')
-    
-    if x_signature:
-        try:
-            parts = x_signature.split(',')
-            ts = parts[0].split('=')[1]
-            hash_val = parts[1].split('=')[1]
-            manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
-            mi_firma = hmac.new(MP_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256).hexdigest()
-            if mi_firma != hash_val:
-                logging.warning("MP Webhook: Firma HMAC inválida")
-                return 'Forbidden', 403
-        except Exception as e:
-            logging.error(f"Error en x-signature validation: {e}")
-            return 'Bad Request', 400
-            
-    # Consultar Orden de MP
-    headers = {'Authorization': f'Bearer {MP_ACCESS_TOKEN}'}
-    try:
-        resp = requests.get(f'https://api.mercadopago.com/v1/orders/{data_id}', headers=headers, timeout=10)
-        if resp.status_code == 200:
-            mp_order = resp.json()
-            ext_ref = mp_order.get('external_reference', '')
-            if ext_ref.startswith('nez-'):
-                order_id_str = ext_ref.split('-')[1]
-                order_id = int(order_id_str)
-                order = db.get_order(order_id)
-                if order and order['payment_status'] not in ('entregado', 'aprobado'):
-                    txs = mp_order.get('transactions', {}).get('payments', [])
-                    if txs:
-                        pay_status = txs[0].get('status', '').upper()
-                        if pay_status == 'APPROVED':
-                            plat = (order.get('game_plataforma') or '').upper()
-                            is_ps = 'PS4' in plat or 'PS5' in plat or 'PLAYSTATION' in plat
-                            if is_ps:
-                                _deliver_ps_order(order_id)
-                            else:
-                                db.update_order_status(order_id, 'aprobado')
-                        elif pay_status in ('REJECTED', 'CANCELLED'):
-                            db.update_order_status(order_id, 'rechazado')
-    except Exception as e:
-        logging.error(f"Error consultando mp order webhook: {e}")
-            
-    return 'OK', 200
-
-# --- Mercado Pago Redirect Routes (For Wallet) ---
 @app.route('/mp/success')
-def api_mp_success():
-    return """
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-        <style>
-            body { background: #0a0a0c; color: #fff; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background: #16161a; padding: 3rem; border-radius: 12px; border: 1px solid #8b5cf6; max-width: 400px; }
-            h1 { color: #8b5cf6; margin-top: 0; }
-            a { display: inline-block; background: #8b5cf6; color: #fff; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; margin-top: 1.5rem; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>¡Pago Aprobado!</h1>
-            <p>Tu orden ha sido confirmada vía Mercado Pago.</p>
-            <p>Si compraste un juego de PlayStation, el sistema automático te enviará las credenciales a tu email en breves instantes (revisa Spam).</p>
-            <p>Si compraste para Nintendo Switch, te contactaremos por WhatsApp.</p>
-            <a href="/">Volver al Inicio</a>
-        </div>
-    </body>
-    </html>
-    """
-
 @app.route('/mp/pending')
-def api_mp_pending():
-    return """
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-        <style>
-            body { background: #0a0a0c; color: #fff; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background: #16161a; padding: 3rem; border-radius: 12px; border: 1px solid #eab308; max-width: 400px; }
-            h1 { color: #eab308; margin-top: 0; }
-            a { display: inline-block; background: #8b5cf6; color: #fff; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; margin-top: 1.5rem; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>⏳ Pago Pendiente</h1>
-            <p>Tu pago está en revisión por Mercado Pago.</p>
-            <p>Te contactaremos por WhatsApp cuando se confirme. Puede tardar unos minutos.</p>
-            <a href="/">Volver al Inicio</a>
-        </div>
-    </body>
-    </html>
-    """
-
 @app.route('/mp/failure')
-def api_mp_failure():
-    return """
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
-        <style>
-            body { background: #0a0a0c; color: #fff; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-            .card { background: #16161a; padding: 3rem; border-radius: 12px; border: 1px solid #ef4444; max-width: 400px; }
-            h1 { color: #ef4444; margin-top: 0; }
-            a { display: inline-block; background: #8b5cf6; color: #fff; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 6px; font-weight: 600; margin-top: 1.5rem; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>❌ Pago Rechazado</h1>
-            <p>El pago fue rechazado o cancelado por Mercado Pago.</p>
-            <p>Podés intentarlo de nuevo o contactarnos por WhatsApp si necesitás ayuda.</p>
-            <a href="/">Volver al Inicio</a>
-        </div>
-    </body>
-    </html>
-    """
+def mp_legacy_redirect():
+    """Old MercadoPago return URLs — método descontinuado."""
+    return redirect('/')
 
 
 def _ps_stock_diagnostic(game_id, sale_type):
@@ -1496,7 +1219,7 @@ def serve_static(path=''):
     if path == 'terminos-y-condiciones':
         return get_html(os.path.join(UI_DIR, 'terminos.html'))
 
-    if path in ['success', 'mp/success', 'mp/failure', 'mp/pending', 'uala/success', 'uala/failure']:
+    if path in ['success', 'uala/success', 'uala/failure']:
         return get_html(os.path.join(UI_DIR, 'success.html'))
 
     # Security: If trying to access admin views, check auth first

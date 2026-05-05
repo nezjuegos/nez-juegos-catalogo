@@ -264,7 +264,7 @@
                 body.innerHTML = '<tr><td colspan="8" class="empty">No hay pedidos</td></tr>';
                 return;
             }
-            const payIcon = m => m === 'transferencia' ? '🏦 Transfer' : (m === 'mercadopago' ? '💳 MP' : (m === 'binance' ? '🪙 Binance' : '💳 Ualá'));
+            const payIcon = m => m === 'transferencia' ? '🏦 Transfer' : (m === 'mercadopago' ? '💳 MP (hist.)' : (m === 'binance' ? '🪙 Binance' : '💳 Ualá'));
             body.innerHTML = allOrders.map(o => `
                 <tr>
                     <td data-label="#">#${o.id}</td>

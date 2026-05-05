@@ -895,7 +895,6 @@
         let waNumber = '';
         let currentPlatform = 'Nintendo Switch';
         const DESCUENTO_TRANSFER = 0.32;
-        const DESCUENTO_SALDO = 0.26;
         let usdtRate = 1440;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1257,32 +1256,16 @@
         }
         window.shareGame = function (game) {
             const isPS = gameIsPS(game);
-            const storeName = isPS ? 'PS Store' : 'eShop';
 
-            const hasOferta = (
-                game.precios.oferta_primaria || game.precios.oferta_secundaria || game.precios.oferta_codigo_digital || game.precios.oferta_alquiler ||
-                game.precios.oferta_primaria_ps5 || game.precios.oferta_primaria_ps4 || game.precios.oferta_secundaria_ps5
-            );
+            let text = `🎮 *${game.titulo}* — Nez Juegos\n\n`;
 
-            let text = `🎮 *${game.titulo}* — _Nez Juegos_\n\n`;
-
-            // For each modality, show 3 price tiers
             const addPriceLine = (label, priceKey) => {
                 const reg = game.precios[priceKey];
                 const off = game.precios['oferta_' + priceKey];
                 if (!reg && !off) return;
-                const transferPrice = off || reg;  // DB stores transfer price
-                const cardPrice = Math.round(transferPrice / (1 - DESCUENTO_TRANSFER));
-                const saldoPrice = Math.round(cardPrice * (1 - DESCUENTO_SALDO));
-
-                text += `*${label}*\n`;
-                text += `  🏦 Transferencia: *${formatPrice(transferPrice)}* _(−32%)_\n`;
-                text += `  💰 MercadoPago saldo: *${formatPrice(saldoPrice)}* _(−26%)_\n`;
-                text += `  💳 Con tarjeta: *${formatPrice(cardPrice)}* _(hasta 6 cuotas sin interés)_\n`;
-                if (game.precios.eshop && game.precios.eshop > transferPrice) {
-                    text += `  ✅ _Ahorrás hasta ${formatPrice(game.precios.eshop - transferPrice)} vs ${storeName}_\n`;
-                }
-                text += '\n';
+                const transferPrice = off || reg;
+                const usdtStr = usdtRate > 0 ? (transferPrice / usdtRate).toFixed(2) : '—';
+                text += `*${label}*  ${formatPrice(transferPrice)} · ${usdtStr} USDT\n`;
             };
 
             if (isPS) {
