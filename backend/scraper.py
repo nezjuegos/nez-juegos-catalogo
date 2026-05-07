@@ -1049,6 +1049,31 @@ class AmazonJpPriceScraper:
                 candidates.append(v)
         return max(candidates) if candidates else None
 
+    def _pick_usd_list_loose(self, html):
+        """Extract USD list/strike price from multiple layout variants."""
+        candidates = []
+        patterns = [
+            # Explicit labels
+            r'(?:List\s*Price|通常価格|参考価格)[^$USD0-9]{0,40}(?:USD|\$)\s*([0-9]+(?:\.[0-9]+)?)',
+            # Strike-through blocks often used for list prices
+            r'a-text-price[^>]{0,120}>.{0,260}?(?:USD|\$)\s*([0-9]+(?:\.[0-9]+)?)',
+            r'a-price\s+a-text-price[^>]{0,120}>.{0,260}?a-offscreen">\s*(?:USD|\$)\s*([0-9]+(?:\.[0-9]+)?)',
+            # Whole/fraction in strike price block
+            r'a-text-price[^>]{0,160}>.{0,220}?a-price-whole">\s*([0-9]{1,3}).{0,80}?a-price-fraction">\s*([0-9]{2})',
+        ]
+        for pat in patterns:
+            for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                if isinstance(m, tuple):
+                    whole = (m[0] or "").replace(",", "")
+                    frac = (m[1] or "").replace(",", "")
+                    raw = f"{whole}.{frac}" if frac else whole
+                else:
+                    raw = m
+                v = self._normalize_price(raw)
+                if v and 1 <= v <= 350:
+                    candidates.append(v)
+        return max(candidates) if candidates else None
+
     def _resolve_short_amazon_url(self, url, timeout=8):
         """Resolve amzn.asia/amzn.to links to final amazon.co.jp product URL."""
         raw = (url or "").strip()
@@ -1152,11 +1177,13 @@ class AmazonJpPriceScraper:
                         usd_list_price = round(float(usd_price) / (1.0 - float(discount_pct) / 100.0), 2)
                 if usd_price is None:
                     usd_price = self._pick_usd_loose(html)
+                if usd_list_price is None:
+                    usd_list_price = self._pick_usd_list_loose(html)
                 if usd_price and usd_jpy_rate and usd_jpy_rate > 0:
                     converted = round(float(usd_price) * float(usd_jpy_rate), 2)
                     logging.info(
-                        "AmazonJP USD fallback usd=%s rate=%s -> jpy=%s",
-                        usd_price, usd_jpy_rate, converted
+                        "AmazonJP USD fallback usd=%s list_usd=%s rate=%s -> jpy=%s",
+                        usd_price, usd_list_price, usd_jpy_rate, converted
                     )
                     offer_price = converted
                     if usd_list_price and usd_list_price > usd_price:
