@@ -547,6 +547,7 @@ class AmazonJpPriceScraper:
         return re.sub(r"\s+", " ", unescape(m.group(1))).strip()
 
     def _pick_prices(self, html):
+        MIN_VALID_JPY = 300
         offer_candidates = []
         list_candidates = []
         hard_offer_candidates = []
@@ -555,6 +556,8 @@ class AmazonJpPriceScraper:
         hard_offer_patterns = [
             r'"priceToPay"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
             r'"apex_desktop"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'\\"priceToPay\\"\s*:\s*\{[^}]*\\"priceAmount\\"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'\\"apex_desktop\\"\s*:\s*\{[^}]*\\"priceAmount\\"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
         ]
         offer_patterns = [
             r'"displayPrice"\s*:\s*"[¥￥]\s*([0-9,]+)"',
@@ -562,6 +565,7 @@ class AmazonJpPriceScraper:
             r'id="priceblock_ourprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'class="a-offscreen">\s*[¥￥]\s*([0-9,]+)\s*<',
             r'class="a-price-whole">\s*([0-9,]+)\s*<',
+            r'[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+)',
         ]
         list_patterns = [
             r'"listPrice"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
@@ -572,20 +576,20 @@ class AmazonJpPriceScraper:
         for pat in hard_offer_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val >= 100:
+                if val and val >= MIN_VALID_JPY:
                     hard_offer_candidates.append(val)
 
         for pat in offer_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
                 # Ignore tiny values that usually come from unrelated tokens
-                if val and val >= 100:
+                if val and val >= MIN_VALID_JPY:
                     offer_candidates.append(val)
 
         for pat in list_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val >= 100:
+                if val and val >= MIN_VALID_JPY:
                     list_candidates.append(val)
 
         # Prefer structured prices first; fallback to lowest visible valid price
