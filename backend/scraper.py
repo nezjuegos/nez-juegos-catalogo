@@ -895,6 +895,7 @@ class AmazonJpPriceScraper:
 
     def _pick_prices(self, html):
         MIN_VALID_JPY = 300
+        MAX_VALID_JPY = 50000
         offer_candidates = []
         list_candidates = []
         hard_offer_candidates = []
@@ -933,34 +934,41 @@ class AmazonJpPriceScraper:
         for pat in hard_offer_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val >= MIN_VALID_JPY:
+                if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
                     hard_offer_candidates.append(val)
 
         for pat in offer_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
                 # Ignore tiny values that usually come from unrelated tokens
-                if val and val >= MIN_VALID_JPY:
+                if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
                     offer_candidates.append(val)
 
         for pat in list_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val >= MIN_VALID_JPY:
+                if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
                     list_candidates.append(val)
         for pat in jpy_meta_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 if isinstance(match, tuple):
                     match = match[0]
                 val = self._normalize_price(match)
-                if val and val >= MIN_VALID_JPY:
+                if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
                     offer_candidates.append(val)
 
         # Prefer structured prices first; fallback to lowest visible valid price
         offer_price = min(hard_offer_candidates) if hard_offer_candidates else (min(offer_candidates) if offer_candidates else None)
-        list_price = max(list_candidates) if list_candidates else None
-        if offer_price and list_price and list_price < offer_price:
-            list_price = None
+        list_price = None
+        if list_candidates:
+            uniq = sorted(set(list_candidates))
+            if offer_price:
+                # Use the nearest reasonable strike price above current price.
+                higher = [v for v in uniq if v > offer_price and v <= offer_price * 2.2]
+                list_price = higher[0] if higher else None
+            else:
+                # If current price is unknown, avoid giant outliers by taking the smallest candidate.
+                list_price = uniq[0]
         return offer_price, list_price
 
     def _pick_yen_loose(self, html):
