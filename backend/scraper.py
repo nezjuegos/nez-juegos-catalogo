@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 import requests
 from html import unescape
+from urllib.parse import unquote
 from playwright.async_api import async_playwright
 from playwright.sync_api import sync_playwright
 
@@ -516,8 +517,18 @@ class AmazonJpPriceScraper:
 
     @staticmethod
     def extract_asin(url):
-        for pat in (r"/dp/([A-Z0-9]{10})", r"/gp/product/([A-Z0-9]{10})", r"asin=([A-Z0-9]{10})"):
-            m = re.search(pat, url or "", re.IGNORECASE)
+        raw = (url or "").strip()
+        decoded = unquote(raw)
+        patterns = (
+            r"/dp/([A-Z0-9]{10})",
+            r"/gp/product/([A-Z0-9]{10})",
+            r"/gp/aw/d/([A-Z0-9]{10})",
+            r"/product/([A-Z0-9]{10})",
+            r"/dp%2F([A-Z0-9]{10})",
+            r"[?&](?:asin|pd_rd_i)=([A-Z0-9]{10})",
+        )
+        for pat in patterns:
+            m = re.search(pat, raw, re.IGNORECASE) or re.search(pat, decoded, re.IGNORECASE)
             if m:
                 return m.group(1).upper()
         return None
@@ -772,6 +783,36 @@ class AmazonJpPriceScraper:
             logging.warning("JS price eval error: %s", e)
             return None, None
 
+    def _read_buybox_text_prices_js(self, page):
+        """
+        Parse visible buybox text directly. This is robust when DOM classes are A/B-tested.
+        Returns (jpy_price, usd_price).
+        """
+        try:
+            result = page.evaluate("""() => {
+                const box = document.querySelector(
+                    '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, #rightCol'
+                );
+                const text = (box ? box.innerText : document.body.innerText || '').slice(0, 12000);
+                const yen = text.match(/[¥￥]\\s*([\\d,]{2,})/);
+                const usdA = text.match(/USD\\s*([0-9]+(?:\\.[0-9]+)?)/i);
+                const usdB = text.match(/\\$\\s*([0-9]+(?:\\.[0-9]+)?)/);
+                return {
+                    yen: yen ? yen[1] : null,
+                    usd: usdA ? usdA[1] : (usdB ? usdB[1] : null)
+                };
+            }""")
+            jpy = self._normalize_price(result.get("yen")) if result else None
+            usd = self._normalize_price(result.get("usd")) if result else None
+            if jpy and jpy < 300:
+                jpy = None
+            if usd and not (1 <= usd <= 300):
+                usd = None
+            return jpy, usd
+        except Exception as e:
+            logging.warning("Buybox text price eval error: %s", e)
+            return None, None
+
     def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=3000):
         last_error = None
         try:
@@ -809,12 +850,20 @@ class AmazonJpPriceScraper:
                     dom_offer, dom_list = self._read_prices_js(page)
                     if dom_offer is None:
                         dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
+                    text_jpy, text_usd = self._read_buybox_text_prices_js(page)
+                    if dom_offer is None and text_jpy:
+                        dom_offer = text_jpy
 
-                    logging.info("AmazonJP prices dom_offer=%s dom_list=%s", dom_offer, dom_list)
+                    logging.info(
+                        "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_usd=%s",
+                        dom_offer, dom_list, text_jpy, text_usd
+                    )
 
                     last_dom_offer, last_dom_list = dom_offer, dom_list
                     if self._html_usable(last_html):
-                        return last_html, dom_offer, dom_list, None
+                        # Pass USD value inside error channel when no JPY was found.
+                        usd_hint = f"USD_BUYBOX:{text_usd}" if (text_usd and not dom_offer) else None
+                        return last_html, dom_offer, dom_list, usd_hint
                 except Exception as e:
                     last_error = f"{type(e).__name__}: {e}"
                     logging.warning("AmazonJP PW attempt failed url=%s err=%s", url[:80], last_error)
@@ -918,11 +967,7 @@ class AmazonJpPriceScraper:
     def _pick_usd_loose(self, html):
         """Fallback when Amazon geo-renders buybox price in USD."""
         candidates = []
-        patterns = [
-            r'USD\s*([0-9]+(?:\.[0-9]+)?)',
-            r'USD[^0-9]{0,40}([0-9]{1,3})(?:[^0-9]{0,20}([0-9]{2}))?',
-            r'\$\s*([0-9]+(?:\.[0-9]+)?)',
-        ]
+        patterns = [r'USD\s*([0-9]+(?:\.[0-9]+)?)', r'\$\s*([0-9]+(?:\.[0-9]+)?)']
         for pat in patterns:
             for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 if isinstance(m, tuple):
@@ -932,7 +977,7 @@ class AmazonJpPriceScraper:
                 else:
                     raw = m
                 v = self._normalize_price(raw)
-                if v and 1 <= v <= 1000:
+                if v and 1 <= v <= 300:
                     candidates.append(v)
         # Variant: whole/fraction split where USD appears nearby in HTML.
         for m in re.finditer(
@@ -945,7 +990,7 @@ class AmazonJpPriceScraper:
                 continue
             raw = f"{m.group(1)}.{m.group(2)}"
             v = self._normalize_price(raw)
-            if v and 1 <= v <= 1000:
+            if v and 1 <= v <= 300:
                 candidates.append(v)
         return max(candidates) if candidates else None
 
@@ -1013,7 +1058,11 @@ class AmazonJpPriceScraper:
                     offer_price = loose
 
             if offer_price is None and list_price is None:
-                usd_price = self._pick_usd_loose(html)
+                usd_price = None
+                if pw_error and str(pw_error).startswith("USD_BUYBOX:"):
+                    usd_price = self._normalize_price(str(pw_error).split(":", 1)[1])
+                if usd_price is None:
+                    usd_price = self._pick_usd_loose(html)
                 if usd_price and usd_jpy_rate and usd_jpy_rate > 0:
                     converted = round(float(usd_price) * float(usd_jpy_rate), 2)
                     logging.info(
