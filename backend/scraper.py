@@ -725,7 +725,7 @@ class AmazonJpPriceScraper:
                 const uniqueSorted = [...new Set(all)].sort((a,b) => a - b);
 
                 // USD fallback
-                const usdRe = /(?:USD\\s*|\$\\s*)(\\d+(?:\\.\\d+)?)/i;
+                const usdRe = /(?:USD\s*|[$]\s*)(\d+(?:\.\d+)?)/i;
                 const usdMatch = fullText.match(usdRe);
 
                 return {
