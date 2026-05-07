@@ -915,7 +915,41 @@ class AmazonJpPriceScraper:
                 return v
         return candidates[0]
 
-    def scrape_listing(self, url, timeout=12):
+    def _pick_usd_loose(self, html):
+        """Fallback when Amazon geo-renders buybox price in USD."""
+        candidates = []
+        patterns = [
+            r'USD\s*([0-9]+(?:\.[0-9]+)?)',
+            r'USD[^0-9]{0,40}([0-9]{1,3})(?:[^0-9]{0,20}([0-9]{2}))?',
+            r'\$\s*([0-9]+(?:\.[0-9]+)?)',
+        ]
+        for pat in patterns:
+            for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                if isinstance(m, tuple):
+                    whole = (m[0] or "").replace(",", "")
+                    frac = m[1] or ""
+                    raw = f"{whole}.{frac}" if frac else whole
+                else:
+                    raw = m
+                v = self._normalize_price(raw)
+                if v and 1 <= v <= 1000:
+                    candidates.append(v)
+        # Variant: whole/fraction split where USD appears nearby in HTML.
+        for m in re.finditer(
+            r'a-price-whole">\s*([0-9]{1,3}).{0,120}?a-price-fraction">\s*([0-9]{2})',
+            html,
+            re.IGNORECASE | re.DOTALL,
+        ):
+            window = html[max(0, m.start() - 220):m.end() + 30]
+            if "USD" not in window.upper() and "$" not in window:
+                continue
+            raw = f"{m.group(1)}.{m.group(2)}"
+            v = self._normalize_price(raw)
+            if v and 1 <= v <= 1000:
+                candidates.append(v)
+        return max(candidates) if candidates else None
+
+    def scrape_listing(self, url, timeout=12, usd_jpy_rate=150.0):
         asin = self.extract_asin(url)
         if not asin:
             raise ValueError("No se pudo detectar ASIN en la URL")
@@ -977,6 +1011,16 @@ class AmazonJpPriceScraper:
                 if loose:
                     logging.info("AmazonJP loose yen fallback=%s", loose)
                     offer_price = loose
+
+            if offer_price is None and list_price is None:
+                usd_price = self._pick_usd_loose(html)
+                if usd_price and usd_jpy_rate and usd_jpy_rate > 0:
+                    converted = round(float(usd_price) * float(usd_jpy_rate), 2)
+                    logging.info(
+                        "AmazonJP USD fallback usd=%s rate=%s -> jpy=%s",
+                        usd_price, usd_jpy_rate, converted
+                    )
+                    offer_price = converted
 
             if offer_price is None and list_price is None:
                 for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):

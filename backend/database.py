@@ -164,6 +164,8 @@ class Database:
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_rate', '1440')")
             # Amazon JP tracker conversion rate (JPY per 1 USDT)
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_jpy_rate', '160')")
+            # Fallback rate when Amazon renders prices in USD (JPY per 1 USD)
+            cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usd_jpy_rate', '150')")
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('binance_pay_id', '192 236 539')")
             # Global % discount on pack list prices (public catalog only; DB keeps scraped price)
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pack_global_discount_pct', '0')")

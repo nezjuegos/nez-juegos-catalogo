@@ -1232,6 +1232,8 @@ def _refresh_amazon_jp_items(item_ids=None):
 
         updated_count = 0
         error_count = 0
+        cfg = db.get_all_config()
+        usd_jpy_rate = _safe_float(cfg.get('usd_jpy_rate', '150'), 150.0)
         total = len(items)
         with amazon_jp_status_lock:
             amazon_jp_status["current"] = 0
@@ -1242,7 +1244,7 @@ def _refresh_amazon_jp_items(item_ids=None):
                 amazon_jp_status["message"] = f"Actualizando {idx}/{total}: {item.get('display_name_es')}"
                 amazon_jp_status["current"] = idx
             try:
-                scraped = amazon_jp_scraper.scrape_listing(item['amazon_url'])
+                scraped = amazon_jp_scraper.scrape_listing(item['amazon_url'], usd_jpy_rate=usd_jpy_rate)
                 price_usdt, price_ars = _convert_jpy_to_usdt_ars(scraped.get('price_jpy'))
                 snapshot = {
                     **scraped,

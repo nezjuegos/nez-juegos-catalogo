@@ -131,6 +131,10 @@
                 <input type="number" id="inputUsdtJpyRate" value="160" min="1" step="0.01" placeholder="Ej: 160">
                 <span class="help-text">Se usa en el tracker de Amazon Japón para convertir precios en yenes a USDT y ARS.</span>
 
+                <label style="margin-top: 1rem;">Cotización USD → JPY (fallback Amazon JP)</label>
+                <input type="number" id="inputUsdJpyRate" value="150" min="1" step="0.01" placeholder="Ej: 150">
+                <span class="help-text">Solo se usa si Amazon muestra el precio en USD (ej: 37.90). Se convierte internamente a JPY.</span>
+
                 <label style="margin-top: 1rem;">Binance Pay ID</label>
                 <input type="text" id="inputBinanceId" value="192 236 539" placeholder="Ej: 192 236 539">
                 <span class="help-text">El ID que ve el cliente para enviar el pago.</span>
@@ -171,6 +175,7 @@
 
                 if (config.usdt_rate) document.getElementById('inputUsdtRate').value = config.usdt_rate;
                 if (config.usdt_jpy_rate) document.getElementById('inputUsdtJpyRate').value = config.usdt_jpy_rate;
+                if (config.usd_jpy_rate) document.getElementById('inputUsdJpyRate').value = config.usd_jpy_rate;
                 if (config.binance_pay_id) document.getElementById('inputBinanceId').value = config.binance_pay_id;
                 if (config.pack_global_discount_pct !== undefined && config.pack_global_discount_pct !== null) {
                     document.getElementById('inputPackGlobalDiscount').value = config.pack_global_discount_pct;
@@ -220,6 +225,7 @@
             formData.append('glass_card_price', document.getElementById('inputGlassPrice').value);
             formData.append('usdt_rate', document.getElementById('inputUsdtRate').value);
             formData.append('usdt_jpy_rate', document.getElementById('inputUsdtJpyRate').value);
+            formData.append('usd_jpy_rate', document.getElementById('inputUsdJpyRate').value);
             formData.append('binance_pay_id', document.getElementById('inputBinanceId').value);
             formData.append('pack_global_discount_pct', document.getElementById('inputPackGlobalDiscount').value || '0');
 
