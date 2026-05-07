@@ -9,6 +9,7 @@ from datetime import datetime
 import requests
 from html import unescape
 from playwright.async_api import async_playwright
+from playwright.sync_api import sync_playwright
 
 # --- CONFIGURATION ---
 SOURCE_CHAT = "evAn Accounts"
@@ -491,20 +492,26 @@ class NintendoScraper:
 
 
 class AmazonJpPriceScraper:
-    """Best-effort Amazon Japan listing scraper (price + image + title)."""
+    """Amazon Japan listing scraper — HTTP first, Playwright fallback (Amazon blocks naive bots)."""
+
+    _CHROME_UA = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    )
 
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-            ),
+            "User-Agent": self._CHROME_UA,
             "Accept-Language": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         })
+        self._batch_depth = 0
+        self._pw_sync = None
+        self._browser_sync = None
+        self._context_sync = None
 
     @staticmethod
     def extract_asin(url):
@@ -545,6 +552,145 @@ class AmazonJpPriceScraper:
         if not m:
             return None
         return re.sub(r"\s+", " ", unescape(m.group(1))).strip()
+
+    def batch_begin(self):
+        """Reuse one Chromium instance across many listings (caller should pair with batch_end)."""
+        self._batch_depth += 1
+        if self._batch_depth == 1:
+            self._ensure_playwright_sync()
+
+    def batch_end(self):
+        if self._batch_depth <= 0:
+            self._shutdown_playwright_sync()
+            self._batch_depth = 0
+            return
+        self._batch_depth -= 1
+        if self._batch_depth == 0:
+            self._shutdown_playwright_sync()
+
+    def _ensure_playwright_sync(self):
+        if self._context_sync is not None:
+            return
+        is_server = bool(os.getenv("RAILWAY_VOLUME_MOUNT_PATH"))
+        base_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-dev-shm-usage",
+        ]
+        if is_server:
+            base_args.extend(["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"])
+        self._pw_sync = sync_playwright().start()
+        self._browser_sync = self._pw_sync.chromium.launch(headless=True, args=base_args)
+        self._context_sync = self._browser_sync.new_context(
+            locale="ja-JP",
+            user_agent=self._CHROME_UA,
+            viewport={"width": 1366, "height": 768},
+        )
+
+    def _shutdown_playwright_sync(self):
+        ctx = self._context_sync
+        br = self._browser_sync
+        pw = self._pw_sync
+        self._context_sync = None
+        self._browser_sync = None
+        self._pw_sync = None
+        for obj in (ctx, br):
+            if obj:
+                try:
+                    obj.close()
+                except Exception:
+                    pass
+        if pw:
+            try:
+                pw.stop()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _html_usable(html):
+        if not html or len(html) < 8000:
+            return False
+        low = html.lower()
+        if "validatecaptcha" in low or "/errors/validatecaptcha" in low:
+            return False
+        if "enter the characters you see below" in low and "sorry" in low:
+            return False
+        if "api-services-support@amazon" in low and len(html) < 20000:
+            return False
+        return any(
+            x in low
+            for x in ("pricetopay", "priceblock", "a-price-whole", "a-offscreen", "apex_desktop")
+        )
+
+    def _read_buybox_jpy_playwright(self, page):
+        """Prefer visible buy-box price over raw HTML regex (fewer bogus matches)."""
+        offer = list_price = None
+
+        pay_selectors = [
+            "#apex_desktop .reinventPricePriceToPayMargin .a-offscreen",
+            "#buybox .reinventPricePriceToPayMargin .a-offscreen",
+            ".reinventPricePriceToPayMargin .a-offscreen",
+            "#twister-plus-price-data-price .a-offscreen",
+            "#corePriceDisplay_desktop_feature_div .reinventPricePriceToPayMargin .a-offscreen",
+            "#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen",
+        ]
+        list_selectors = [
+            ".basisPrice .a-offscreen",
+            ".a-price.a-text-price .a-offscreen",
+            "#corePriceDisplay_desktop_feature_div .a-price.a-text-price .a-offscreen",
+        ]
+
+        for sel in pay_selectors:
+            try:
+                t = page.locator(sel).first.inner_text(timeout=4500)
+                v = self._normalize_price(t)
+                if v and v >= 300:
+                    offer = v
+                    break
+            except Exception:
+                continue
+
+        cand_lists = []
+        for sel in list_selectors:
+            try:
+                for el in page.locator(sel).all()[:6]:
+                    t = el.inner_text(timeout=600)
+                    v = self._normalize_price(t)
+                    if v and v >= 300:
+                        cand_lists.append(v)
+            except Exception:
+                continue
+        list_price = max(cand_lists) if cand_lists else None
+        if offer and list_price and list_price <= offer:
+            list_price = None
+        return offer, list_price
+
+    def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=2500):
+        self._ensure_playwright_sync()
+        page = self._context_sync.new_page()
+        last_html = ""
+        last_dom_offer, last_dom_list = None, None
+        try:
+            for url in urls:
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=nav_timeout_ms)
+                    page.wait_for_timeout(settle_ms)
+                    try:
+                        page.wait_for_selector(
+                            ".reinventPricePriceToPayMargin, #corePriceDisplay_desktop_feature_div, #buybox",
+                            timeout=12000,
+                        )
+                    except Exception:
+                        pass
+                    dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
+                    last_dom_offer, last_dom_list = dom_offer, dom_list
+                    last_html = page.content()
+                    if self._html_usable(last_html):
+                        return last_html, dom_offer, dom_list
+                except Exception:
+                    continue
+            return last_html, last_dom_offer, last_dom_list
+        finally:
+            page.close()
 
     def _pick_prices(self, html):
         MIN_VALID_JPY = 300
@@ -613,39 +759,67 @@ class AmazonJpPriceScraper:
             list_price = None
         return offer_price, list_price
 
-    def scrape_listing(self, url, timeout=8):
+    def scrape_listing(self, url, timeout=12):
         asin = self.extract_asin(url)
         if not asin:
             raise ValueError("No se pudo detectar ASIN en la URL")
 
-        try_urls = [
-            url,
-            f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
-            f"https://m.amazon.co.jp/dp/{asin}",
-        ]
-        html = ""
-        last_status = None
-        for candidate in try_urls:
-            resp = self.session.get(candidate, timeout=timeout, allow_redirects=True)
-            last_status = resp.status_code
-            if resp.status_code < 400 and resp.text:
-                html = resp.text
-                break
-        if not html:
-            raise RuntimeError(f"Amazon devolvió HTTP {last_status}")
+        standalone = self._batch_depth == 0
+        if standalone:
+            self.batch_begin()
 
-        offer_price, list_price = self._pick_prices(html)
-        if offer_price is None and list_price is None:
-            raise RuntimeError("No se pudo extraer precio de la publicación")
+        try:
+            try_urls = [
+                url.strip(),
+                f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
+                f"https://www.amazon.co.jp/-/en/dp/{asin}",
+            ]
 
-        price_jpy = offer_price or list_price
-        is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
+            html = ""
+            last_status = None
+            for candidate in try_urls:
+                try:
+                    resp = self.session.get(candidate, timeout=timeout, allow_redirects=True)
+                    last_status = resp.status_code
+                except requests.RequestException:
+                    continue
+                if resp.status_code < 400 and resp.text and self._html_usable(resp.text):
+                    html = resp.text
+                    break
 
-        return {
-            "asin": asin,
-            "title_source": self._pick_title(html),
-            "image_url": self._pick_image_url(html),
-            "price_jpy": price_jpy,
-            "list_price_jpy": list_price,
-            "is_on_sale": is_on_sale,
-        }
+            if not self._html_usable(html):
+                html, dom_offer, dom_list = self._fetch_with_playwright(try_urls)
+            else:
+                dom_offer = dom_list = None
+            if not self._html_usable(html):
+                raise RuntimeError(
+                    "Amazon no devolvió la página del producto (posible CAPTCHA o bloqueo). "
+                    f"Último HTTP: {last_status}"
+                )
+
+            offer_price, list_price = self._pick_prices(html)
+            if dom_offer and dom_offer >= 300:
+                reg_list = list_price
+                offer_price = dom_offer
+                if dom_list and dom_list > dom_offer:
+                    list_price = dom_list
+                elif reg_list and reg_list > offer_price:
+                    list_price = reg_list
+
+            if offer_price is None and list_price is None:
+                raise RuntimeError("No se pudo extraer precio de la publicación")
+
+            price_jpy = offer_price or list_price
+            is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
+
+            return {
+                "asin": asin,
+                "title_source": self._pick_title(html),
+                "image_url": self._pick_image_url(html),
+                "price_jpy": price_jpy,
+                "list_price_jpy": list_price,
+                "is_on_sale": is_on_sale,
+            }
+        finally:
+            if standalone:
+                self.batch_end()

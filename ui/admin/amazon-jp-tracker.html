@@ -22,6 +22,13 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { filter: brightness(1.08); }
         .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+        .toolbar label { margin: 0; }
+        .search-input {
+            flex: 1; min-width: 200px; max-width: 420px;
+            background: #0b0b0f; border: 1px solid var(--border); color: #fff;
+            border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.9rem;
+        }
         .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
         .top-nav { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
         .top-nav a { color: var(--text-muted); text-decoration:none; font-size:.9rem; font-weight:600; }
@@ -55,6 +62,7 @@
         .btn-mini { border:1px solid var(--border); background:#27272a; color:#fff; border-radius:6px; padding:.35rem .5rem; cursor:pointer; font-size:.78rem; }
         .btn-mini.danger { border-color: rgba(239,68,68,.4); color:#fca5a5; }
         .btn-mini.primary { border-color: rgba(139,92,246,.5); color:#c4b5fd; }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
         .muted { color: var(--text-muted); font-size:.8rem; }
         @media (max-width: 980px) {
             body { padding: 1rem; }
@@ -123,6 +131,11 @@
         </div>
 
         <div class="card">
+            <div class="toolbar">
+                <label for="searchFilter" style="font-size:0.8rem; color:var(--text-muted);">Buscar</label>
+                <input type="search" id="searchFilter" class="search-input" placeholder="Nombre, ASIN o título original…" autocomplete="off">
+                <span class="muted" id="searchCount"></span>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -144,6 +157,8 @@
     <script>
         let items = [];
         let editingId = null;
+        let filterText = '';
+        let lastPollRunning = false;
 
         const $ = (id) => document.getElementById(id);
 
@@ -168,13 +183,38 @@
             $('rateBox').innerHTML = `<span>1 USDT = <strong>${jpy} JPY</strong></span><span>1 USDT = <strong>${ars} ARS</strong></span>`;
         }
 
+        function itemMatches(it, q) {
+            if (!q) return true;
+            const needle = q.toLowerCase();
+            const blob = [
+                it.display_name_es,
+                it.title_source,
+                it.asin,
+                it.amazon_url,
+                String(it.price_jpy || ''),
+                String(it.last_error || ''),
+            ].filter(Boolean).join(' ').toLowerCase();
+            return blob.includes(needle);
+        }
+
         function renderItems() {
             const tbody = $('itemsTbody');
+            const q = filterText.trim().toLowerCase();
+            const sc = $('searchCount');
             if (!items.length) {
                 tbody.innerHTML = `<tr><td colspan="8" class="muted">No hay publicaciones cargadas.</td></tr>`;
+                if (sc) sc.textContent = '';
                 return;
             }
-            tbody.innerHTML = items.map(item => {
+            const filtered = q ? items.filter((it) => itemMatches(it, q)) : items;
+            if (sc) {
+                sc.textContent = `${filtered.length} de ${items.length} publicaciones`;
+            }
+            if (!filtered.length && items.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="muted">No hay coincidencias con la búsqueda.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = filtered.map(item => {
                 const statusClass = item.last_status === 'ok' ? 'ok' : (item.last_status === 'error' ? 'err' : 'warn');
                 const statusText = item.last_status === 'ok' ? 'OK' : (item.last_status === 'error' ? 'Error' : 'Pendiente');
                 const jpyHtml = item.is_on_sale
@@ -284,35 +324,57 @@
 
         window.refreshOne = async function(id) {
             await refresh([id]);
+            await pollStatus();
         };
 
         async function pollStatus() {
             const r = await fetch('/api/admin/amazon-jp-tracker/status');
             const s = await r.json();
+            const wasRunning = lastPollRunning;
+            lastPollRunning = !!s.running;
+
             const wrap = $('jobProgWrap');
             const bar = $('jobProgBar');
             const meta = $('jobProgMeta');
             if (s.running) {
-                $('jobStatus').innerHTML = `Estado: <span class="ok">actualizando</span> · ${s.message || ''}`;
+                $('btnRefreshAll').disabled = true;
+                $('jobStatus').innerHTML = `Estado: <span class="ok">actualizando</span> · ${escapeHtml(s.message || '')}`;
                 const total = Number(s.total || 0);
                 const current = Number(s.current || 0);
                 const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 5;
                 wrap.style.display = 'block';
                 bar.style.width = `${pct}%`;
                 meta.textContent = total > 0 ? `${current} / ${total}` : 'Iniciando...';
-            } else if (s.last_error) {
-                $('jobStatus').innerHTML = `Estado: <span class="err">error</span> · ${s.last_error}`;
-                wrap.style.display = 'none';
             } else {
-                $('jobStatus').textContent = `Estado: listo${s.last_run_at ? ' · última corrida: ' + s.last_run_at : ''}`;
+                $('btnRefreshAll').disabled = false;
                 wrap.style.display = 'none';
-                if (s.last_run_at) loadItems();
+                bar.style.width = '0%';
+                let line = `Estado: listo${s.last_run_at ? ' · última corrida: ' + s.last_run_at : ''}`;
+                if (s.message) line += ` — ${s.message}`;
+                if (s.last_error) {
+                    $('jobStatus').innerHTML = `${escapeHtml(line)} <span class="err">(${escapeHtml(s.last_error)})</span>`;
+                } else {
+                    $('jobStatus').textContent = line;
+                }
+                if (wasRunning) await loadItems();
             }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         }
 
         $('btnSave').addEventListener('click', saveItem);
         $('btnCancelEdit').addEventListener('click', resetForm);
-        $('btnRefreshAll').addEventListener('click', () => refresh(null));
+        $('searchFilter').addEventListener('input', (ev) => {
+            filterText = ev.target.value;
+            renderItems();
+        });
+        $('btnRefreshAll').addEventListener('click', async () => {
+            await refresh(null);
+            await pollStatus();
+        });
 
         Promise.all([loadConfigRates(), loadItems(), pollStatus()]).catch(() => {});
         setInterval(pollStatus, 4000);

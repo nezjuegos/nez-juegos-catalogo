@@ -1178,10 +1178,22 @@ def _convert_jpy_to_usdt_ars(price_jpy):
     return price_usdt, price_ars
 
 
-def _is_amazon_job_stale(status, max_seconds=60):
+def _amazon_job_stale_budget_seconds(status):
+    """Amazon refresh uses Playwright per item (~20–60s). Avoid false 'stuck' resets."""
+    total = status.get("total") or 0
+    try:
+        n = max(1, int(total))
+    except (TypeError, ValueError):
+        n = 1
+    return max(120, min(1200, 55 * n + 45))
+
+
+def _is_amazon_job_stale(status, max_seconds=None):
     started = status.get("started_at")
     if not started:
         return False
+    if max_seconds is None:
+        max_seconds = _amazon_job_stale_budget_seconds(status)
     try:
         return (time.time() - float(started)) > max_seconds
     except (TypeError, ValueError):
@@ -1191,6 +1203,7 @@ def _is_amazon_job_stale(status, max_seconds=60):
 def _refresh_amazon_jp_items(item_ids=None):
     global amazon_jp_status, amazon_jp_last_daily_run
 
+    batch_started = False
     try:
         if item_ids:
             items = []
@@ -1212,6 +1225,9 @@ def _refresh_amazon_jp_items(item_ids=None):
                     "started_at": None,
                 })
             return True, None
+
+        amazon_jp_scraper.batch_begin()
+        batch_started = True
 
         updated_count = 0
         error_count = 0
@@ -1250,17 +1266,18 @@ def _refresh_amazon_jp_items(item_ids=None):
                 error_count += 1
 
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        summary = f"Actualización completada. OK: {updated_count} · Errores: {error_count}"
         with amazon_jp_status_lock:
             amazon_jp_status.update({
                 "running": False,
-                "message": f"Actualización completada. OK: {updated_count} · Errores: {error_count}",
+                "message": summary,
                 "updated_count": updated_count,
                 "error_count": error_count,
                 "current": total,
                 "total": total,
                 "last_run_at": now_str,
                 "started_at": None,
-                "last_error": None if error_count == 0 else "Algunas publicaciones no pudieron actualizarse",
+                "last_error": None,
             })
         amazon_jp_last_daily_run = time.time()
         return True, None
@@ -1276,13 +1293,27 @@ def _refresh_amazon_jp_items(item_ids=None):
                 "started_at": None,
             })
         return False, str(e)
+    finally:
+        if batch_started:
+            try:
+                amazon_jp_scraper.batch_end()
+            except Exception:
+                pass
+        with amazon_jp_status_lock:
+            if amazon_jp_status.get("running"):
+                amazon_jp_status.update({
+                    "running": False,
+                    "started_at": None,
+                    "message": amazon_jp_status.get("message") or "Actualización finalizada.",
+                    "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                })
 
 
 def _run_amazon_refresh_bg(item_ids=None):
     with amazon_jp_status_lock:
-        if amazon_jp_status.get("running") and not _is_amazon_job_stale(amazon_jp_status, 60):
+        if amazon_jp_status.get("running") and not _is_amazon_job_stale(amazon_jp_status):
             return False
-        if amazon_jp_status.get("running") and _is_amazon_job_stale(amazon_jp_status, 60):
+        if amazon_jp_status.get("running") and _is_amazon_job_stale(amazon_jp_status):
             amazon_jp_status.update({
                 "running": False,
                 "message": "Se liberó un estado de actualización colgado.",
@@ -1371,7 +1402,8 @@ def api_admin_amazon_jp_tracker_status():
         status_copy = amazon_jp_status.copy()
         # Failsafe: if a worker gets stuck, auto-release status.
         started_at = status_copy.get("started_at")
-        if status_copy.get("running") and started_at and (time.time() - float(started_at) > 60):
+        budget = _amazon_job_stale_budget_seconds(status_copy)
+        if status_copy.get("running") and started_at and (time.time() - float(started_at) > budget):
             amazon_jp_status.update({
                 "running": False,
                 "message": "Actualización finalizada por timeout de estado.",
@@ -1391,7 +1423,7 @@ def api_admin_amazon_jp_tracker_refresh():
     if item_ids is not None and not isinstance(item_ids, list):
         return jsonify({"error": "item_ids debe ser un array"}), 400
     with amazon_jp_status_lock:
-        if amazon_jp_status.get("running") and not _is_amazon_job_stale(amazon_jp_status, 60):
+        if amazon_jp_status.get("running") and not _is_amazon_job_stale(amazon_jp_status):
             return jsonify({"error": "Ya hay una actualización en curso"}), 409
     if item_ids:
         started = _run_amazon_refresh_bg(item_ids=item_ids)
