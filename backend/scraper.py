@@ -677,17 +677,43 @@ class AmazonJpPriceScraper:
         """Use JS evaluation in browser context — most robust against layout changes."""
         try:
             result = page.evaluate("""() => {
-                const norm = t => t ? t.replace(/[¥￥,\\s]/g, '').trim() : '';
+                const norm = t => {
+                    if (!t) return '';
+                    return t.replace(/[¥￥$USD,\\s\\u00a5\\u20b9]/g, '').trim();
+                };
+                const numVal = t => {
+                    const n = norm(t);
+                    const m = n.match(/^(\\d+)(\\.\\d+)?$/);
+                    return m ? parseFloat(m[0]) : null;
+                };
                 const first = sels => {
                     for (const s of sels) {
-                        for (const el of document.querySelectorAll(s)) {
-                            const t = norm(el.textContent);
-                            if (t && /^\\d+(\\.\\d+)?$/.test(t)) return parseFloat(t);
+                        try {
+                            for (const el of document.querySelectorAll(s)) {
+                                const v = numVal(el.textContent);
+                                if (v && v >= 300) return v;
+                            }
+                        } catch(e) {}
+                    }
+                    return null;
+                };
+
+                // Also try reading .a-price-whole + .a-price-fraction
+                const fromWholeElements = (container) => {
+                    const wholes = container.querySelectorAll('.a-price-whole');
+                    for (const w of wholes) {
+                        const priceEl = w.closest('.a-price');
+                        if (priceEl && priceEl.classList.contains('a-text-price')) continue;
+                        const raw = norm(w.textContent);
+                        if (raw && /^\\d+$/.test(raw)) {
+                            const v = parseInt(raw, 10);
+                            if (v >= 300) return v;
                         }
                     }
                     return null;
                 };
-                const offer = first([
+
+                let offer = first([
                     '#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen',
                     '#corePriceDisplay_desktop_feature_div .reinventPricePriceToPayMargin .a-offscreen',
                     '#apex_desktop .reinventPricePriceToPayMargin .a-offscreen',
@@ -698,14 +724,43 @@ class AmazonJpPriceScraper:
                     '.priceToPay .a-offscreen',
                     '#priceblock_ourprice',
                     '#priceblock_dealprice',
+                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-price-whole',
+                    '#apex_desktop .a-price:not(.a-text-price) .a-price-whole',
                 ]);
+
+                // Fallback: look at a-price-whole in buybox containers
+                if (!offer) {
+                    const containers = document.querySelectorAll(
+                        '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, #price'
+                    );
+                    for (const c of containers) {
+                        offer = fromWholeElements(c);
+                        if (offer) break;
+                    }
+                }
+
+                // Last resort: find any ¥X,XXX pattern in the buybox area
+                if (!offer) {
+                    const bb = document.querySelector('#rightCol, #buyBoxAccordion, #buybox, #corePrice_feature_div, #apex_desktop');
+                    if (bb) {
+                        const text = bb.textContent || '';
+                        const m = text.match(/[¥￥]\\s*([\\d,]+)/);
+                        if (m) {
+                            const v = parseInt(m[1].replace(/,/g, ''), 10);
+                            if (v >= 300) offer = v;
+                        }
+                    }
+                }
+
                 const list = first([
                     '.basisPrice .a-offscreen',
                     '.a-price.a-text-price .a-offscreen',
                     '#priceblock_listprice',
                     '#listPrice',
+                    '.a-price.a-text-price .a-price-whole',
                 ]);
-                return {offer, list};
+
+                return {offer: offer || null, list: list || null};
             }""")
             o = result.get("offer") if result else None
             l = result.get("list") if result else None
@@ -893,13 +948,14 @@ class AmazonJpPriceScraper:
                     list_price = dom_list
 
             if offer_price is None and list_price is None:
-                # Log a snippet of HTML around known price markers for diagnosis
-                for marker in ("a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
+                for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
                     idx = html.lower().find(marker)
                     if idx >= 0:
-                        logging.info("AmazonJP price snippet [%s]: ...%s...",
-                                     marker, html[max(0, idx-60):idx+120].replace("\n", " "))
+                        logging.info("AmazonJP price snippet [%s] at %d: ...%s...",
+                                     marker, idx, html[max(0, idx-80):idx+200].replace("\n", " "))
                         break
+                else:
+                    logging.warning("AmazonJP no price markers in HTML (len=%d)", len(html))
                 raise RuntimeError("No se pudo extraer precio de la publicación")
 
             price_jpy = offer_price or list_price
