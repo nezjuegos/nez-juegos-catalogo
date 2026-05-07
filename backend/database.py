@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import json
+import re
 import unicodedata
 from datetime import datetime
 
@@ -161,6 +162,8 @@ class Database:
 
             # USDT conversion rate for Binance Pay (ARS per 1 USDT, applied to the transfer price)
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_rate', '1440')")
+            # Amazon JP tracker conversion rate (JPY per 1 USDT)
+            cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('usdt_jpy_rate', '160')")
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('binance_pay_id', '192 236 539')")
             # Global % discount on pack list prices (public catalog only; DB keeps scraped price)
             cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pack_global_discount_pct', '0')")
@@ -266,6 +269,29 @@ class Database:
                 notes TEXT,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+
+            # Table: amazon_jp_tracker (Amazon Japan listing price tracking)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS amazon_jp_tracker (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                display_name_es TEXT NOT NULL,
+                amazon_url TEXT NOT NULL UNIQUE,
+                asin TEXT,
+                image_url TEXT,
+                title_source TEXT,
+                price_jpy REAL,
+                list_price_jpy REAL,
+                is_on_sale INTEGER NOT NULL DEFAULT 0,
+                price_usdt REAL,
+                price_ars REAL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                last_checked_at TIMESTAMP,
+                last_status TEXT NOT NULL DEFAULT 'pending',
+                last_error TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             ''')
 
@@ -1254,5 +1280,137 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM recurring_expenses WHERE id=?', (expense_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # --- AMAZON JP TRACKER CRUD ---
+    def get_amazon_jp_items(self, include_inactive=True):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if include_inactive:
+                cursor.execute(
+                    'SELECT * FROM amazon_jp_tracker ORDER BY is_active DESC, updated_at DESC, id DESC'
+                )
+            else:
+                cursor.execute(
+                    'SELECT * FROM amazon_jp_tracker WHERE is_active = 1 ORDER BY updated_at DESC, id DESC'
+                )
+            return [dict(r) for r in cursor.fetchall()]
+
+    @staticmethod
+    def _extract_asin_from_url(url):
+        m = re.search(r'/dp/([A-Z0-9]{10})', url or '', re.IGNORECASE)
+        if m:
+            return m.group(1).upper()
+        m = re.search(r'/gp/product/([A-Z0-9]{10})', url or '', re.IGNORECASE)
+        if m:
+            return m.group(1).upper()
+        m = re.search(r'asin=([A-Z0-9]{10})', url or '', re.IGNORECASE)
+        return m.group(1).upper() if m else None
+
+    @staticmethod
+    def _validate_amazon_jp_item(data):
+        name = (data.get('display_name_es') or '').strip()
+        if not name:
+            return None, 'display_name_es requerido'
+        url = (data.get('amazon_url') or '').strip()
+        if not url:
+            return None, 'amazon_url requerido'
+        if 'amazon.co.jp' not in url:
+            return None, 'La URL debe ser de amazon.co.jp'
+        is_active = 1 if data.get('is_active', 1) else 0
+        return {
+            'display_name_es': name,
+            'amazon_url': url,
+            'asin': Database._extract_asin_from_url(url),
+            'is_active': is_active,
+        }, None
+
+    def add_amazon_jp_item(self, data):
+        clean, err = self._validate_amazon_jp_item(data)
+        if err:
+            return None, err
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    'INSERT INTO amazon_jp_tracker (display_name_es, amazon_url, asin, is_active) VALUES (?, ?, ?, ?)',
+                    (clean['display_name_es'], clean['amazon_url'], clean['asin'], clean['is_active'])
+                )
+                conn.commit()
+                return cursor.lastrowid, None
+            except sqlite3.IntegrityError:
+                return None, 'Ya existe una publicación con esa URL'
+
+    def update_amazon_jp_item(self, item_id, data):
+        clean, err = self._validate_amazon_jp_item(data)
+        if err:
+            return False, err
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    'UPDATE amazon_jp_tracker SET display_name_es=?, amazon_url=?, asin=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                    (clean['display_name_es'], clean['amazon_url'], clean['asin'], clean['is_active'], item_id)
+                )
+                conn.commit()
+                return cursor.rowcount > 0, None
+            except sqlite3.IntegrityError:
+                return False, 'Ya existe una publicación con esa URL'
+
+    def delete_amazon_jp_item(self, item_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM amazon_jp_tracker WHERE id = ?', (item_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_amazon_jp_item(self, item_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM amazon_jp_tracker WHERE id = ?', (item_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_active_amazon_jp_items(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM amazon_jp_tracker WHERE is_active = 1 ORDER BY id DESC')
+            return [dict(r) for r in cursor.fetchall()]
+
+    def update_amazon_jp_snapshot(self, item_id, snapshot):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                UPDATE amazon_jp_tracker
+                SET asin = COALESCE(?, asin),
+                    image_url = COALESCE(?, image_url),
+                    title_source = COALESCE(?, title_source),
+                    price_jpy = ?,
+                    list_price_jpy = ?,
+                    is_on_sale = ?,
+                    price_usdt = ?,
+                    price_ars = ?,
+                    last_checked_at = CURRENT_TIMESTAMP,
+                    last_status = ?,
+                    last_error = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                ''',
+                (
+                    snapshot.get('asin'),
+                    snapshot.get('image_url'),
+                    snapshot.get('title_source'),
+                    snapshot.get('price_jpy'),
+                    snapshot.get('list_price_jpy'),
+                    1 if snapshot.get('is_on_sale') else 0,
+                    snapshot.get('price_usdt'),
+                    snapshot.get('price_ars'),
+                    snapshot.get('last_status', 'ok'),
+                    snapshot.get('last_error'),
+                    item_id
+                )
+            )
             conn.commit()
             return cursor.rowcount > 0

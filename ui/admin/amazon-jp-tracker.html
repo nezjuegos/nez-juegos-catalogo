@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon JP Tracker | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09090b; --bg-card: #18181b; --primary: #8b5cf6;
+            --text-main: #f8fafc; --text-muted: #a1a1aa; --border: #27272a;
+            --ok: #22c55e; --warn: #f59e0b; --error: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1250px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.2rem; }
+        h1 { font-family: 'Outfit', sans-serif; font-size: 1.9rem; }
+        .sub { color: var(--text-muted); font-size: 0.92rem; margin-top: 0.35rem; }
+        .btn { border: none; border-radius: 8px; padding: 0.7rem 1rem; font-weight: 700; cursor: pointer; }
+        .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); text-decoration: none; display: inline-block; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { filter: brightness(1.08); }
+        .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+        .top-nav { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+        .top-nav a { color: var(--text-muted); text-decoration:none; font-size:.9rem; font-weight:600; }
+        .top-nav a.active { color: var(--primary); }
+        .rate-box { font-size: .9rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap; }
+        .rate-box strong { color: var(--text-main); }
+        .form-grid { display: grid; grid-template-columns: 1.2fr 2fr auto auto; gap: 0.7rem; align-items: end; }
+        label { display:block; font-size:.75rem; color:var(--text-muted); margin-bottom:.25rem; text-transform:uppercase; }
+        input[type="text"], input[type="url"] {
+            width:100%; background:#0b0b0f; border:1px solid var(--border); color:#fff;
+            border-radius:8px; padding:.65rem .75rem;
+        }
+        .status { font-size:.85rem; color: var(--text-muted); margin-top:.5rem; }
+        .status .ok { color: var(--ok); font-weight: 700; }
+        .status .err { color: var(--error); font-weight: 700; }
+        table { width:100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid var(--border); padding: .65rem .45rem; text-align: left; vertical-align: middle; font-size: .88rem; }
+        th { color: var(--text-muted); font-size: .75rem; text-transform: uppercase; }
+        .thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); background:#0b0b0f; }
+        .price-main { font-weight: 800; color: var(--ok); }
+        .price-list { color: var(--text-muted); text-decoration: line-through; font-size: .82rem; display:block; margin-top:.15rem; }
+        .chip { display:inline-block; padding:.2rem .45rem; border-radius:999px; font-size:.72rem; font-weight:700; }
+        .chip.ok { background: rgba(34,197,94,.15); color: var(--ok); }
+        .chip.warn { background: rgba(245,158,11,.15); color: var(--warn); }
+        .chip.err { background: rgba(239,68,68,.15); color: var(--error); }
+        .row-actions { display:flex; gap:.35rem; flex-wrap:wrap; }
+        .btn-mini { border:1px solid var(--border); background:#27272a; color:#fff; border-radius:6px; padding:.35rem .5rem; cursor:pointer; font-size:.78rem; }
+        .btn-mini.danger { border-color: rgba(239,68,68,.4); color:#fca5a5; }
+        .btn-mini.primary { border-color: rgba(139,92,246,.5); color:#c4b5fd; }
+        .muted { color: var(--text-muted); font-size:.8rem; }
+        @media (max-width: 980px) {
+            body { padding: 1rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            table, thead, tbody, tr, th, td { display:block; }
+            thead { display:none; }
+            tr { border:1px solid var(--border); border-radius:10px; padding:.45rem; margin-bottom:.55rem; }
+            td { border-bottom:none; padding:.35rem; }
+            td::before { content: attr(data-label); display:block; font-size:.7rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:.12rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Tracker Amazon Japón</h1>
+                <p class="sub">Monitorea precios digitales en JPY, USDT y ARS con actualización diaria automática.</p>
+            </div>
+            <a class="btn btn-ghost" href="/admin">Volver al Dashboard</a>
+        </div>
+
+        <div class="top-nav">
+            <a href="/admin/orders">Pedidos</a>
+            <a href="/admin/ps-accounts">Cuentas PS</a>
+            <a href="/admin/juegos">Juegos</a>
+            <a href="/admin/expenses">Pagos</a>
+            <a href="/admin/packs">Packs</a>
+            <a href="/admin/amazon-jp-tracker" class="active">Amazon JP</a>
+        </div>
+
+        <div class="card">
+            <div class="rate-box" id="rateBox">
+                <span>1 USDT = <strong>— JPY</strong></span>
+                <span>1 USDT = <strong>— ARS</strong></span>
+            </div>
+            <div class="status" id="jobStatus">Estado: listo</div>
+        </div>
+
+        <div class="card">
+            <div class="form-grid">
+                <div>
+                    <label>Nombre en español</label>
+                    <input type="text" id="nameEs" placeholder="Ej: Zelda Tears of the Kingdom">
+                </div>
+                <div>
+                    <label>URL Amazon Japón</label>
+                    <input type="url" id="amazonUrl" placeholder="https://www.amazon.co.jp/dp/XXXXXXXXXX">
+                </div>
+                <div>
+                    <label>Activo</label>
+                    <input type="checkbox" id="isActive" checked style="transform: scale(1.2); margin-top:.65rem;">
+                </div>
+                <div>
+                    <button class="btn btn-primary" id="btnSave">Agregar</button>
+                </div>
+            </div>
+            <div class="btn-row" style="margin-top:.8rem;">
+                <button class="btn btn-ghost" id="btnCancelEdit" style="display:none;">Cancelar edición</button>
+                <button class="btn btn-ghost" id="btnRefreshAll">Actualizar ahora (todos activos)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Foto</th>
+                        <th>Publicación</th>
+                        <th>JPY</th>
+                        <th>USDT</th>
+                        <th>ARS</th>
+                        <th>Estado</th>
+                        <th>Última actualización</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let items = [];
+        let editingId = null;
+
+        const $ = (id) => document.getElementById(id);
+
+        function fmtJPY(v) {
+            if (v === null || v === undefined) return '—';
+            return '¥' + Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 0 });
+        }
+        function fmtUSDT(v) {
+            if (v === null || v === undefined) return '—';
+            return Number(v).toFixed(4) + ' USDT';
+        }
+        function fmtARS(v) {
+            if (v === null || v === undefined) return '—';
+            return '$' + Number(v).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+        }
+
+        async function loadConfigRates() {
+            const r = await fetch('/api/config');
+            const cfg = await r.json();
+            const jpy = cfg.usdt_jpy_rate || '160';
+            const ars = cfg.usdt_rate || '1440';
+            $('rateBox').innerHTML = `<span>1 USDT = <strong>${jpy} JPY</strong></span><span>1 USDT = <strong>${ars} ARS</strong></span>`;
+        }
+
+        function renderItems() {
+            const tbody = $('itemsTbody');
+            if (!items.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="muted">No hay publicaciones cargadas.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = items.map(item => {
+                const statusClass = item.last_status === 'ok' ? 'ok' : (item.last_status === 'error' ? 'err' : 'warn');
+                const statusText = item.last_status === 'ok' ? 'OK' : (item.last_status === 'error' ? 'Error' : 'Pendiente');
+                const jpyHtml = item.is_on_sale
+                    ? `<span class="price-main">${fmtJPY(item.price_jpy)}</span><span class="price-list">${fmtJPY(item.list_price_jpy)}</span>`
+                    : `<span class="price-main">${fmtJPY(item.price_jpy)}</span>`;
+                return `
+                    <tr>
+                        <td data-label="Foto">${item.image_url ? `<img class="thumb" src="${item.image_url}" alt="">` : '<span class="muted">Sin imagen</span>'}</td>
+                        <td data-label="Publicación">
+                            <div style="font-weight:700">${item.display_name_es}</div>
+                            <div class="muted">${item.asin || 'Sin ASIN'} · ${item.is_active ? 'Activo' : 'Inactivo'}</div>
+                            <a class="muted" href="${item.amazon_url}" target="_blank" rel="noopener">Abrir publicación</a>
+                        </td>
+                        <td data-label="JPY">${jpyHtml}</td>
+                        <td data-label="USDT">${fmtUSDT(item.price_usdt)}</td>
+                        <td data-label="ARS">${fmtARS(item.price_ars)}</td>
+                        <td data-label="Estado">
+                            <span class="chip ${statusClass}">${statusText}</span>
+                            ${item.last_error ? `<div class="muted" style="max-width:260px; margin-top:.2rem;">${item.last_error}</div>` : ''}
+                        </td>
+                        <td data-label="Última actualización" class="muted">${item.last_checked_at || '—'}</td>
+                        <td data-label="Acciones">
+                            <div class="row-actions">
+                                <button class="btn-mini" onclick="editItem(${item.id})">Editar</button>
+                                <button class="btn-mini primary" onclick="refreshOne(${item.id})">Actualizar</button>
+                                <button class="btn-mini danger" onclick="deleteItem(${item.id})">Eliminar</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadItems() {
+            const r = await fetch('/api/admin/amazon-jp-tracker?include_inactive=1');
+            const data = await r.json();
+            items = data.items || [];
+            renderItems();
+        }
+
+        function resetForm() {
+            editingId = null;
+            $('nameEs').value = '';
+            $('amazonUrl').value = '';
+            $('isActive').checked = true;
+            $('btnSave').textContent = 'Agregar';
+            $('btnCancelEdit').style.display = 'none';
+        }
+
+        window.editItem = function(id) {
+            const it = items.find(x => x.id === id);
+            if (!it) return;
+            editingId = id;
+            $('nameEs').value = it.display_name_es || '';
+            $('amazonUrl').value = it.amazon_url || '';
+            $('isActive').checked = !!it.is_active;
+            $('btnSave').textContent = 'Guardar cambios';
+            $('btnCancelEdit').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        async function saveItem() {
+            const payload = {
+                display_name_es: $('nameEs').value.trim(),
+                amazon_url: $('amazonUrl').value.trim(),
+                is_active: $('isActive').checked
+            };
+            if (!payload.display_name_es || !payload.amazon_url) {
+                alert('Nombre y URL son obligatorios.');
+                return;
+            }
+            const url = editingId ? `/api/admin/amazon-jp-tracker/${editingId}` : '/api/admin/amazon-jp-tracker';
+            const method = editingId ? 'PUT' : 'POST';
+            const r = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await r.json();
+            if (!r.ok) {
+                alert(data.error || 'Error al guardar');
+                return;
+            }
+            resetForm();
+            await loadItems();
+        }
+
+        window.deleteItem = async function(id) {
+            if (!confirm('¿Eliminar esta publicación del tracker?')) return;
+            const r = await fetch(`/api/admin/amazon-jp-tracker/${id}`, { method: 'DELETE' });
+            if (r.ok) loadItems();
+        };
+
+        async function refresh(itemIds = null) {
+            const payload = itemIds ? { item_ids: itemIds } : {};
+            const r = await fetch('/api/admin/amazon-jp-tracker/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await r.json();
+            if (!r.ok) {
+                alert(data.error || 'No se pudo iniciar la actualización');
+            }
+        }
+
+        window.refreshOne = async function(id) {
+            await refresh([id]);
+        };
+
+        async function pollStatus() {
+            const r = await fetch('/api/admin/amazon-jp-tracker/status');
+            const s = await r.json();
+            if (s.running) {
+                $('jobStatus').innerHTML = `Estado: <span class="ok">actualizando</span> · ${s.message || ''}`;
+            } else if (s.last_error) {
+                $('jobStatus').innerHTML = `Estado: <span class="err">error</span> · ${s.last_error}`;
+            } else {
+                $('jobStatus').textContent = `Estado: listo${s.last_run_at ? ' · última corrida: ' + s.last_run_at : ''}`;
+                if (s.last_run_at) loadItems();
+            }
+        }
+
+        $('btnSave').addEventListener('click', saveItem);
+        $('btnCancelEdit').addEventListener('click', resetForm);
+        $('btnRefreshAll').addEventListener('click', () => refresh(null));
+
+        Promise.all([loadConfigRates(), loadItems(), pollStatus()]).catch(() => {});
+        setInterval(pollStatus, 4000);
+    </script>
+</body>
+</html>

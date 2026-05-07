@@ -8,7 +8,7 @@ import logging
 from functools import wraps
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, send_file, make_response
 
-from scraper import NintendoScraper
+from scraper import NintendoScraper, AmazonJpPriceScraper
 from database import Database
 from uala_bis import UalaBis
 from email_sender import send_ps_credentials
@@ -37,6 +37,7 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 # Init Database & Scraper
 db = Database()
 scraper = NintendoScraper(db)
+amazon_jp_scraper = AmazonJpPriceScraper()
 
 DESCUENTO_TRANSFERENCIA = float(os.getenv('DESCUENTO_TRANSFERENCIA', '0.32'))
 
@@ -1140,6 +1141,201 @@ def api_admin_add_ps_slots(account_id):
     return jsonify({"error": "Cuenta no encontrada."}), 404
 
 
+
+
+# --- Admin: Amazon JP tracker ---
+amazon_jp_status = {
+    "running": False,
+    "action": None,
+    "message": "",
+    "updated_count": 0,
+    "error_count": 0,
+    "last_run_at": None,
+    "last_error": None,
+}
+amazon_jp_last_daily_run = 0.0
+amazon_jp_status_lock = threading.Lock()
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _convert_jpy_to_usdt_ars(price_jpy):
+    cfg = db.get_all_config()
+    usdt_jpy_rate = _safe_float(cfg.get('usdt_jpy_rate', '160'), 160.0)
+    usdt_ars_rate = _safe_float(cfg.get('usdt_rate', '1440'), 1440.0)
+    if usdt_jpy_rate <= 0 or usdt_ars_rate <= 0 or not price_jpy:
+        return None, None
+    price_usdt = round(float(price_jpy) / usdt_jpy_rate, 4)
+    price_ars = round(price_usdt * usdt_ars_rate, 2)
+    return price_usdt, price_ars
+
+
+def _refresh_amazon_jp_items(item_ids=None):
+    global amazon_jp_status, amazon_jp_last_daily_run
+    with amazon_jp_status_lock:
+        if amazon_jp_status.get('running'):
+            return False, "Ya hay una actualización en curso"
+        amazon_jp_status = {
+            "running": True,
+            "action": "refresh",
+            "message": "Iniciando actualización...",
+            "updated_count": 0,
+            "error_count": 0,
+            "last_run_at": amazon_jp_status.get('last_run_at'),
+            "last_error": None,
+        }
+
+    try:
+        if item_ids:
+            items = []
+            for item_id in item_ids:
+                item = db.get_amazon_jp_item(int(item_id))
+                if item:
+                    items.append(item)
+        else:
+            items = db.get_active_amazon_jp_items()
+
+        if not items:
+            with amazon_jp_status_lock:
+                amazon_jp_status.update({
+                    "running": False,
+                    "message": "No hay publicaciones activas para actualizar.",
+                    "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                })
+            return True, None
+
+        updated_count = 0
+        error_count = 0
+        total = len(items)
+
+        for idx, item in enumerate(items, 1):
+            with amazon_jp_status_lock:
+                amazon_jp_status["message"] = f"Actualizando {idx}/{total}: {item.get('display_name_es')}"
+            try:
+                scraped = amazon_jp_scraper.scrape_listing(item['amazon_url'])
+                price_usdt, price_ars = _convert_jpy_to_usdt_ars(scraped.get('price_jpy'))
+                snapshot = {
+                    **scraped,
+                    "price_usdt": price_usdt,
+                    "price_ars": price_ars,
+                    "last_status": "ok",
+                    "last_error": None,
+                }
+                db.update_amazon_jp_snapshot(item['id'], snapshot)
+                updated_count += 1
+            except Exception as e:
+                err_text = str(e)[:300]
+                db.update_amazon_jp_snapshot(item['id'], {
+                    "price_jpy": None,
+                    "list_price_jpy": None,
+                    "price_usdt": None,
+                    "price_ars": None,
+                    "is_on_sale": False,
+                    "last_status": "error",
+                    "last_error": err_text,
+                })
+                error_count += 1
+
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with amazon_jp_status_lock:
+            amazon_jp_status.update({
+                "running": False,
+                "message": f"Actualización completada. OK: {updated_count} · Errores: {error_count}",
+                "updated_count": updated_count,
+                "error_count": error_count,
+                "last_run_at": now_str,
+                "last_error": None if error_count == 0 else "Algunas publicaciones no pudieron actualizarse",
+            })
+        amazon_jp_last_daily_run = time.time()
+        return True, None
+    except Exception as e:
+        with amazon_jp_status_lock:
+            amazon_jp_status.update({
+                "running": False,
+                "message": "Error durante la actualización",
+                "last_error": str(e),
+                "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        return False, str(e)
+
+
+def _run_amazon_refresh_bg(item_ids=None):
+    t = threading.Thread(target=_refresh_amazon_jp_items, args=(item_ids,), daemon=True)
+    t.start()
+    return t
+
+
+def _amazon_jp_daily_scheduler_loop():
+    """Runs once per day and refreshes active Amazon JP listings."""
+    global amazon_jp_last_daily_run
+    while True:
+        try:
+            now_ts = time.time()
+            if now_ts - amazon_jp_last_daily_run >= 24 * 3600:
+                _refresh_amazon_jp_items()
+        except Exception as e:
+            logging.error(f"Amazon JP scheduler error: {e}")
+        time.sleep(60)
+
+
+amazon_jp_scheduler_thread = threading.Thread(target=_amazon_jp_daily_scheduler_loop, daemon=True)
+amazon_jp_scheduler_thread.start()
+
+
+@app.route('/api/admin/amazon-jp-tracker', methods=['GET', 'POST'])
+@admin_required
+def api_admin_amazon_jp_tracker():
+    if request.method == 'GET':
+        include_inactive = request.args.get('include_inactive', '1') in ('1', 'true', 'yes')
+        return jsonify({"items": db.get_amazon_jp_items(include_inactive=include_inactive)})
+
+    item_id, err = db.add_amazon_jp_item(request.json or {})
+    if err:
+        return jsonify({"error": err}), 400
+    return jsonify({"status": "ok", "id": item_id})
+
+
+@app.route('/api/admin/amazon-jp-tracker/<int:item_id>', methods=['PUT', 'DELETE'])
+@admin_required
+def api_admin_amazon_jp_tracker_item(item_id):
+    if request.method == 'DELETE':
+        ok = db.delete_amazon_jp_item(item_id)
+        if not ok:
+            return jsonify({"error": "No encontrado"}), 404
+        return jsonify({"status": "ok"})
+
+    ok, err = db.update_amazon_jp_item(item_id, request.json or {})
+    if err:
+        return jsonify({"error": err}), 400
+    if not ok:
+        return jsonify({"error": "No encontrado"}), 404
+    return jsonify({"status": "ok"})
+
+
+@app.route('/api/admin/amazon-jp-tracker/status', methods=['GET'])
+@admin_required
+def api_admin_amazon_jp_tracker_status():
+    with amazon_jp_status_lock:
+        return jsonify(amazon_jp_status.copy())
+
+
+@app.route('/api/admin/amazon-jp-tracker/refresh', methods=['POST'])
+@admin_required
+def api_admin_amazon_jp_tracker_refresh():
+    payload = request.json or {}
+    item_ids = payload.get('item_ids')
+    if item_ids is not None and not isinstance(item_ids, list):
+        return jsonify({"error": "item_ids debe ser un array"}), 400
+    if item_ids:
+        _run_amazon_refresh_bg(item_ids=item_ids)
+        return jsonify({"status": "started", "scope": "selected"})
+    _run_amazon_refresh_bg(item_ids=None)
+    return jsonify({"status": "started", "scope": "all_active"})
 
 
 # --- Static Fallback ---

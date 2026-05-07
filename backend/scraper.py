@@ -6,6 +6,8 @@ import json
 import base64
 import threading
 from datetime import datetime
+import requests
+from html import unescape
 from playwright.async_api import async_playwright
 
 # --- CONFIGURATION ---
@@ -486,3 +488,120 @@ class NintendoScraper:
         if self.playwright:
             await self.playwright.stop()
         self.is_running = False
+
+
+class AmazonJpPriceScraper:
+    """Best-effort Amazon Japan listing scraper (price + image + title)."""
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        })
+
+    @staticmethod
+    def extract_asin(url):
+        for pat in (r"/dp/([A-Z0-9]{10})", r"/gp/product/([A-Z0-9]{10})", r"asin=([A-Z0-9]{10})"):
+            m = re.search(pat, url or "", re.IGNORECASE)
+            if m:
+                return m.group(1).upper()
+        return None
+
+    @staticmethod
+    def _normalize_price(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        txt = str(value).replace(",", "").replace("¥", "").replace("￥", "").strip()
+        m = re.search(r"(\d+(?:\.\d+)?)", txt)
+        return float(m.group(1)) if m else None
+
+    @staticmethod
+    def _pick_image_url(html):
+        patterns = [
+            r'<meta\s+property="og:image"\s+content="([^"]+)"',
+            r'"landingImageUrl"\s*:\s*"([^"]+)"',
+            r'"hiRes"\s*:\s*"([^"]+)"',
+            r'"large"\s*:\s*"([^"]+)"'
+        ]
+        for pat in patterns:
+            m = re.search(pat, html, re.IGNORECASE)
+            if m and m.group(1):
+                return unescape(m.group(1)).replace("\\/", "/")
+        return None
+
+    @staticmethod
+    def _pick_title(html):
+        m = re.search(r"<title>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+        if not m:
+            return None
+        return re.sub(r"\s+", " ", unescape(m.group(1))).strip()
+
+    def _pick_prices(self, html):
+        offer_candidates = []
+        list_candidates = []
+
+        offer_patterns = [
+            r'"priceToPay"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'"apex_desktop"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'id="priceblock_dealprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
+            r'id="priceblock_ourprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
+            r'class="a-price-whole">\s*([0-9,]+)\s*<',
+        ]
+        list_patterns = [
+            r'"listPrice"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'id="priceblock_listprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
+            r'class="a-text-price"[^>]*>\s*<span[^>]*>[¥￥]?\s*([0-9,]+)',
+        ]
+
+        for pat in offer_patterns:
+            for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                val = self._normalize_price(match)
+                if val and val > 0:
+                    offer_candidates.append(val)
+
+        for pat in list_patterns:
+            for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                val = self._normalize_price(match)
+                if val and val > 0:
+                    list_candidates.append(val)
+
+        offer_price = min(offer_candidates) if offer_candidates else None
+        list_price = max(list_candidates) if list_candidates else None
+        if offer_price and list_price and list_price < offer_price:
+            list_price = None
+        return offer_price, list_price
+
+    def scrape_listing(self, url, timeout=20):
+        asin = self.extract_asin(url)
+        if not asin:
+            raise ValueError("No se pudo detectar ASIN en la URL")
+
+        resp = self.session.get(url, timeout=timeout, allow_redirects=True)
+        if resp.status_code >= 400:
+            raise RuntimeError(f"Amazon devolvió HTTP {resp.status_code}")
+
+        html = resp.text or ""
+        offer_price, list_price = self._pick_prices(html)
+        if offer_price is None and list_price is None:
+            raise RuntimeError("No se pudo extraer precio de la publicación")
+
+        price_jpy = offer_price or list_price
+        is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
+
+        return {
+            "asin": asin,
+            "title_source": self._pick_title(html),
+            "image_url": self._pick_image_url(html),
+            "price_jpy": price_jpy,
+            "list_price_jpy": list_price,
+            "is_on_sale": is_on_sale,
+        }
