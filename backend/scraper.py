@@ -796,11 +796,11 @@ class AmazonJpPriceScraper:
                 );
                 const text = (box ? box.innerText : document.body.innerText || '').slice(0, 12000);
                 const yen = text.match(/[¥￥]\\s*([\\d,]{2,})/);
-                const usdA = text.match(/USD\\s*([0-9]+(?:\\.[0-9]+)?)/i);
-                const usdB = text.match(/\\$\\s*([0-9]+(?:\\.[0-9]+)?)/);
-                const listA = text.match(/(?:参考価格|通常価格|List\\s*Price|Price)\\s*[¥￥]?\\s*([\\d,]{2,})/i);
-                const listUsd = text.match(/(?:List\\s*Price|Price)\\s*[:：]?\\s*(?:USD|\\$)\\s*([0-9]+(?:\\.[0-9]+)?)/i);
-                const discountPct = text.match(/-\\s*([0-9]{1,2})%/);
+                const usdA = text.match(/USD\\s*([0-9,]+(?:\\.[0-9]+)?)/i);
+                const usdB = text.match(/\\$\\s*([0-9,]+(?:\\.[0-9]+)?)/);
+                const listA = text.match(/(?:参考価格|通常価格|List\\s*Price|Price)\\s*[:：]?\\s*[¥￥]?\\s*([\\d,]{2,})/i);
+                const listUsd = text.match(/(?:List\\s*Price|Price)\\s*[:：]?\\s*(?:USD|\\$)\\s*([0-9,]+(?:\\.[0-9]+)?)/i);
+                const discountPct = text.match(/-\\s*([0-9]{1,2})\\s*%/);
                 return {
                     yen: yen ? yen[1] : null,
                     usd: usdA ? usdA[1] : (usdB ? usdB[1] : null),
@@ -818,7 +818,7 @@ class AmazonJpPriceScraper:
                 jpy = None
             if usd and not (1 <= usd <= 300):
                 usd = None
-            if list_jpy and list_jpy < 300:
+            if list_jpy and (list_jpy < 300 or list_jpy > 50000):
                 list_jpy = None
             if list_usd and not (1 <= list_usd <= 400):
                 list_usd = None
@@ -871,8 +871,12 @@ class AmazonJpPriceScraper:
                     text_jpy, text_usd, text_list_jpy, text_list_usd, text_discount_pct = self._read_buybox_text_prices_js(page)
                     if dom_offer is None and text_jpy:
                         dom_offer = text_jpy
-                    if dom_list is None and text_list_jpy:
+                    
+                    # Override dom_list if it's an outlier (like 179800)
+                    if (dom_list is None or dom_list > 50000) and text_list_jpy:
                         dom_list = text_list_jpy
+                    if dom_list and dom_list > 50000:
+                        dom_list = None
 
                     logging.info(
                         "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_list_jpy=%s text_usd=%s text_list_usd=%s text_discount_pct=%s",
