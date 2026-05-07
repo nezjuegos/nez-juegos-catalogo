@@ -622,16 +622,18 @@ class AmazonJpPriceScraper:
         )
 
     def _read_buybox_jpy_playwright(self, page):
-        """Prefer visible buy-box price over raw HTML regex (fewer bogus matches)."""
+        """Read visible PDP buy-box price first (strict), then fallback selectors."""
         offer = list_price = None
 
+        # Strict priority: the exact displayed price block on PDP.
         pay_selectors = [
-            "#apex_desktop .reinventPricePriceToPayMargin .a-offscreen",
-            "#buybox .reinventPricePriceToPayMargin .a-offscreen",
-            ".reinventPricePriceToPayMargin .a-offscreen",
-            "#twister-plus-price-data-price .a-offscreen",
             "#corePriceDisplay_desktop_feature_div .reinventPricePriceToPayMargin .a-offscreen",
             "#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen",
+            "#apex_desktop #corePriceDisplay_desktop_feature_div .a-offscreen",
+            "#apex_desktop .reinventPricePriceToPayMargin .a-offscreen",
+            "#buybox .reinventPricePriceToPayMargin .a-offscreen",
+            "#twister-plus-price-data-price .a-offscreen",
+            ".reinventPricePriceToPayMargin .a-offscreen",
         ]
         list_selectors = [
             ".basisPrice .a-offscreen",
@@ -787,10 +789,12 @@ class AmazonJpPriceScraper:
                     html = resp.text
                     break
 
+            pw_html, dom_offer, dom_list = self._fetch_with_playwright(try_urls)
+            if self._html_usable(pw_html):
+                html = pw_html
+
             if not self._html_usable(html):
-                html, dom_offer, dom_list = self._fetch_with_playwright(try_urls)
-            else:
-                dom_offer = dom_list = None
+                html = pw_html
             if not self._html_usable(html):
                 raise RuntimeError(
                     "Amazon no devolvió la página del producto (posible CAPTCHA o bloqueo). "
@@ -798,13 +802,11 @@ class AmazonJpPriceScraper:
                 )
 
             offer_price, list_price = self._pick_prices(html)
+            # Force visible buy-box value when available (user-facing price).
             if dom_offer and dom_offer >= 300:
-                reg_list = list_price
                 offer_price = dom_offer
                 if dom_list and dom_list > dom_offer:
                     list_price = dom_list
-                elif reg_list and reg_list > offer_price:
-                    list_price = reg_list
 
             if offer_price is None and list_price is None:
                 raise RuntimeError("No se pudo extraer precio de la publicación")
