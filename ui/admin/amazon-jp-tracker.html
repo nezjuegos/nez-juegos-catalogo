@@ -73,6 +73,7 @@
         th { color: var(--text-muted); font-size: .75rem; text-transform: uppercase; }
         .thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); background:#0b0b0f; }
         .price-main { font-weight: 800; color: var(--ok); }
+        .price-usdt { font-weight: 800; color: #facc15; }
         .price-list { color: var(--text-muted); text-decoration: line-through; font-size: .82rem; display:block; margin-top:.15rem; }
         .chip { display:inline-block; padding:.2rem .45rem; border-radius:999px; font-size:.72rem; font-weight:700; }
         .chip.ok { background: rgba(34,197,94,.15); color: var(--ok); }
@@ -208,7 +209,7 @@
         }
         function fmtUSDT(v) {
             if (v === null || v === undefined) return '—';
-            return Number(v).toFixed(4) + ' USDT';
+            return Number(v).toFixed(2) + ' USDT';
         }
         function fmtARS(v) {
             if (v === null || v === undefined) return '—';
@@ -274,7 +275,7 @@
                             <a class="muted" href="${item.amazon_url}" target="_blank" rel="noopener">Abrir publicación</a>
                         </td>
                         <td data-label="JPY">${jpyHtml}</td>
-                        <td data-label="USDT">${fmtUSDT(item.price_usdt)}</td>
+                        <td data-label="USDT"><span class="price-usdt">${fmtUSDT(item.price_usdt)}</span></td>
                         <td data-label="ARS">${fmtARS(item.price_ars)}</td>
                         <td data-label="Estado">
                             <span class="chip ${statusClass}">${statusText}</span>
