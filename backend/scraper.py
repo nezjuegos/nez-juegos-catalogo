@@ -865,10 +865,9 @@ class AmazonJpPriceScraper:
 
                     last_dom_offer, last_dom_list = dom_offer, dom_list
                     if self._html_usable(last_html):
-                        # Pass USD value inside error channel when no JPY was found.
                         usd_hint = None
-                        if text_usd and not dom_offer:
-                            usd_hint = f"USD_BUYBOX:{text_usd}|{text_list_usd or ''}|{text_discount_pct or ''}"
+                        if dom_usd and not dom_offer:
+                            usd_hint = f"USD_BUYBOX:{dom_usd}||"
                         return last_html, dom_offer, dom_list, usd_hint
                 except Exception as e:
                     last_error = f"{type(e).__name__}: {e}"
@@ -879,7 +878,7 @@ class AmazonJpPriceScraper:
             page.close()
 
     def _pick_prices(self, html):
-        MIN_VALID_JPY = 300
+        MIN_VALID_JPY = 1000  # Nintendo digital games are never below ¥1000
         MAX_VALID_JPY = 50000
         offer_candidates = []
         list_candidates = []
