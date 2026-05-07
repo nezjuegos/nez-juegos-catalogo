@@ -689,86 +689,50 @@ class AmazonJpPriceScraper:
         return offer, list_price
 
     def _read_prices_js(self, page):
-        """Use JS evaluation in browser context — ultra-detailed debugging."""
+        """Primary price extraction: aggressive full buybox scan for ¥ and $."""
         try:
             result = page.evaluate("""() => {
-                const norm = t => {
-                    if (!t) return '';
-                    return t.replace(/[¥￥$USD,\\s\\u00a5\\u20b9]/g, '').trim();
-                };
-                const numVal = t => {
-                    const n = norm(t);
-                    const m = n.match(/^(\\d+)(\\.\\d+)?$/);
-                    return m ? parseFloat(m[0]) : null;
-                };
+                const main = document.querySelector('#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox') || document.body;
+                const text = main.innerText || main.textContent || '';
 
-                // ULTRA-DETAILED: Dump ALL text from price containers
-                const debugDump = () => {
-                    const containers = [
-                        '#corePrice_feature_div',
-                        '#corePriceDisplay_desktop_feature_div',
-                        '#apex_desktop',
-                        '#buybox',
-                        '.reinventPricePriceToPayMargin'
-                    ];
-                    let dump = '';
-                    for (const sel of containers) {
-                        const el = document.querySelector(sel);
-                        if (el) {
-                            const text = el.innerText || el.textContent || '';
-                            dump += `[${sel}]: ${text.slice(0, 300)}\\n`;
-                        }
-                    }
-                    return dump;
-                };
+                // Aggressive yen scan
+                const yenRe = /[¥￥]\\s*(\\d{1,3}(?:,\\d{3})*|\\d{3,})/g;
+                const yenMatches = [];
+                let m;
+                while ((m = yenRe.exec(text)) !== null) {
+                    const v = parseInt(m[1].replace(/,/g, ''), 10);
+                    if (v >= 300 && v <= 500000) yenMatches.push(v);
+                }
 
-                // Direct scan: search for ANY ¥ followed by numbers in the entire buybox area
-                const directScan = () => {
-                    const mainArea = document.querySelector(
-                        '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop'
-                    ) || document.body;
-                    const fullText = mainArea.textContent || '';
-                    const matches = [];
-                    // Look for ¥XXXX or ¥X,XXX patterns
-                    const re = /[¥￥]\\s*(\\d{1,3}(?:,\\d{3})*|\\d{3,})/g;
-                    let m;
-                    while ((m = re.exec(fullText)) !== null) {
-                        const raw = m[1].replace(/,/g, '');
-                        const v = parseInt(raw, 10);
-                        if (v >= 300 && v <= 500000) {
-                            matches.push(v);
-                        }
-                    }
-                    return matches;
-                };
-
-                const firstYenMatch = directScan();
-                const offer = firstYenMatch.length > 0 ? firstYenMatch[0] : null;
-                const list = firstYenMatch.length > 1 ? firstYenMatch[1] : null;
+                // USD fallback scan
+                const usdRe = /(?:USD\\s*|\$\\s*)(\\d+(?:\\.\\d+)?)/i;
+                const usdMatch = text.match(usdRe);
 
                 return {
-                    offer: offer,
-                    list: list,
-                    debug: debugDump(),
-                    allYenMatches: firstYenMatch
+                    offer: yenMatches[0] || null,
+                    list: yenMatches[1] || null,
+                    usd: usdMatch ? parseFloat(usdMatch[1]) : null,
+                    rawTextSnippet: text.slice(0, 400)
                 };
             }""")
             o = result.get("offer") if result else None
             l = result.get("list") if result else None
-            debug_msg = result.get("debug", "") if result else ""
-            all_matches = result.get("allYenMatches", []) if result else []
-            
-            # Log the debug dump for inspection
-            if debug_msg or all_matches:
-                logging.info("AmazonJP JS debug: matches=%s dump=%s", all_matches, debug_msg[:500])
-            
+            usd = result.get("usd") if result else None
+            snippet = result.get("rawTextSnippet", "") if result else ""
+
             if o and l and l <= o:
                 l = None
+
+            # Clear error category for logging
+            if not o and not usd:
+                logging.warning("AmazonJP price extraction: NO_PRICE_FOUND | snippet=%s", snippet[:200])
+
             return (float(o) if o and o >= 300 else None,
-                    float(l) if l and l >= 300 else None)
+                    float(l) if l and l >= 300 else None,
+                    float(usd) if usd and 1 <= usd <= 300 else None)
         except Exception as e:
             logging.warning("JS price eval error: %s", e)
-            return None, None
+            return None, None, None
 
     def _read_buybox_text_prices_js(self, page):
         """
@@ -850,13 +814,10 @@ class AmazonJpPriceScraper:
                     logging.info("AmazonJP PW url=%s title=%r html_len=%d markers=%s",
                                  url[:80], title, len(last_html), markers)
 
-                    # Try JS evaluation first (most reliable), then CSS selectors
-                    dom_offer, dom_list = self._read_prices_js(page)
+                    # Primary path: single aggressive JS extractor (simplified)
+                    dom_offer, dom_list, dom_usd = self._read_prices_js(page)
                     if dom_offer is None:
                         dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
-                    text_jpy, text_usd, text_list_jpy, text_list_usd, text_discount_pct = self._read_buybox_text_prices_js(page)
-                    if dom_offer is None and text_jpy:
-                        dom_offer = text_jpy
                     
                     # Override dom_list if it's an outlier (like 179800)
                     if (dom_list is None or dom_list > 50000) and text_list_jpy:
