@@ -31,8 +31,9 @@ aptPkgs = [
 ]
 
 [phases.install]
-# Explicit commands (no "..." placeholder) to ensure reliable Python env + Playwright install
+# "..." runs Nixpacks default Python setup (creates venv + installs pip + requirements.txt)
 cmds = [
-  "python -m pip install -r requirements.txt",
+  "...",
+  "python -m pip install --upgrade pip",
   "python -m playwright install chromium"
 ]
