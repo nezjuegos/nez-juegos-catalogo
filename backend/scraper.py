@@ -528,6 +528,7 @@ class AmazonJpPriceScraper:
     def _pick_image_url(html):
         patterns = [
             r'<meta\s+property="og:image"\s+content="([^"]+)"',
+            r"<meta\s+property='og:image'\s+content='([^']+)'",
             r'"landingImageUrl"\s*:\s*"([^"]+)"',
             r'"hiRes"\s*:\s*"([^"]+)"',
             r'"large"\s*:\s*"([^"]+)"'
@@ -552,8 +553,10 @@ class AmazonJpPriceScraper:
         offer_patterns = [
             r'"priceToPay"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
             r'"apex_desktop"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'"displayPrice"\s*:\s*"[¥￥]\s*([0-9,]+)"',
             r'id="priceblock_dealprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'id="priceblock_ourprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
+            r'class="a-offscreen">\s*[¥￥]\s*([0-9,]+)\s*<',
             r'class="a-price-whole">\s*([0-9,]+)\s*<',
         ]
         list_patterns = [
@@ -585,11 +588,22 @@ class AmazonJpPriceScraper:
         if not asin:
             raise ValueError("No se pudo detectar ASIN en la URL")
 
-        resp = self.session.get(url, timeout=timeout, allow_redirects=True)
-        if resp.status_code >= 400:
-            raise RuntimeError(f"Amazon devolvió HTTP {resp.status_code}")
+        try_urls = [
+            url,
+            f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
+            f"https://m.amazon.co.jp/dp/{asin}",
+        ]
+        html = ""
+        last_status = None
+        for candidate in try_urls:
+            resp = self.session.get(candidate, timeout=timeout, allow_redirects=True)
+            last_status = resp.status_code
+            if resp.status_code < 400 and resp.text:
+                html = resp.text
+                break
+        if not html:
+            raise RuntimeError(f"Amazon devolvió HTTP {last_status}")
 
-        html = resp.text or ""
         offer_price, list_price = self._pick_prices(html)
         if offer_price is None and list_price is None:
             raise RuntimeError("No se pudo extraer precio de la publicación")

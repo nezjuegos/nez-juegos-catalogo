@@ -1153,7 +1153,7 @@ amazon_jp_status = {
     "last_run_at": None,
     "last_error": None,
 }
-amazon_jp_last_daily_run = 0.0
+amazon_jp_last_daily_run = time.time()
 amazon_jp_status_lock = threading.Lock()
 
 
@@ -1265,9 +1265,12 @@ def _refresh_amazon_jp_items(item_ids=None):
 
 
 def _run_amazon_refresh_bg(item_ids=None):
+    with amazon_jp_status_lock:
+        if amazon_jp_status.get("running"):
+            return False
     t = threading.Thread(target=_refresh_amazon_jp_items, args=(item_ids,), daemon=True)
     t.start()
-    return t
+    return True
 
 
 def _amazon_jp_daily_scheduler_loop():
@@ -1277,7 +1280,7 @@ def _amazon_jp_daily_scheduler_loop():
         try:
             now_ts = time.time()
             if now_ts - amazon_jp_last_daily_run >= 24 * 3600:
-                _refresh_amazon_jp_items()
+                _run_amazon_refresh_bg()
         except Exception as e:
             logging.error(f"Amazon JP scheduler error: {e}")
         time.sleep(60)
@@ -1297,7 +1300,12 @@ def api_admin_amazon_jp_tracker():
     item_id, err = db.add_amazon_jp_item(request.json or {})
     if err:
         return jsonify({"error": err}), 400
-    return jsonify({"status": "ok", "id": item_id})
+    refresh_started = _run_amazon_refresh_bg(item_ids=[item_id])
+    return jsonify({
+        "status": "ok",
+        "id": item_id,
+        "refresh_started": refresh_started
+    })
 
 
 @app.route('/api/admin/amazon-jp-tracker/<int:item_id>', methods=['PUT', 'DELETE'])
@@ -1314,7 +1322,11 @@ def api_admin_amazon_jp_tracker_item(item_id):
         return jsonify({"error": err}), 400
     if not ok:
         return jsonify({"error": "No encontrado"}), 404
-    return jsonify({"status": "ok"})
+    item = db.get_amazon_jp_item(item_id)
+    refresh_started = False
+    if item and item.get("is_active"):
+        refresh_started = _run_amazon_refresh_bg(item_ids=[item_id])
+    return jsonify({"status": "ok", "refresh_started": refresh_started})
 
 
 @app.route('/api/admin/amazon-jp-tracker/status', methods=['GET'])
@@ -1331,6 +1343,9 @@ def api_admin_amazon_jp_tracker_refresh():
     item_ids = payload.get('item_ids')
     if item_ids is not None and not isinstance(item_ids, list):
         return jsonify({"error": "item_ids debe ser un array"}), 400
+    with amazon_jp_status_lock:
+        if amazon_jp_status.get("running"):
+            return jsonify({"error": "Ya hay una actualización en curso"}), 409
     if item_ids:
         _run_amazon_refresh_bg(item_ids=item_ids)
         return jsonify({"status": "started", "scope": "selected"})

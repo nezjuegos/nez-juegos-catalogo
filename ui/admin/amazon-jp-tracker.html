@@ -252,6 +252,7 @@
             }
             resetForm();
             await loadItems();
+            await pollStatus();
         }
 
         window.deleteItem = async function(id) {
