@@ -689,30 +689,50 @@ class AmazonJpPriceScraper:
         return offer, list_price
 
     def _read_prices_js(self, page):
-        """Primary price extraction: aggressive full buybox scan for ¥ and $."""
+        """Primary price extraction: scan buybox containers + full page for ¥ / a-price-whole."""
         try:
             result = page.evaluate("""() => {
-                const main = document.querySelector('#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox') || document.body;
-                const text = main.innerText || main.textContent || '';
+                // 1. Try main buybox containers first
+                const containers = document.querySelectorAll(
+                    '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, .reinventPricePriceToPayMargin'
+                );
+                let containerText = '';
+                for (const c of containers) {
+                    containerText += (c.innerText || c.textContent || '') + ' ';
+                }
 
-                // Aggressive yen scan
+                // 2. Also scan all .a-price-whole elements (very common on Amazon)
+                const wholePrices = [];
+                for (const el of document.querySelectorAll('.a-price-whole')) {
+                    const parent = el.closest('.a-price');
+                    if (parent && parent.classList.contains('a-text-price')) continue; // skip strike-through
+                    const val = parseInt((el.textContent || '').replace(/[^0-9]/g, ''), 10);
+                    if (val >= 300) wholePrices.push(val);
+                }
+
+                // 3. Full document fallback scan for any ¥
+                const fullText = document.body.innerText || document.body.textContent || '';
                 const yenRe = /[¥￥]\\s*(\\d{1,3}(?:,\\d{3})*|\\d{3,})/g;
                 const yenMatches = [];
                 let m;
-                while ((m = yenRe.exec(text)) !== null) {
+                while ((m = yenRe.exec(fullText)) !== null) {
                     const v = parseInt(m[1].replace(/,/g, ''), 10);
                     if (v >= 300 && v <= 500000) yenMatches.push(v);
                 }
 
-                // USD fallback scan
+                // Merge and dedupe, prefer wholePrices + container matches
+                const all = [...wholePrices, ...yenMatches];
+                const uniqueSorted = [...new Set(all)].sort((a,b) => a - b);
+
+                // USD fallback
                 const usdRe = /(?:USD\\s*|\$\\s*)(\\d+(?:\\.\\d+)?)/i;
-                const usdMatch = text.match(usdRe);
+                const usdMatch = fullText.match(usdRe);
 
                 return {
-                    offer: yenMatches[0] || null,
-                    list: yenMatches[1] || null,
+                    offer: uniqueSorted[0] || null,
+                    list: uniqueSorted[1] || null,
                     usd: usdMatch ? parseFloat(usdMatch[1]) : null,
-                    rawTextSnippet: text.slice(0, 400)
+                    rawTextSnippet: containerText.slice(0, 300) || fullText.slice(0, 300)
                 };
             }""")
             o = result.get("offer") if result else None
@@ -723,7 +743,6 @@ class AmazonJpPriceScraper:
             if o and l and l <= o:
                 l = None
 
-            # Clear error category for logging
             if not o and not usd:
                 logging.warning("AmazonJP price extraction: NO_PRICE_FOUND | snippet=%s", snippet[:200])
 
@@ -927,8 +946,25 @@ class AmazonJpPriceScraper:
             logging.info("AmazonJP _pick_prices: hard=%s offer=%s list=%s", 
                         hard_offer_candidates, offer_candidates, list_candidates)
 
-        # Prefer structured prices first; fallback to lowest visible valid price
-        offer_price = min(hard_offer_candidates) if hard_offer_candidates else (min(offer_candidates) if offer_candidates else None)
+        # --- SMART SELECTION (not min!) ---
+        # Prefer structured/hard prices. If multiple, pick the largest realistic game price (< 10000 JPY).
+        # This avoids picking cheap "otros vendedores" or accessory prices.
+        def pick_best_offer(cands):
+            if not cands:
+                return None
+            # Prefer prices in the typical Nintendo digital game range
+            game_prices = [v for v in cands if 1000 <= v <= 10000]
+            if game_prices:
+                return max(game_prices)  # largest plausible game price
+            return max(cands)  # fallback to largest if all are outliers
+
+        if hard_offer_candidates:
+            offer_price = pick_best_offer(hard_offer_candidates)
+        elif offer_candidates:
+            offer_price = pick_best_offer(offer_candidates)
+        else:
+            offer_price = None
+
         list_price = None
         if list_candidates:
             uniq = sorted(set(list_candidates))
@@ -937,8 +973,7 @@ class AmazonJpPriceScraper:
                 higher = [v for v in uniq if v > offer_price and v <= offer_price * 2.2]
                 list_price = higher[0] if higher else None
             else:
-                # If current price is unknown, avoid giant outliers by taking the smallest candidate.
-                list_price = uniq[0]
+                list_price = uniq[-1] if uniq else None  # largest list price if no offer
         return offer_price, list_price
 
     def _pick_yen_loose(self, html):
