@@ -797,21 +797,28 @@ class AmazonJpPriceScraper:
                 const yen = text.match(/[¥￥]\\s*([\\d,]{2,})/);
                 const usdA = text.match(/USD\\s*([0-9]+(?:\\.[0-9]+)?)/i);
                 const usdB = text.match(/\\$\\s*([0-9]+(?:\\.[0-9]+)?)/);
+                const listA = text.match(/(?:参考価格|通常価格|List\\s*Price|Price)\\s*[¥￥]?\\s*([\\d,]{2,})/i);
                 return {
                     yen: yen ? yen[1] : null,
-                    usd: usdA ? usdA[1] : (usdB ? usdB[1] : null)
+                    usd: usdA ? usdA[1] : (usdB ? usdB[1] : null),
+                    listYen: listA ? listA[1] : null
                 };
             }""")
             jpy = self._normalize_price(result.get("yen")) if result else None
             usd = self._normalize_price(result.get("usd")) if result else None
+            list_jpy = self._normalize_price(result.get("listYen")) if result else None
             if jpy and jpy < 300:
                 jpy = None
             if usd and not (1 <= usd <= 300):
                 usd = None
-            return jpy, usd
+            if list_jpy and list_jpy < 300:
+                list_jpy = None
+            if jpy and list_jpy and list_jpy <= jpy:
+                list_jpy = None
+            return jpy, usd, list_jpy
         except Exception as e:
             logging.warning("Buybox text price eval error: %s", e)
-            return None, None
+            return None, None, None
 
     def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=3000):
         last_error = None
@@ -850,13 +857,15 @@ class AmazonJpPriceScraper:
                     dom_offer, dom_list = self._read_prices_js(page)
                     if dom_offer is None:
                         dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
-                    text_jpy, text_usd = self._read_buybox_text_prices_js(page)
+                    text_jpy, text_usd, text_list_jpy = self._read_buybox_text_prices_js(page)
                     if dom_offer is None and text_jpy:
                         dom_offer = text_jpy
+                    if dom_list is None and text_list_jpy:
+                        dom_list = text_list_jpy
 
                     logging.info(
-                        "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_usd=%s",
-                        dom_offer, dom_list, text_jpy, text_usd
+                        "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_list_jpy=%s text_usd=%s",
+                        dom_offer, dom_list, text_jpy, text_list_jpy, text_usd
                     )
 
                     last_dom_offer, last_dom_list = dom_offer, dom_list
@@ -899,6 +908,8 @@ class AmazonJpPriceScraper:
             r'\\"listPrice\\"\s*:\s*\{[^}]*\\"priceAmount\\"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
             r'id="priceblock_listprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'class="a-text-price"[^>]*>\s*<span[^>]*>[¥￥]?\s*([0-9,]+)',
+            r'参考価格[^0-9¥￥]{0,20}[¥￥]?\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
+            r'通常価格[^0-9¥￥]{0,20}[¥￥]?\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
         ]
         jpy_meta_patterns = [
             r'"currency"\s*:\s*"JPY"\s*,\s*"value"\s*:\s*"?(?P<val>[0-9]+(?:\.[0-9]+)?)',
