@@ -37,6 +37,10 @@
         .status { font-size:.85rem; color: var(--text-muted); margin-top:.5rem; }
         .status .ok { color: var(--ok); font-weight: 700; }
         .status .err { color: var(--error); font-weight: 700; }
+        .prog-wrap { margin-top:.55rem; display:none; }
+        .prog-track { width:100%; height:9px; border-radius:999px; background:#11131a; border:1px solid var(--border); overflow:hidden; }
+        .prog-bar { width:0%; height:100%; background:linear-gradient(90deg, #8b5cf6, #d946ef); transition:width .25s ease; }
+        .prog-meta { margin-top:.28rem; font-size:.75rem; color:var(--text-muted); }
         table { width:100%; border-collapse: collapse; }
         th, td { border-bottom: 1px solid var(--border); padding: .65rem .45rem; text-align: left; vertical-align: middle; font-size: .88rem; }
         th { color: var(--text-muted); font-size: .75rem; text-transform: uppercase; }
@@ -88,6 +92,10 @@
                 <span>1 USDT = <strong>— ARS</strong></span>
             </div>
             <div class="status" id="jobStatus">Estado: listo</div>
+            <div class="prog-wrap" id="jobProgWrap">
+                <div class="prog-track"><div class="prog-bar" id="jobProgBar"></div></div>
+                <div class="prog-meta" id="jobProgMeta">0 / 0</div>
+            </div>
         </div>
 
         <div class="card">
@@ -281,12 +289,23 @@
         async function pollStatus() {
             const r = await fetch('/api/admin/amazon-jp-tracker/status');
             const s = await r.json();
+            const wrap = $('jobProgWrap');
+            const bar = $('jobProgBar');
+            const meta = $('jobProgMeta');
             if (s.running) {
                 $('jobStatus').innerHTML = `Estado: <span class="ok">actualizando</span> · ${s.message || ''}`;
+                const total = Number(s.total || 0);
+                const current = Number(s.current || 0);
+                const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 5;
+                wrap.style.display = 'block';
+                bar.style.width = `${pct}%`;
+                meta.textContent = total > 0 ? `${current} / ${total}` : 'Iniciando...';
             } else if (s.last_error) {
                 $('jobStatus').innerHTML = `Estado: <span class="err">error</span> · ${s.last_error}`;
+                wrap.style.display = 'none';
             } else {
                 $('jobStatus').textContent = `Estado: listo${s.last_run_at ? ' · última corrida: ' + s.last_run_at : ''}`;
+                wrap.style.display = 'none';
                 if (s.last_run_at) loadItems();
             }
         }

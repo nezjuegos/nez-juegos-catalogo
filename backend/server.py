@@ -1150,6 +1150,8 @@ amazon_jp_status = {
     "message": "",
     "updated_count": 0,
     "error_count": 0,
+    "current": 0,
+    "total": 0,
     "last_run_at": None,
     "started_at": None,
     "last_error": None,
@@ -1204,6 +1206,8 @@ def _refresh_amazon_jp_items(item_ids=None):
                 amazon_jp_status.update({
                     "running": False,
                     "message": "No hay publicaciones activas para actualizar.",
+                    "current": 0,
+                    "total": 0,
                     "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     "started_at": None,
                 })
@@ -1212,10 +1216,14 @@ def _refresh_amazon_jp_items(item_ids=None):
         updated_count = 0
         error_count = 0
         total = len(items)
+        with amazon_jp_status_lock:
+            amazon_jp_status["current"] = 0
+            amazon_jp_status["total"] = total
 
         for idx, item in enumerate(items, 1):
             with amazon_jp_status_lock:
                 amazon_jp_status["message"] = f"Actualizando {idx}/{total}: {item.get('display_name_es')}"
+                amazon_jp_status["current"] = idx
             try:
                 scraped = amazon_jp_scraper.scrape_listing(item['amazon_url'])
                 price_usdt, price_ars = _convert_jpy_to_usdt_ars(scraped.get('price_jpy'))
@@ -1248,6 +1256,8 @@ def _refresh_amazon_jp_items(item_ids=None):
                 "message": f"Actualización completada. OK: {updated_count} · Errores: {error_count}",
                 "updated_count": updated_count,
                 "error_count": error_count,
+                "current": total,
+                "total": total,
                 "last_run_at": now_str,
                 "started_at": None,
                 "last_error": None if error_count == 0 else "Algunas publicaciones no pudieron actualizarse",
@@ -1260,6 +1270,8 @@ def _refresh_amazon_jp_items(item_ids=None):
                 "running": False,
                 "message": "Error durante la actualización",
                 "last_error": str(e),
+                "current": 0,
+                "total": 0,
                 "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "started_at": None,
             })
@@ -1275,6 +1287,8 @@ def _run_amazon_refresh_bg(item_ids=None):
                 "running": False,
                 "message": "Se liberó un estado de actualización colgado.",
                 "last_error": "Timeout de ejecución anterior",
+                "current": 0,
+                "total": 0,
                 "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "started_at": None,
             })
@@ -1284,6 +1298,8 @@ def _run_amazon_refresh_bg(item_ids=None):
             "message": "Iniciando actualización...",
             "updated_count": 0,
             "error_count": 0,
+            "current": 0,
+            "total": 0,
             "last_error": None,
             "started_at": time.time(),
         })

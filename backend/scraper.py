@@ -569,8 +569,15 @@ class AmazonJpPriceScraper:
         ]
         list_patterns = [
             r'"listPrice"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+            r'\\"listPrice\\"\s*:\s*\{[^}]*\\"priceAmount\\"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
             r'id="priceblock_listprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'class="a-text-price"[^>]*>\s*<span[^>]*>[¥￥]?\s*([0-9,]+)',
+        ]
+        jpy_meta_patterns = [
+            r'"currency"\s*:\s*"JPY"\s*,\s*"value"\s*:\s*"?(?P<val>[0-9]+(?:\.[0-9]+)?)',
+            r'\\"currency\\"\s*:\s*\\"JPY\\"\s*,\s*\\"value\\"\s*:\s*\\"?(?P<val>[0-9]+(?:\.[0-9]+)?)',
+            r'\\u00a5\s*([0-9]{1,3}(?:,[0-9]{3})+)',
+            r'&#165;\s*([0-9]{1,3}(?:,[0-9]{3})+)',
         ]
 
         for pat in hard_offer_patterns:
@@ -591,6 +598,13 @@ class AmazonJpPriceScraper:
                 val = self._normalize_price(match)
                 if val and val >= MIN_VALID_JPY:
                     list_candidates.append(val)
+        for pat in jpy_meta_patterns:
+            for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                if isinstance(match, tuple):
+                    match = match[0]
+                val = self._normalize_price(match)
+                if val and val >= MIN_VALID_JPY:
+                    offer_candidates.append(val)
 
         # Prefer structured prices first; fallback to lowest visible valid price
         offer_price = min(hard_offer_candidates) if hard_offer_candidates else (min(offer_candidates) if offer_candidates else None)
@@ -599,7 +613,7 @@ class AmazonJpPriceScraper:
             list_price = None
         return offer_price, list_price
 
-    def scrape_listing(self, url, timeout=20):
+    def scrape_listing(self, url, timeout=8):
         asin = self.extract_asin(url)
         if not asin:
             raise ValueError("No se pudo detectar ASIN en la URL")
