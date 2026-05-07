@@ -1437,7 +1437,7 @@ def api_admin_amazon_jp_tracker_refresh():
 
 
 @app.route('/api/admin/amazon-jp-tracker/<int:item_id>/manual-price', methods=['POST'])
-@require_admin
+@admin_required
 def api_admin_amazon_jp_manual_price(item_id):
     payload = request.json or {}
     def _safe_pos_float(val):
