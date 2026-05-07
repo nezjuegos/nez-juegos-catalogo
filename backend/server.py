@@ -1151,6 +1151,7 @@ amazon_jp_status = {
     "updated_count": 0,
     "error_count": 0,
     "last_run_at": None,
+    "started_at": None,
     "last_error": None,
 }
 amazon_jp_last_daily_run = time.time()
@@ -1187,6 +1188,7 @@ def _refresh_amazon_jp_items(item_ids=None):
             "updated_count": 0,
             "error_count": 0,
             "last_run_at": amazon_jp_status.get('last_run_at'),
+            "started_at": time.time(),
             "last_error": None,
         }
 
@@ -1206,6 +1208,7 @@ def _refresh_amazon_jp_items(item_ids=None):
                     "running": False,
                     "message": "No hay publicaciones activas para actualizar.",
                     "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    "started_at": None,
                 })
             return True, None
 
@@ -1249,6 +1252,7 @@ def _refresh_amazon_jp_items(item_ids=None):
                 "updated_count": updated_count,
                 "error_count": error_count,
                 "last_run_at": now_str,
+                "started_at": None,
                 "last_error": None if error_count == 0 else "Algunas publicaciones no pudieron actualizarse",
             })
         amazon_jp_last_daily_run = time.time()
@@ -1260,6 +1264,7 @@ def _refresh_amazon_jp_items(item_ids=None):
                 "message": "Error durante la actualización",
                 "last_error": str(e),
                 "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "started_at": None,
             })
         return False, str(e)
 
@@ -1333,7 +1338,19 @@ def api_admin_amazon_jp_tracker_item(item_id):
 @admin_required
 def api_admin_amazon_jp_tracker_status():
     with amazon_jp_status_lock:
-        return jsonify(amazon_jp_status.copy())
+        status_copy = amazon_jp_status.copy()
+        # Failsafe: if a worker gets stuck, auto-release status.
+        started_at = status_copy.get("started_at")
+        if status_copy.get("running") and started_at and (time.time() - float(started_at) > 90):
+            amazon_jp_status.update({
+                "running": False,
+                "message": "Actualización finalizada por timeout de estado.",
+                "last_error": "Timeout de monitoreo (el proceso tardó demasiado).",
+                "last_run_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "started_at": None,
+            })
+            status_copy = amazon_jp_status.copy()
+        return jsonify(status_copy)
 
 
 @app.route('/api/admin/amazon-jp-tracker/refresh', methods=['POST'])

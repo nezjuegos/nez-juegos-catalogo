@@ -549,10 +549,14 @@ class AmazonJpPriceScraper:
     def _pick_prices(self, html):
         offer_candidates = []
         list_candidates = []
+        hard_offer_candidates = []
 
-        offer_patterns = [
+        # More reliable structured values (highest priority)
+        hard_offer_patterns = [
             r'"priceToPay"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
             r'"apex_desktop"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
+        ]
+        offer_patterns = [
             r'"displayPrice"\s*:\s*"[¥￥]\s*([0-9,]+)"',
             r'id="priceblock_dealprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'id="priceblock_ourprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
@@ -565,19 +569,27 @@ class AmazonJpPriceScraper:
             r'class="a-text-price"[^>]*>\s*<span[^>]*>[¥￥]?\s*([0-9,]+)',
         ]
 
+        for pat in hard_offer_patterns:
+            for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                val = self._normalize_price(match)
+                if val and val >= 100:
+                    hard_offer_candidates.append(val)
+
         for pat in offer_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val > 0:
+                # Ignore tiny values that usually come from unrelated tokens
+                if val and val >= 100:
                     offer_candidates.append(val)
 
         for pat in list_patterns:
             for match in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 val = self._normalize_price(match)
-                if val and val > 0:
+                if val and val >= 100:
                     list_candidates.append(val)
 
-        offer_price = min(offer_candidates) if offer_candidates else None
+        # Prefer structured prices first; fallback to lowest visible valid price
+        offer_price = min(hard_offer_candidates) if hard_offer_candidates else (min(offer_candidates) if offer_candidates else None)
         list_price = max(list_candidates) if list_candidates else None
         if offer_price and list_price and list_price < offer_price:
             list_price = None
