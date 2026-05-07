@@ -798,27 +798,37 @@ class AmazonJpPriceScraper:
                 const usdA = text.match(/USD\\s*([0-9]+(?:\\.[0-9]+)?)/i);
                 const usdB = text.match(/\\$\\s*([0-9]+(?:\\.[0-9]+)?)/);
                 const listA = text.match(/(?:参考価格|通常価格|List\\s*Price|Price)\\s*[¥￥]?\\s*([\\d,]{2,})/i);
+                const listUsd = text.match(/(?:List\\s*Price|Price)\\s*[:：]?\\s*(?:USD|\\$)\\s*([0-9]+(?:\\.[0-9]+)?)/i);
+                const discountPct = text.match(/-\\s*([0-9]{1,2})%/);
                 return {
                     yen: yen ? yen[1] : null,
                     usd: usdA ? usdA[1] : (usdB ? usdB[1] : null),
-                    listYen: listA ? listA[1] : null
+                    listYen: listA ? listA[1] : null,
+                    listUsd: listUsd ? listUsd[1] : null,
+                    discountPct: discountPct ? discountPct[1] : null
                 };
             }""")
             jpy = self._normalize_price(result.get("yen")) if result else None
             usd = self._normalize_price(result.get("usd")) if result else None
             list_jpy = self._normalize_price(result.get("listYen")) if result else None
+            list_usd = self._normalize_price(result.get("listUsd")) if result else None
+            discount_pct = self._normalize_price(result.get("discountPct")) if result else None
             if jpy and jpy < 300:
                 jpy = None
             if usd and not (1 <= usd <= 300):
                 usd = None
             if list_jpy and list_jpy < 300:
                 list_jpy = None
+            if list_usd and not (1 <= list_usd <= 400):
+                list_usd = None
+            if discount_pct and not (1 <= discount_pct <= 95):
+                discount_pct = None
             if jpy and list_jpy and list_jpy <= jpy:
                 list_jpy = None
-            return jpy, usd, list_jpy
+            return jpy, usd, list_jpy, list_usd, discount_pct
         except Exception as e:
             logging.warning("Buybox text price eval error: %s", e)
-            return None, None, None
+            return None, None, None, None, None
 
     def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=3000):
         last_error = None
@@ -857,21 +867,23 @@ class AmazonJpPriceScraper:
                     dom_offer, dom_list = self._read_prices_js(page)
                     if dom_offer is None:
                         dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
-                    text_jpy, text_usd, text_list_jpy = self._read_buybox_text_prices_js(page)
+                    text_jpy, text_usd, text_list_jpy, text_list_usd, text_discount_pct = self._read_buybox_text_prices_js(page)
                     if dom_offer is None and text_jpy:
                         dom_offer = text_jpy
                     if dom_list is None and text_list_jpy:
                         dom_list = text_list_jpy
 
                     logging.info(
-                        "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_list_jpy=%s text_usd=%s",
-                        dom_offer, dom_list, text_jpy, text_list_jpy, text_usd
+                        "AmazonJP prices dom_offer=%s dom_list=%s text_jpy=%s text_list_jpy=%s text_usd=%s text_list_usd=%s text_discount_pct=%s",
+                        dom_offer, dom_list, text_jpy, text_list_jpy, text_usd, text_list_usd, text_discount_pct
                     )
 
                     last_dom_offer, last_dom_list = dom_offer, dom_list
                     if self._html_usable(last_html):
                         # Pass USD value inside error channel when no JPY was found.
-                        usd_hint = f"USD_BUYBOX:{text_usd}" if (text_usd and not dom_offer) else None
+                        usd_hint = None
+                        if text_usd and not dom_offer:
+                            usd_hint = f"USD_BUYBOX:{text_usd}|{text_list_usd or ''}|{text_discount_pct or ''}"
                         return last_html, dom_offer, dom_list, usd_hint
                 except Exception as e:
                     last_error = f"{type(e).__name__}: {e}"
@@ -1128,8 +1140,16 @@ class AmazonJpPriceScraper:
 
             if offer_price is None and list_price is None:
                 usd_price = None
+                usd_list_price = None
                 if pw_error and str(pw_error).startswith("USD_BUYBOX:"):
-                    usd_price = self._normalize_price(str(pw_error).split(":", 1)[1])
+                    payload = str(pw_error).split(":", 1)[1]
+                    parts = payload.split("|")
+                    usd_price = self._normalize_price(parts[0] if len(parts) > 0 else None)
+                    usd_list_price = self._normalize_price(parts[1] if len(parts) > 1 else None)
+                    discount_pct = self._normalize_price(parts[2] if len(parts) > 2 else None)
+                    if (not usd_list_price) and usd_price and discount_pct and 1 <= discount_pct <= 95:
+                        # Infer list from displayed discount (e.g. -12% and current USD).
+                        usd_list_price = round(float(usd_price) / (1.0 - float(discount_pct) / 100.0), 2)
                 if usd_price is None:
                     usd_price = self._pick_usd_loose(html)
                 if usd_price and usd_jpy_rate and usd_jpy_rate > 0:
@@ -1139,6 +1159,8 @@ class AmazonJpPriceScraper:
                         usd_price, usd_jpy_rate, converted
                     )
                     offer_price = converted
+                    if usd_list_price and usd_list_price > usd_price:
+                        list_price = round(float(usd_list_price) * float(usd_jpy_rate), 2)
 
             if offer_price is None and list_price is None:
                 for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
