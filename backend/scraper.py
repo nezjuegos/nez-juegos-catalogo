@@ -1004,7 +1004,7 @@ class AmazonJpPriceScraper:
             return None
         low = (html or "").lower()
 
-        # First, prefer explicit list-price labels around Yen values.
+        # Only trust explicit list-price labels around Yen values.
         labeled_patterns = [
             r'(?:list\s*price|参考価格|通常価格|price)\s*[:：]?\s*[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
             r'(?:basisprice|a-text-price)[^¥￥]{0,120}[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
@@ -1013,19 +1013,12 @@ class AmazonJpPriceScraper:
         for pat in labeled_patterns:
             for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
                 v = self._normalize_price(m)
-                if v and v > offer_price and v <= offer_price * 3:
+                # Reasonable strike/list relation for games.
+                if v and v > offer_price and v <= offer_price * 1.8:
                     labeled.append(v)
         if labeled:
             return max(labeled)
-
-        # Fallback: gather all Yen values from the HTML and pick the nearest higher value.
-        vals = []
-        for m in re.findall(r'[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})', html, re.IGNORECASE):
-            v = self._normalize_price(m)
-            if v and 300 <= v <= 500000:
-                vals.append(v)
-        higher = sorted({v for v in vals if v > offer_price and v <= offer_price * 3})
-        return higher[0] if higher else None
+        return None
 
     def _pick_usd_loose(self, html):
         """Fallback when Amazon geo-renders buybox price in USD."""
