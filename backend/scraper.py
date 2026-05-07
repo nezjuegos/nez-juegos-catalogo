@@ -975,6 +975,38 @@ class AmazonJpPriceScraper:
                 return v
         return candidates[0]
 
+    def _infer_list_price_from_yen_context(self, html, offer_price):
+        """
+        If offer was found but list price is missing, infer it from nearby Yen values.
+        Works for variants like: "List Price: ¥7,100" + current "¥6,264".
+        """
+        if not offer_price:
+            return None
+        low = (html or "").lower()
+
+        # First, prefer explicit list-price labels around Yen values.
+        labeled_patterns = [
+            r'(?:list\s*price|参考価格|通常価格|price)\s*[:：]?\s*[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
+            r'(?:basisprice|a-text-price)[^¥￥]{0,120}[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})',
+        ]
+        labeled = []
+        for pat in labeled_patterns:
+            for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                v = self._normalize_price(m)
+                if v and v > offer_price and v <= offer_price * 3:
+                    labeled.append(v)
+        if labeled:
+            return max(labeled)
+
+        # Fallback: gather all Yen values from the HTML and pick the nearest higher value.
+        vals = []
+        for m in re.findall(r'[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,7})', html, re.IGNORECASE):
+            v = self._normalize_price(m)
+            if v and 300 <= v <= 500000:
+                vals.append(v)
+        higher = sorted({v for v in vals if v > offer_price and v <= offer_price * 3})
+        return higher[0] if higher else None
+
     def _pick_usd_loose(self, html):
         """Fallback when Amazon geo-renders buybox price in USD."""
         candidates = []
@@ -1081,6 +1113,12 @@ class AmazonJpPriceScraper:
                 offer_price = dom_offer
                 if dom_list and dom_list > dom_offer:
                     list_price = dom_list
+
+            if offer_price and not list_price:
+                inferred_list = self._infer_list_price_from_yen_context(html, offer_price)
+                if inferred_list:
+                    list_price = inferred_list
+                    logging.info("AmazonJP inferred list price=%s for offer=%s", list_price, offer_price)
 
             if offer_price is None and list_price is None:
                 loose = self._pick_yen_loose(html)
