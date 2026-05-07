@@ -1301,14 +1301,19 @@ class Database:
 
     @staticmethod
     def _extract_asin_from_url(url):
-        m = re.search(r'/dp/([A-Z0-9]{10})', url or '', re.IGNORECASE)
-        if m:
-            return m.group(1).upper()
-        m = re.search(r'/gp/product/([A-Z0-9]{10})', url or '', re.IGNORECASE)
-        if m:
-            return m.group(1).upper()
-        m = re.search(r'asin=([A-Z0-9]{10})', url or '', re.IGNORECASE)
-        return m.group(1).upper() if m else None
+        url = url or ''
+        patterns = (
+            r'/dp/([A-Z0-9]{10})',
+            r'/gp/product/([A-Z0-9]{10})',
+            r'/gp/aw/d/([A-Z0-9]{10})',
+            r'/product/([A-Z0-9]{10})',
+            r'[?&](?:asin|pd_rd_i)=([A-Z0-9]{10})',
+        )
+        for pat in patterns:
+            m = re.search(pat, url, re.IGNORECASE)
+            if m:
+                return m.group(1).upper()
+        return None
 
     @staticmethod
     def _validate_amazon_jp_item(data):
@@ -1318,8 +1323,9 @@ class Database:
         url = (data.get('amazon_url') or '').strip()
         if not url:
             return None, 'amazon_url requerido'
-        if 'amazon.co.jp' not in url:
-            return None, 'La URL debe ser de amazon.co.jp'
+        valid_hosts = ('amazon.co.jp', 'amzn.asia', 'amzn.to')
+        if not any(h in url.lower() for h in valid_hosts):
+            return None, 'La URL debe ser de Amazon Japón (amazon.co.jp o amzn.asia)'
         is_active = 1 if data.get('is_active', 1) else 0
         return {
             'display_name_es': name,

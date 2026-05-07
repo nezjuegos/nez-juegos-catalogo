@@ -1005,8 +1005,27 @@ class AmazonJpPriceScraper:
                 candidates.append(v)
         return max(candidates) if candidates else None
 
+    def _resolve_short_amazon_url(self, url, timeout=8):
+        """Resolve amzn.asia/amzn.to links to final amazon.co.jp product URL."""
+        raw = (url or "").strip()
+        if not raw:
+            return raw
+        if any(h in raw.lower() for h in ("amzn.asia", "amzn.to")):
+            try:
+                r = self.session.get(raw, timeout=timeout, allow_redirects=True)
+                final_url = (r.url or raw).strip()
+                if "amazon.co.jp" in final_url:
+                    return final_url
+                return final_url
+            except Exception as e:
+                logging.warning("Amazon short URL resolve failed for %s: %s", raw, e)
+                return raw
+        return raw
+
     def scrape_listing(self, url, timeout=12, usd_jpy_rate=150.0):
-        asin = self.extract_asin(url)
+        input_url = (url or "").strip()
+        resolved_url = self._resolve_short_amazon_url(input_url, timeout=min(timeout, 8))
+        asin = self.extract_asin(resolved_url) or self.extract_asin(input_url)
         if not asin:
             raise ValueError("No se pudo detectar ASIN en la URL")
 
@@ -1019,7 +1038,8 @@ class AmazonJpPriceScraper:
             try_urls = [
                 f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
                 f"https://www.amazon.co.jp/gp/product/{asin}",
-                url.strip(),
+                resolved_url,
+                input_url,
             ]
 
             # Try lightweight HTTP first; Amazon usually blocks it, so Playwright is the real path.
