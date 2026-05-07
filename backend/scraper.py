@@ -840,9 +840,10 @@ class AmazonJpPriceScraper:
             r'"displayPrice"\s*:\s*"[¥￥]\s*([0-9,]+)"',
             r'id="priceblock_dealprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
             r'id="priceblock_ourprice"[^>]*>\s*[¥￥]?\s*([0-9,]+)',
-            r'class="a-offscreen">\s*[¥￥]\s*([0-9,]+)\s*<',
-            r'class="a-price-whole">\s*([0-9,]+)\s*<',
+            r'class="a-offscreen">\s*[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]{4,7})\s*<',
+            r'class="a-price-whole">\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]{4,7})\s*<',
             r'[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+)',
+            r'[¥￥]\s*([0-9]{4,7})',
         ]
         list_patterns = [
             r'"listPrice"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
@@ -889,6 +890,30 @@ class AmazonJpPriceScraper:
         if offer_price and list_price and list_price < offer_price:
             list_price = None
         return offer_price, list_price
+
+    def _pick_yen_loose(self, html):
+        """
+        Emergency fallback when structured selectors fail (common with geo/A-B variants).
+        Extract visible Yen amounts and pick the first plausible buybox-like value.
+        """
+        candidates = []
+        patterns = [
+            r'[¥￥]\s*([0-9]{1,3}(?:,[0-9]{3})+)',
+            r'[¥￥]\s*([0-9]{4,7})',
+            r'a-price-whole">\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]{4,7})\s*<',
+        ]
+        for pat in patterns:
+            for m in re.findall(pat, html, re.IGNORECASE | re.DOTALL):
+                v = self._normalize_price(m)
+                if v and 300 <= v <= 500000:
+                    candidates.append(v)
+        if not candidates:
+            return None
+        # Prefer mid-range game prices and ignore tiny accessory/noise values.
+        for v in candidates:
+            if v >= 1000:
+                return v
+        return candidates[0]
 
     def scrape_listing(self, url, timeout=12):
         asin = self.extract_asin(url)
@@ -946,6 +971,12 @@ class AmazonJpPriceScraper:
                 offer_price = dom_offer
                 if dom_list and dom_list > dom_offer:
                     list_price = dom_list
+
+            if offer_price is None and list_price is None:
+                loose = self._pick_yen_loose(html)
+                if loose:
+                    logging.info("AmazonJP loose yen fallback=%s", loose)
+                    offer_price = loose
 
             if offer_price is None and list_price is None:
                 for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
