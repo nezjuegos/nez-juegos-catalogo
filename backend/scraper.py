@@ -12,6 +12,7 @@ from html import unescape
 from urllib.parse import unquote
 from playwright.async_api import async_playwright
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 
 # --- CONFIGURATION ---
 SOURCE_CHAT = "evAn Accounts"
@@ -597,6 +598,8 @@ class AmazonJpPriceScraper:
             user_agent=self._CHROME_UA,
             viewport={"width": 1366, "height": 768},
         )
+        # Apply stealth to evade Amazon bot detection (critical on Railway IPs)
+        stealth_sync(self._context_sync)
         # Force Amazon to display prices in JPY regardless of server location
         self._context_sync.add_cookies([
             {"name": "i18n-prefs",    "value": "JPY",          "domain": ".amazon.co.jp", "path": "/"},
