@@ -12,7 +12,6 @@ from html import unescape
 from urllib.parse import unquote
 from playwright.async_api import async_playwright
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
 
 # --- CONFIGURATION ---
 SOURCE_CHAT = "evAn Accounts"
@@ -598,8 +597,17 @@ class AmazonJpPriceScraper:
             user_agent=self._CHROME_UA,
             viewport={"width": 1366, "height": 768},
         )
-        # Apply stealth to evade Amazon bot detection (critical on Railway IPs)
-        stealth_sync(self._context_sync)
+        # Manual stealth: mask automation signals that Amazon detects
+        # (replaces playwright-stealth library which has Python 3.12 compatibility issues)
+        self._context_sync.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['ja-JP', 'ja', 'en-US', 'en']});
+            window.chrome = {runtime: {}};
+            Object.defineProperty(navigator, 'permissions', {
+                get: () => ({query: () => Promise.resolve({state: 'granted'})})
+            });
+        """)
         # Force Amazon to display prices in JPY regardless of server location
         self._context_sync.add_cookies([
             {"name": "i18n-prefs",    "value": "JPY",          "domain": ".amazon.co.jp", "path": "/"},
@@ -691,7 +699,7 @@ class AmazonJpPriceScraper:
     def _read_prices_js(self, page):
         """Primary price extraction: scan buybox containers + full page for ¥ / a-price-whole."""
         try:
-            result = page.evaluate("""() => {
+            result = page.evaluate(r"""() => {
                 // 1. Try main buybox containers first
                 const containers = document.querySelectorAll(
                     '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, .reinventPricePriceToPayMargin'
@@ -712,7 +720,7 @@ class AmazonJpPriceScraper:
 
                 // 3. Full document fallback scan for any ¥
                 const fullText = document.body.innerText || document.body.textContent || '';
-                const yenRe = /[¥￥]\\s*(\\d{1,3}(?:,\\d{3})*|\\d{3,})/g;
+                const yenRe = /[¥￥]\s*(\d{1,3}(?:,\d{3})*|\d{3,})/g;
                 const yenMatches = [];
                 let m;
                 while ((m = yenRe.exec(fullText)) !== null) {
@@ -759,17 +767,17 @@ class AmazonJpPriceScraper:
         Returns (jpy_price, usd_price).
         """
         try:
-            result = page.evaluate("""() => {
+            result = page.evaluate(r"""() => {
                 const box = document.querySelector(
                     '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, #rightCol'
                 );
                 const text = (box ? box.innerText : document.body.innerText || '').slice(0, 12000);
-                const yen = text.match(/[¥￥]\\s*([\\d,]{2,})/);
-                const usdA = text.match(/USD\\s*([0-9,]+(?:\\.[0-9]+)?)/i);
-                const usdB = text.match(/\\$\\s*([0-9,]+(?:\\.[0-9]+)?)/);
-                const listA = text.match(/(?:参考価格|通常価格|List\\s*Price|Price)\\s*[:：]?\\s*[¥￥]?\\s*([\\d,]{2,})/i);
-                const listUsd = text.match(/(?:List\\s*Price|Price)\\s*[:：]?\\s*(?:USD|\\$)\\s*([0-9,]+(?:\\.[0-9]+)?)/i);
-                const discountPct = text.match(/-\\s*([0-9]{1,2})\\s*%/);
+                const yen = text.match(/[¥￥]\s*([\d,]{2,})/);
+                const usdA = text.match(/USD\s*([0-9,]+(?:\.[0-9]+)?)/i);
+                const usdB = text.match(/[$]\s*([0-9,]+(?:\.[0-9]+)?)/);
+                const listA = text.match(/(?:参考価格|通常価格|List\s*Price|Price)\s*[:：]?\s*[¥￥]?\s*([\d,]{2,})/i);
+                const listUsd = text.match(/(?:List\s*Price|Price)\s*[:：]?\s*(?:USD|[$])\s*([0-9,]+(?:\.[0-9]+)?)/i);
+                const discountPct = text.match(/-\s*([0-9]{1,2})\s*%/);
                 return {
                     yen: yen ? yen[1] : null,
                     usd: usdA ? usdA[1] : (usdB ? usdB[1] : null),
