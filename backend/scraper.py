@@ -667,7 +667,51 @@ class AmazonJpPriceScraper:
             list_price = None
         return offer, list_price
 
-    def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=2500):
+    def _read_prices_js(self, page):
+        """Use JS evaluation in browser context — most robust against layout changes."""
+        try:
+            result = page.evaluate("""() => {
+                const norm = t => t ? t.replace(/[¥￥,\\s]/g, '').trim() : '';
+                const first = sels => {
+                    for (const s of sels) {
+                        for (const el of document.querySelectorAll(s)) {
+                            const t = norm(el.textContent);
+                            if (t && /^\\d+(\\.\\d+)?$/.test(t)) return parseFloat(t);
+                        }
+                    }
+                    return null;
+                };
+                const offer = first([
+                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen',
+                    '#corePriceDisplay_desktop_feature_div .reinventPricePriceToPayMargin .a-offscreen',
+                    '#apex_desktop .reinventPricePriceToPayMargin .a-offscreen',
+                    '.reinventPricePriceToPayMargin .a-offscreen',
+                    '#buybox .a-price:not(.a-text-price) .a-offscreen',
+                    '#newBuyBoxPrice',
+                    '#price_inside_buybox',
+                    '.priceToPay .a-offscreen',
+                    '#priceblock_ourprice',
+                    '#priceblock_dealprice',
+                ]);
+                const list = first([
+                    '.basisPrice .a-offscreen',
+                    '.a-price.a-text-price .a-offscreen',
+                    '#priceblock_listprice',
+                    '#listPrice',
+                ]);
+                return {offer, list};
+            }""")
+            o = result.get("offer") if result else None
+            l = result.get("list") if result else None
+            if o and l and l <= o:
+                l = None
+            return (float(o) if o and o >= 300 else None,
+                    float(l) if l and l >= 300 else None)
+        except Exception as e:
+            logging.warning("JS price eval error: %s", e)
+            return None, None
+
+    def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=3000):
         last_error = None
         try:
             self._ensure_playwright_sync()
@@ -684,18 +728,35 @@ class AmazonJpPriceScraper:
                     page.wait_for_timeout(settle_ms)
                     try:
                         page.wait_for_selector(
-                            ".reinventPricePriceToPayMargin, #corePriceDisplay_desktop_feature_div, #buybox",
-                            timeout=12000,
+                            ".reinventPricePriceToPayMargin, #corePriceDisplay_desktop_feature_div,"
+                            " #buybox, #corePrice_feature_div",
+                            timeout=15000,
                         )
                     except Exception:
                         pass
-                    dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
-                    last_dom_offer, last_dom_list = dom_offer, dom_list
+
+                    title = page.title()
                     last_html = page.content()
+                    low = last_html.lower()
+                    markers = {k: (k in low) for k in
+                               ["captcha", "a-offscreen", "a-price-whole", "priceblock",
+                                "pricetopay", "apex_desktop"]}
+                    logging.info("AmazonJP PW url=%s title=%r html_len=%d markers=%s",
+                                 url[:80], title, len(last_html), markers)
+
+                    # Try JS evaluation first (most reliable), then CSS selectors
+                    dom_offer, dom_list = self._read_prices_js(page)
+                    if dom_offer is None:
+                        dom_offer, dom_list = self._read_buybox_jpy_playwright(page)
+
+                    logging.info("AmazonJP prices dom_offer=%s dom_list=%s", dom_offer, dom_list)
+
+                    last_dom_offer, last_dom_list = dom_offer, dom_list
                     if self._html_usable(last_html):
                         return last_html, dom_offer, dom_list, None
                 except Exception as e:
                     last_error = f"{type(e).__name__}: {e}"
+                    logging.warning("AmazonJP PW attempt failed url=%s err=%s", url[:80], last_error)
                     continue
             return last_html, last_dom_offer, last_dom_list, last_error
         finally:
@@ -810,12 +871,11 @@ class AmazonJpPriceScraper:
                     html = pw_html
 
             if not self._html_usable(html):
-                if pw_error:
-                    logging.warning("Amazon JP Playwright fetch failed for ASIN %s: %s", asin, pw_error)
+                logging.warning("Amazon JP unusable HTML for ASIN %s http=%s pw_err=%s html_len=%d",
+                                asin, last_status, pw_error, len(html))
                 raise RuntimeError(
-                    "Amazon no devolvió la página del producto (posible CAPTCHA o bloqueo). "
-                    f"Último HTTP: {last_status}. "
-                    f"Playwright: {pw_error or 'sin detalle'}"
+                    "Amazon no devolvió la página del producto (CAPTCHA o bloqueo). "
+                    f"HTTP: {last_status}. PW: {pw_error or 'sin detalle'}"
                 )
 
             offer_price, list_price = self._pick_prices(html)
@@ -826,6 +886,13 @@ class AmazonJpPriceScraper:
                     list_price = dom_list
 
             if offer_price is None and list_price is None:
+                # Log a snippet of HTML around known price markers for diagnosis
+                for marker in ("a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
+                    idx = html.lower().find(marker)
+                    if idx >= 0:
+                        logging.info("AmazonJP price snippet [%s]: ...%s...",
+                                     marker, html[max(0, idx-60):idx+120].replace("\n", " "))
+                        break
                 raise RuntimeError("No se pudo extraer precio de la publicación")
 
             price_jpy = offer_price or list_price
