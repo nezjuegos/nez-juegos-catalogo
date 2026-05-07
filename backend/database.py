@@ -297,6 +297,17 @@ class Database:
             )
             ''')
 
+            # Migration: manual price override columns
+            for col_sql in [
+                "ALTER TABLE amazon_jp_tracker ADD COLUMN price_manual_jpy REAL",
+                "ALTER TABLE amazon_jp_tracker ADD COLUMN list_manual_jpy REAL",
+                "ALTER TABLE amazon_jp_tracker ADD COLUMN price_manual_override INTEGER NOT NULL DEFAULT 0",
+            ]:
+                try:
+                    cursor.execute(col_sql)
+                except sqlite3.OperationalError:
+                    pass
+
             conn.commit()
 
     # --- CONFIG CRUD ---
@@ -1389,34 +1400,95 @@ class Database:
     def update_amazon_jp_snapshot(self, item_id, snapshot):
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            # Check if manual override is active — if so, preserve manual prices
+            row = cursor.execute(
+                'SELECT price_manual_override, price_manual_jpy, list_manual_jpy FROM amazon_jp_tracker WHERE id = ?',
+                (item_id,)
+            ).fetchone()
+            has_override = row and row['price_manual_override']
+            if has_override:
+                # Keep manual prices; still update image, title, status and last_checked
+                cursor.execute(
+                    '''
+                    UPDATE amazon_jp_tracker
+                    SET asin = COALESCE(?, asin),
+                        image_url = COALESCE(?, image_url),
+                        title_source = COALESCE(?, title_source),
+                        last_checked_at = CURRENT_TIMESTAMP,
+                        last_status = ?,
+                        last_error = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    ''',
+                    (
+                        snapshot.get('asin'),
+                        snapshot.get('image_url'),
+                        snapshot.get('title_source'),
+                        snapshot.get('last_status', 'ok'),
+                        snapshot.get('last_error'),
+                        item_id
+                    )
+                )
+            else:
+                cursor.execute(
+                    '''
+                    UPDATE amazon_jp_tracker
+                    SET asin = COALESCE(?, asin),
+                        image_url = COALESCE(?, image_url),
+                        title_source = COALESCE(?, title_source),
+                        price_jpy = ?,
+                        list_price_jpy = ?,
+                        is_on_sale = ?,
+                        price_usdt = ?,
+                        price_ars = ?,
+                        last_checked_at = CURRENT_TIMESTAMP,
+                        last_status = ?,
+                        last_error = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    ''',
+                    (
+                        snapshot.get('asin'),
+                        snapshot.get('image_url'),
+                        snapshot.get('title_source'),
+                        snapshot.get('price_jpy'),
+                        snapshot.get('list_price_jpy'),
+                        1 if snapshot.get('is_on_sale') else 0,
+                        snapshot.get('price_usdt'),
+                        snapshot.get('price_ars'),
+                        snapshot.get('last_status', 'ok'),
+                        snapshot.get('last_error'),
+                        item_id
+                    )
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def set_amazon_jp_manual_price(self, item_id, price_jpy, list_price_jpy):
+        """Set manual price override. Clears override when both prices are None."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            has_override = price_jpy is not None or list_price_jpy is not None
+            # Recompute is_on_sale based on manual prices
+            is_on_sale = 1 if (price_jpy and list_price_jpy and list_price_jpy > price_jpy) else 0
             cursor.execute(
                 '''
                 UPDATE amazon_jp_tracker
-                SET asin = COALESCE(?, asin),
-                    image_url = COALESCE(?, image_url),
-                    title_source = COALESCE(?, title_source),
-                    price_jpy = ?,
-                    list_price_jpy = ?,
+                SET price_manual_jpy = ?,
+                    list_manual_jpy = ?,
+                    price_manual_override = ?,
+                    price_jpy = CASE WHEN ? IS NOT NULL THEN ? ELSE price_jpy END,
+                    list_price_jpy = CASE WHEN ? IS NOT NULL THEN ? ELSE list_price_jpy END,
                     is_on_sale = ?,
-                    price_usdt = ?,
-                    price_ars = ?,
-                    last_checked_at = CURRENT_TIMESTAMP,
-                    last_status = ?,
-                    last_error = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 ''',
                 (
-                    snapshot.get('asin'),
-                    snapshot.get('image_url'),
-                    snapshot.get('title_source'),
-                    snapshot.get('price_jpy'),
-                    snapshot.get('list_price_jpy'),
-                    1 if snapshot.get('is_on_sale') else 0,
-                    snapshot.get('price_usdt'),
-                    snapshot.get('price_ars'),
-                    snapshot.get('last_status', 'ok'),
-                    snapshot.get('last_error'),
+                    price_jpy, list_price_jpy,
+                    1 if has_override else 0,
+                    price_jpy, price_jpy,
+                    list_price_jpy, list_price_jpy,
+                    is_on_sale,
                     item_id
                 )
             )

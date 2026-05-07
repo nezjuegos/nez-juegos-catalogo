@@ -124,6 +124,26 @@
                     <button class="btn btn-primary" id="btnSave">Agregar</button>
                 </div>
             </div>
+            <!-- Precio manual (solo visible al editar) -->
+            <div id="manualPriceSection" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+                <div style="font-size:.8rem; color:var(--text-muted); margin-bottom:.6rem;">
+                    <strong>Precio manual (JPY)</strong> — Si lo completás, el actualizador automático no lo va a pisar.
+                    Dejá ambos en blanco para volver al modo automático.
+                </div>
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr auto;">
+                    <div>
+                        <label>Precio oferta (JPY)</label>
+                        <input type="number" id="manualPriceJpy" placeholder="Ej: 7182" min="0" step="1">
+                    </div>
+                    <div>
+                        <label>Precio de lista / tachado (JPY)</label>
+                        <input type="number" id="manualListJpy" placeholder="Ej: 7980 (opcional)" min="0" step="1">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" id="btnSaveManualPrice" onclick="saveManualPrice()">Guardar precio</button>
+                    </div>
+                </div>
+            </div>
             <div class="btn-row" style="margin-top:.8rem;">
                 <button class="btn btn-ghost" id="btnCancelEdit" style="display:none;">Cancelar edición</button>
                 <button class="btn btn-ghost" id="btnRefreshAll">Actualizar ahora (todos activos)</button>
@@ -217,9 +237,12 @@
             tbody.innerHTML = filtered.map(item => {
                 const statusClass = item.last_status === 'ok' ? 'ok' : (item.last_status === 'error' ? 'err' : 'warn');
                 const statusText = item.last_status === 'ok' ? 'OK' : (item.last_status === 'error' ? 'Error' : 'Pendiente');
+                const overrideBadge = item.price_manual_override
+                    ? `<span title="Precio manual activo — el actualizador no lo modifica" style="font-size:.7rem; background:var(--accent); color:#fff; border-radius:3px; padding:1px 5px; margin-left:4px;">manual</span>`
+                    : '';
                 const jpyHtml = item.is_on_sale
-                    ? `<span class="price-main">${fmtJPY(item.price_jpy)}</span><span class="price-list">${fmtJPY(item.list_price_jpy)}</span>`
-                    : `<span class="price-main">${fmtJPY(item.price_jpy)}</span>`;
+                    ? `<span class="price-main">${fmtJPY(item.price_jpy)}${overrideBadge}</span><span class="price-list">${fmtJPY(item.list_price_jpy)}</span>`
+                    : `<span class="price-main">${fmtJPY(item.price_jpy)}${overrideBadge}</span>`;
                 return `
                     <tr>
                         <td data-label="Foto">${item.image_url ? `<img class="thumb" src="${item.image_url}" alt="">` : '<span class="muted">Sin imagen</span>'}</td>
@@ -262,6 +285,9 @@
             $('isActive').checked = true;
             $('btnSave').textContent = 'Agregar';
             $('btnCancelEdit').style.display = 'none';
+            $('manualPriceSection').style.display = 'none';
+            $('manualPriceJpy').value = '';
+            $('manualListJpy').value = '';
         }
 
         window.editItem = function(id) {
@@ -273,7 +299,31 @@
             $('isActive').checked = !!it.is_active;
             $('btnSave').textContent = 'Guardar cambios';
             $('btnCancelEdit').style.display = 'inline-block';
+            // Populate manual price fields
+            $('manualPriceSection').style.display = 'block';
+            $('manualPriceJpy').value = it.price_manual_jpy != null ? it.price_manual_jpy : '';
+            $('manualListJpy').value = it.list_manual_jpy != null ? it.list_manual_jpy : '';
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.saveManualPrice = async function() {
+            if (!editingId) return;
+            const priceVal = $('manualPriceJpy').value.trim();
+            const listVal = $('manualListJpy').value.trim();
+            const payload = {
+                price_jpy: priceVal !== '' ? parseFloat(priceVal) : null,
+                list_price_jpy: listVal !== '' ? parseFloat(listVal) : null,
+            };
+            const r = await fetch(`/api/admin/amazon-jp-tracker/${editingId}/manual-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await r.json();
+            if (!r.ok) { alert(data.error || 'Error al guardar precio manual'); return; }
+            const hasOverride = payload.price_jpy !== null || payload.list_price_jpy !== null;
+            alert(hasOverride ? '✅ Precio manual guardado. El actualizador automático no lo modificará.' : '🔄 Override eliminado. El actualizador automático volverá a controlar el precio.');
+            await loadItems();
         };
 
         async function saveItem() {

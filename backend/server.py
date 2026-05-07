@@ -1436,6 +1436,35 @@ def api_admin_amazon_jp_tracker_refresh():
     return jsonify({"status": "started" if started else "busy", "scope": "all_active"})
 
 
+@app.route('/api/admin/amazon-jp-tracker/<int:item_id>/manual-price', methods=['POST'])
+@require_admin
+def api_admin_amazon_jp_manual_price(item_id):
+    payload = request.json or {}
+    def _safe_pos_float(val):
+        try:
+            v = float(val)
+            return v if v > 0 else None
+        except (TypeError, ValueError):
+            return None
+    price_jpy = _safe_pos_float(payload.get('price_jpy'))
+    list_price_jpy = _safe_pos_float(payload.get('list_price_jpy'))
+    # Passing None for both clears the override
+    ok = db.set_amazon_jp_manual_price(item_id, price_jpy, list_price_jpy)
+    if not ok:
+        return jsonify({"error": "No encontrado"}), 404
+    # Recompute USDT/ARS with new price
+    if price_jpy:
+        price_usdt, price_ars = _convert_jpy_to_usdt_ars(price_jpy)
+        with db.get_connection() as conn:
+            conn.execute(
+                'UPDATE amazon_jp_tracker SET price_usdt=?, price_ars=? WHERE id=?',
+                (price_usdt, price_ars, item_id)
+            )
+            conn.commit()
+    item = db.get_amazon_jp_item(item_id)
+    return jsonify({"ok": True, "item": item})
+
+
 # --- Static Fallback ---
 
 SITE_URL = os.getenv('SITE_URL', 'https://nezjuegos.com')
