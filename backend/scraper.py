@@ -586,6 +586,12 @@ class AmazonJpPriceScraper:
             user_agent=self._CHROME_UA,
             viewport={"width": 1366, "height": 768},
         )
+        # Force Amazon to display prices in JPY regardless of server location
+        self._context_sync.add_cookies([
+            {"name": "i18n-prefs",    "value": "currency=JPY", "domain": ".amazon.co.jp", "path": "/"},
+            {"name": "lc-acbjp",      "value": "ja_JP",        "domain": ".amazon.co.jp", "path": "/"},
+            {"name": "sp-cdn",        "value": "L5Z9:JP",      "domain": ".amazon.co.jp", "path": "/"},
+        ])
 
     def _shutdown_playwright_sync(self):
         ctx = self._context_sync
@@ -839,10 +845,11 @@ class AmazonJpPriceScraper:
             self.batch_begin()
 
         try:
+            # Always use Japanese URLs — -/en/ variants cause USD pricing on non-JP IPs
             try_urls = [
-                url.strip(),
                 f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
-                f"https://www.amazon.co.jp/-/en/dp/{asin}",
+                f"https://www.amazon.co.jp/gp/product/{asin}",
+                url.strip(),
             ]
 
             # Try lightweight HTTP first; Amazon usually blocks it, so Playwright is the real path.
