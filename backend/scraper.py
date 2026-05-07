@@ -784,6 +784,7 @@ class AmazonJpPriceScraper:
                 f"https://www.amazon.co.jp/-/en/dp/{asin}",
             ]
 
+            # Try lightweight HTTP first; Amazon usually blocks it, so Playwright is the real path.
             html = ""
             last_status = None
             for candidate in try_urls:
@@ -796,12 +797,18 @@ class AmazonJpPriceScraper:
                     html = resp.text
                     break
 
-            pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
-            if self._html_usable(pw_html):
-                html = pw_html
-
+            dom_offer = dom_list = pw_error = None
             if not self._html_usable(html):
-                html = pw_html
+                # HTTP was blocked (CAPTCHA etc.) — use Playwright
+                pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                if self._html_usable(pw_html):
+                    html = pw_html
+            else:
+                # HTTP worked — still read DOM prices via Playwright for accuracy
+                pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                if self._html_usable(pw_html):
+                    html = pw_html
+
             if not self._html_usable(html):
                 if pw_error:
                     logging.warning("Amazon JP Playwright fetch failed for ASIN %s: %s", asin, pw_error)
