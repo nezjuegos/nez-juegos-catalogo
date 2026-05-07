@@ -31,4 +31,8 @@ aptPkgs = [
 ]
 
 [phases.install]
-cmds = ["...", "python -m playwright install chromium"]
+# Explicit commands (no "..." placeholder) to ensure reliable Python env + Playwright install
+cmds = [
+  "python -m pip install -r requirements.txt",
+  "python -m playwright install chromium"
+]
