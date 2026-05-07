@@ -686,7 +686,7 @@ class AmazonJpPriceScraper:
         return offer, list_price
 
     def _read_prices_js(self, page):
-        """Use JS evaluation in browser context — most robust against layout changes."""
+        """Use JS evaluation in browser context — ultra-detailed debugging."""
         try:
             result = page.evaluate("""() => {
                 const norm = t => {
@@ -698,84 +698,67 @@ class AmazonJpPriceScraper:
                     const m = n.match(/^(\\d+)(\\.\\d+)?$/);
                     return m ? parseFloat(m[0]) : null;
                 };
-                const first = sels => {
-                    for (const s of sels) {
-                        try {
-                            for (const el of document.querySelectorAll(s)) {
-                                const v = numVal(el.textContent);
-                                if (v && v >= 300) return v;
-                            }
-                        } catch(e) {}
-                    }
-                    return null;
-                };
 
-                // Also try reading .a-price-whole + .a-price-fraction
-                const fromWholeElements = (container) => {
-                    const wholes = container.querySelectorAll('.a-price-whole');
-                    for (const w of wholes) {
-                        const priceEl = w.closest('.a-price');
-                        if (priceEl && priceEl.classList.contains('a-text-price')) continue;
-                        const raw = norm(w.textContent);
-                        if (raw && /^\\d+$/.test(raw)) {
-                            const v = parseInt(raw, 10);
-                            if (v >= 300) return v;
+                // ULTRA-DETAILED: Dump ALL text from price containers
+                const debugDump = () => {
+                    const containers = [
+                        '#corePrice_feature_div',
+                        '#corePriceDisplay_desktop_feature_div',
+                        '#apex_desktop',
+                        '#buybox',
+                        '.reinventPricePriceToPayMargin'
+                    ];
+                    let dump = '';
+                    for (const sel of containers) {
+                        const el = document.querySelector(sel);
+                        if (el) {
+                            const text = el.innerText || el.textContent || '';
+                            dump += `[${sel}]: ${text.slice(0, 300)}\\n`;
                         }
                     }
-                    return null;
+                    return dump;
                 };
 
-                let offer = first([
-                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen',
-                    '#corePriceDisplay_desktop_feature_div .reinventPricePriceToPayMargin .a-offscreen',
-                    '#apex_desktop .reinventPricePriceToPayMargin .a-offscreen',
-                    '.reinventPricePriceToPayMargin .a-offscreen',
-                    '#buybox .a-price:not(.a-text-price) .a-offscreen',
-                    '#newBuyBoxPrice',
-                    '#price_inside_buybox',
-                    '.priceToPay .a-offscreen',
-                    '#priceblock_ourprice',
-                    '#priceblock_dealprice',
-                    '#corePrice_feature_div .a-price:not(.a-text-price) .a-price-whole',
-                    '#apex_desktop .a-price:not(.a-text-price) .a-price-whole',
-                ]);
-
-                // Fallback: look at a-price-whole in buybox containers
-                if (!offer) {
-                    const containers = document.querySelectorAll(
-                        '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop, #buybox, #price'
-                    );
-                    for (const c of containers) {
-                        offer = fromWholeElements(c);
-                        if (offer) break;
-                    }
-                }
-
-                // Last resort: find any ¥X,XXX pattern in the buybox area
-                if (!offer) {
-                    const bb = document.querySelector('#rightCol, #buyBoxAccordion, #buybox, #corePrice_feature_div, #apex_desktop');
-                    if (bb) {
-                        const text = bb.textContent || '';
-                        const m = text.match(/[¥￥]\\s*([\\d,]+)/);
-                        if (m) {
-                            const v = parseInt(m[1].replace(/,/g, ''), 10);
-                            if (v >= 300) offer = v;
+                // Direct scan: search for ANY ¥ followed by numbers in the entire buybox area
+                const directScan = () => {
+                    const mainArea = document.querySelector(
+                        '#corePrice_feature_div, #corePriceDisplay_desktop_feature_div, #apex_desktop'
+                    ) || document.body;
+                    const fullText = mainArea.textContent || '';
+                    const matches = [];
+                    // Look for ¥XXXX or ¥X,XXX patterns
+                    const re = /[¥￥]\\s*(\\d{1,3}(?:,\\d{3})*|\\d{3,})/g;
+                    let m;
+                    while ((m = re.exec(fullText)) !== null) {
+                        const raw = m[1].replace(/,/g, '');
+                        const v = parseInt(raw, 10);
+                        if (v >= 300 && v <= 500000) {
+                            matches.push(v);
                         }
                     }
-                }
+                    return matches;
+                };
 
-                const list = first([
-                    '.basisPrice .a-offscreen',
-                    '.a-price.a-text-price .a-offscreen',
-                    '#priceblock_listprice',
-                    '#listPrice',
-                    '.a-price.a-text-price .a-price-whole',
-                ]);
+                const firstYenMatch = directScan();
+                const offer = firstYenMatch.length > 0 ? firstYenMatch[0] : null;
+                const list = firstYenMatch.length > 1 ? firstYenMatch[1] : null;
 
-                return {offer: offer || null, list: list || null};
+                return {
+                    offer: offer,
+                    list: list,
+                    debug: debugDump(),
+                    allYenMatches: firstYenMatch
+                };
             }""")
             o = result.get("offer") if result else None
             l = result.get("list") if result else None
+            debug_msg = result.get("debug", "") if result else ""
+            all_matches = result.get("allYenMatches", []) if result else []
+            
+            # Log the debug dump for inspection
+            if debug_msg or all_matches:
+                logging.info("AmazonJP JS debug: matches=%s dump=%s", all_matches, debug_msg[:500])
+            
             if o and l and l <= o:
                 l = None
             return (float(o) if o and o >= 300 else None,
@@ -905,6 +888,14 @@ class AmazonJpPriceScraper:
         list_candidates = []
         hard_offer_candidates = []
 
+        # ULTRA-AGGRESSIVE: Scan the ENTIRE HTML for any ¥-prefixed number
+        ultra_aggressive_pattern = r'[¥￥]\s*(\d{1,3}(?:,\d{3})*|\d{3,})'
+        for m in re.finditer(ultra_aggressive_pattern, html):
+            raw = m.group(1).replace(",", "")
+            val = self._normalize_price(raw)
+            if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
+                offer_candidates.append(val)
+
         # More reliable structured values (highest priority)
         hard_offer_patterns = [
             r'"priceToPay"\s*:\s*\{[^}]*"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
@@ -961,6 +952,16 @@ class AmazonJpPriceScraper:
                 val = self._normalize_price(match)
                 if val and MIN_VALID_JPY <= val <= MAX_VALID_JPY:
                     offer_candidates.append(val)
+
+        # Remove duplicates and sort
+        offer_candidates = sorted(set(offer_candidates))
+        list_candidates = sorted(set(list_candidates))
+        hard_offer_candidates = sorted(set(hard_offer_candidates))
+        
+        # Log what we found for debugging
+        if offer_candidates or hard_offer_candidates:
+            logging.info("AmazonJP _pick_prices: hard=%s offer=%s list=%s", 
+                        hard_offer_candidates, offer_candidates, list_candidates)
 
         # Prefer structured prices first; fallback to lowest visible valid price
         offer_price = min(hard_offer_candidates) if hard_offer_candidates else (min(offer_candidates) if offer_candidates else None)
@@ -1151,8 +1152,11 @@ class AmazonJpPriceScraper:
                 )
 
             offer_price, list_price = self._pick_prices(html)
+            logging.info("AmazonJP after _pick_prices: offer=%s list=%s", offer_price, list_price)
+            
             # Force visible buy-box value when available (user-facing price).
             if dom_offer and dom_offer >= 300:
+                logging.info("AmazonJP using dom_offer=%s (override from JS)", dom_offer)
                 offer_price = dom_offer
                 if dom_list and dom_list > dom_offer:
                     list_price = dom_list
@@ -1220,6 +1224,9 @@ class AmazonJpPriceScraper:
 
             price_jpy = offer_price or list_price
             is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
+
+            logging.info("AmazonJP final result: asin=%s offer=%s list=%s price=%s image=%s title=%s",
+                        asin, offer_price, list_price, price_jpy, bool(self._pick_image_url(html)), bool(self._pick_title(html)))
 
             return {
                 "asin": asin,
