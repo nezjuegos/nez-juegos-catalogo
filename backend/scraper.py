@@ -599,7 +599,8 @@ class AmazonJpPriceScraper:
         )
         # Force Amazon to display prices in JPY regardless of server location
         self._context_sync.add_cookies([
-            {"name": "i18n-prefs",    "value": "currency=JPY", "domain": ".amazon.co.jp", "path": "/"},
+            {"name": "i18n-prefs",    "value": "JPY",          "domain": ".amazon.co.jp", "path": "/"},
+            {"name": "lc-main",       "value": "ja_JP",        "domain": ".amazon.co.jp", "path": "/"},
             {"name": "lc-acbjp",      "value": "ja_JP",        "domain": ".amazon.co.jp", "path": "/"},
             {"name": "sp-cdn",        "value": "L5Z9:JP",      "domain": ".amazon.co.jp", "path": "/"},
         ])
@@ -1180,7 +1181,14 @@ class AmazonJpPriceScraper:
                     usd_price = self._pick_usd_loose(html)
                 if usd_list_price is None:
                     usd_list_price = self._pick_usd_list_loose(html)
-                if usd_price and usd_jpy_rate and usd_jpy_rate > 0:
+                usd_confident = bool(
+                    usd_price and (
+                        usd_list_price
+                        or (discount_pct and 1 <= discount_pct <= 95)
+                        or usd_price >= 25  # avoid tiny mis-parsed USD values
+                    )
+                )
+                if usd_price and usd_jpy_rate and usd_jpy_rate > 0 and usd_confident:
                     converted = round(float(usd_price) * float(usd_jpy_rate), 2)
                     logging.info(
                         "AmazonJP USD fallback usd=%s list_usd=%s rate=%s -> jpy=%s",
@@ -1189,6 +1197,11 @@ class AmazonJpPriceScraper:
                     offer_price = converted
                     if usd_list_price and usd_list_price > usd_price:
                         list_price = round(float(usd_list_price) * float(usd_jpy_rate), 2)
+                elif usd_price and not usd_confident:
+                    logging.warning(
+                        "AmazonJP rejected low-confidence USD fallback usd=%s list_usd=%s discount=%s",
+                        usd_price, usd_list_price, discount_pct
+                    )
 
             if offer_price is None and list_price is None:
                 for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
