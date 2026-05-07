@@ -1255,6 +1255,7 @@ def _refresh_amazon_jp_items(item_ids=None):
                 updated_count += 1
             except Exception as e:
                 err_text = str(e)[:300]
+                logging.exception("Amazon JP refresh error for item_id=%s asin=%s", item.get('id'), item.get('asin'))
                 db.update_amazon_jp_snapshot(item['id'], {
                     "price_jpy": None,
                     "list_price_jpy": None,

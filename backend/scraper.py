@@ -5,6 +5,7 @@ import time
 import json
 import base64
 import threading
+import logging
 from datetime import datetime
 import requests
 from html import unescape
@@ -667,8 +668,13 @@ class AmazonJpPriceScraper:
         return offer, list_price
 
     def _fetch_with_playwright(self, urls, nav_timeout_ms=55000, settle_ms=2500):
-        self._ensure_playwright_sync()
-        page = self._context_sync.new_page()
+        last_error = None
+        try:
+            self._ensure_playwright_sync()
+            page = self._context_sync.new_page()
+        except Exception as e:
+            return "", None, None, f"Playwright init error: {type(e).__name__}: {e}"
+
         last_html = ""
         last_dom_offer, last_dom_list = None, None
         try:
@@ -687,10 +693,11 @@ class AmazonJpPriceScraper:
                     last_dom_offer, last_dom_list = dom_offer, dom_list
                     last_html = page.content()
                     if self._html_usable(last_html):
-                        return last_html, dom_offer, dom_list
-                except Exception:
+                        return last_html, dom_offer, dom_list, None
+                except Exception as e:
+                    last_error = f"{type(e).__name__}: {e}"
                     continue
-            return last_html, last_dom_offer, last_dom_list
+            return last_html, last_dom_offer, last_dom_list, last_error
         finally:
             page.close()
 
@@ -789,16 +796,19 @@ class AmazonJpPriceScraper:
                     html = resp.text
                     break
 
-            pw_html, dom_offer, dom_list = self._fetch_with_playwright(try_urls)
+            pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
             if self._html_usable(pw_html):
                 html = pw_html
 
             if not self._html_usable(html):
                 html = pw_html
             if not self._html_usable(html):
+                if pw_error:
+                    logging.warning("Amazon JP Playwright fetch failed for ASIN %s: %s", asin, pw_error)
                 raise RuntimeError(
                     "Amazon no devolvió la página del producto (posible CAPTCHA o bloqueo). "
-                    f"Último HTTP: {last_status}"
+                    f"Último HTTP: {last_status}. "
+                    f"Playwright: {pw_error or 'sin detalle'}"
                 )
 
             offer_price, list_price = self._pick_prices(html)
