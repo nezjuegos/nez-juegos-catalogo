@@ -1480,6 +1480,18 @@ class Database:
                     price_jpy = CASE WHEN ? IS NOT NULL THEN ? ELSE price_jpy END,
                     list_price_jpy = CASE WHEN ? IS NOT NULL THEN ? ELSE list_price_jpy END,
                     is_on_sale = ?,
+                    last_status = CASE
+                        WHEN ? = 1 AND ( ? IS NOT NULL OR ? IS NOT NULL ) THEN 'ok'
+                        ELSE last_status
+                    END,
+                    last_error = CASE
+                        WHEN ? = 1 AND ( ? IS NOT NULL OR ? IS NOT NULL ) THEN NULL
+                        ELSE last_error
+                    END,
+                    last_checked_at = CASE
+                        WHEN ? = 1 AND ( ? IS NOT NULL OR ? IS NOT NULL ) THEN CURRENT_TIMESTAMP
+                        ELSE last_checked_at
+                    END,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 ''',
@@ -1489,6 +1501,9 @@ class Database:
                     price_jpy, price_jpy,
                     list_price_jpy, list_price_jpy,
                     is_on_sale,
+                    1 if has_override else 0, price_jpy, list_price_jpy,
+                    1 if has_override else 0, price_jpy, list_price_jpy,
+                    1 if has_override else 0, price_jpy, list_price_jpy,
                     item_id
                 )
             )
