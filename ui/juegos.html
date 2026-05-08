@@ -948,15 +948,18 @@
 
             document.querySelectorAll('.platform-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
+                    const targetPlatform = tab.dataset.platform;
+                    if (targetPlatform === 'Nintendo Switch') {
+                        window.location.href = '/nintendo';
+                        return;
+                    }
                     document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
-                    currentPlatform = tab.dataset.platform;
-                    // Update URL without reload
-                    const newPath = currentPlatform === 'PlayStation' ? '/playstation' : '/nintendo';
-                    history.replaceState(null, '', newPath);
-                    document.getElementById('navPS').classList.toggle('active', currentPlatform === 'PlayStation');
-                    document.getElementById('navNS').classList.toggle('active', currentPlatform !== 'PlayStation');
-                    document.title = (currentPlatform === 'PlayStation' ? 'PlayStation' : 'Nintendo Switch') + ' | Nez Juegos';
+                    currentPlatform = 'PlayStation';
+                    history.replaceState(null, '', '/playstation');
+                    document.getElementById('navPS').classList.add('active');
+                    document.getElementById('navNS').classList.remove('active');
+                    document.title = 'PlayStation | Nez Juegos';
                     applyFilters();
                 });
             });

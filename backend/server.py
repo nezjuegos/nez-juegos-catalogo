@@ -1285,6 +1285,15 @@ def _build_nintendo_mirror_custom_payload(items):
     return payload
 
 
+def _get_nintendo_mirror_item_by_slug(slug):
+    if not slug:
+        return None
+    amazon_items = _build_nintendo_mirror_payload(db.get_amazon_jp_items(include_inactive=False))
+    custom_items = _build_nintendo_mirror_custom_payload(db.get_nintendo_mirror_custom_items(include_inactive=False))
+    all_items = amazon_items + custom_items
+    return next((x for x in all_items if x.get('slug') == slug), None)
+
+
 def _amazon_job_stale_budget_seconds(status):
     """Amazon refresh uses Playwright per item (~20–60s). Avoid false 'stuck' resets."""
     total = status.get("total") or 0
@@ -1714,9 +1723,25 @@ def serve_static(path=''):
 
     # Nintendo mirror (new public)
     if path == 'nintendo':
-        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
+        og = {
+            'title': 'Nintendo Switch | Nez Juegos',
+            'description': 'Catalogo Nintendo Switch con precios actualizados y compra por WhatsApp.',
+            'image': 'https://imagenes.hobbyconsolas.com/files/image_1920_1080/uploads/imagenes/2023/04/25/6900c99e53bd9.jpeg',
+            'url': f"{SITE_URL}/nintendo"
+        }
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'), og)
     if path.startswith('nintendo/') and path != 'nintendo':
-        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-juego.html'))
+        slug = path.replace('nintendo/', '').strip()
+        item = _get_nintendo_mirror_item_by_slug(slug)
+        og = None
+        if item:
+            og = {
+                'title': f"{item.get('title') or 'Juego'} | Nintendo Switch | Nez Juegos",
+                'description': f"Compra {item.get('title') or 'este juego'} en Nez Juegos. Entrega por WhatsApp.",
+                'image': item.get('image_url') or '/nez-logo.jpg',
+                'url': f"{SITE_URL}/nintendo/{slug}"
+            }
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-juego.html'), og)
     if path == 'nintendo-checkout':
         return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-checkout.html'))
 
