@@ -12,9 +12,19 @@
         }
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
         body{background:var(--bg);color:var(--text)}
-        header{position:sticky;top:0;background:rgba(10,10,12,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:1rem 1.25rem;z-index:10}
-        .logo{font-family:'Outfit';font-weight:800;font-size:1.35rem}
+        a{text-decoration:none;color:inherit}
+        header{position:sticky;top:0;background:rgba(10,10,12,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:1rem 1.25rem;z-index:10;display:flex;justify-content:space-between;align-items:center}
+        .logo{font-family:'Outfit';font-weight:800;font-size:1.45rem}
         .logo span{background:linear-gradient(to right,var(--primary),var(--secondary));-webkit-background-clip:text;background-clip:text;color:transparent}
+        .nav-links{display:flex;gap:1.4rem}
+        .nav-links a{font-weight:500;color:var(--muted);transition:.2s}
+        .nav-links a:hover,.nav-links a.active{color:#fff}
+        .hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:8px;border:none;background:none;border-radius:8px}
+        .hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:.3s}
+        .mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;background:rgba(13,13,18,.97);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08);z-index:1050;flex-direction:column;padding:1rem 1.25rem}
+        .mobile-menu.open{display:flex}
+        .mobile-menu a{padding:.7rem 0;border-bottom:1px solid rgba(255,255,255,.06);color:var(--muted);font-weight:600}
+        .mobile-menu a:last-child{border-bottom:none}
         .container{max-width:1100px;margin:0 auto;padding:1.5rem}
         
         .back{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted);text-decoration:none;margin-bottom:1.2rem;font-weight:500}
@@ -42,6 +52,9 @@
         .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
         
         @media (max-width:900px){
+            header{padding:.8rem 1rem}
+            .nav-links{display:none}
+            .hamburger{display:flex}
             .game-layout{grid-template-columns:1fr;gap:1.5rem}
             .cover-card{position:static}
             .cover{height:260px}
@@ -51,7 +64,23 @@
     </style>
 </head>
 <body>
-    <header><div class="logo">🎮 <span>Nez</span> Juegos</div></header>
+    <header>
+        <div class="logo"><a href="/">🎮 <span>Nez</span> Juegos</a></div>
+        <nav class="nav-links">
+            <a href="/playstation">PlayStation</a>
+            <a href="/nintendo" class="active">Nintendo Switch</a>
+            <a href="/packs">Packs</a>
+            <a href="/terminos-y-condiciones">T&C</a>
+        </nav>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+    </header>
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/">🏠 Inicio</a>
+        <a href="/playstation">🎮 PlayStation</a>
+        <a href="/nintendo">🔴 Nintendo Switch</a>
+        <a href="/packs">📦 Packs</a>
+        <a href="/terminos-y-condiciones">📄 T&C</a>
+    </div>
     <main class="container">
         <a class="back" href="/nintendo">← Volver al catálogo</a>
         
@@ -106,6 +135,15 @@
             `;
         }
         load().catch(() => { document.getElementById('title').textContent = 'Error cargando juego'; });
+        (function() {
+            const btn = document.getElementById('hamburgerBtn');
+            const menu = document.getElementById('mobileMenu');
+            if (!btn || !menu) return;
+            const close = () => menu.classList.remove('open');
+            btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('open'); });
+            menu.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+            document.addEventListener('click', (e) => { if (!menu.contains(e.target) && e.target !== btn) close(); });
+        })();
     </script>
 </body>
 </html>
