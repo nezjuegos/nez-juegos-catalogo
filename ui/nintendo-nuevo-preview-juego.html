@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Juego | Nintendo Switch</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -54,7 +53,7 @@
 <body>
     <header><div class="logo">🎮 <span>Nez</span> Juegos</div></header>
     <main class="container">
-        <a class="back" href="/nintendo-nuevo-preview">← Volver al catálogo</a>
+        <a class="back" href="/nintendo">← Volver al catálogo</a>
         
         <div class="game-layout">
             <!-- Cover -->
@@ -102,7 +101,7 @@
                     <p class="warn">${esc(it.codigo.disclaimer)}</p>
                 </section>
                 <div class="cta-wrap">
-                    <a class="btn" href="/nintendo-nuevo-checkout?game=${encodeURIComponent(it.slug)}">Comprar</a>
+                    <a class="btn" href="/nintendo-checkout?game=${encodeURIComponent(it.slug)}">Comprar</a>
                 </div>
             `;
         }

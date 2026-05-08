@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex,nofollow,noarchive">
     <title>Nintendo Switch | Nez Juegos</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -14,6 +13,7 @@
         .logo{font-family:'Outfit';font-weight:800;font-size:1.45rem}
         .logo span{background:linear-gradient(to right,var(--primary),var(--secondary));-webkit-background-clip:text;background-clip:text;color:transparent}
         .container{max-width:1320px;margin:0 auto;padding:1.2rem}
+        .catalog-brand{width:100%;max-width:560px;height:170px;object-fit:cover;border-radius:14px;border:1px solid var(--border);margin-bottom:.9rem;background:#111}
         .search{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.8rem 1rem;margin-bottom:1rem}
         .search input{width:100%;border:none;background:transparent;color:#fff;font-size:1rem;outline:none}
         .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
@@ -54,6 +54,7 @@
 <body>
     <header><div class="logo">🎮 <span>Nez</span> Juegos</div></header>
     <main class="container">
+        <img class="catalog-brand" src="https://imagenes.hobbyconsolas.com/files/image_1920_1080/uploads/imagenes/2023/04/25/6900c99e53bd9.jpeg" alt="Nintendo">
         <h1 style="font-family:'Outfit';font-size:1.8rem;margin-bottom:.25rem;">Nintendo Switch</h1>
         <p class="muted" style="margin-bottom:1rem;">Elegí el juego y revisá las modalidades disponibles.</p>
         <div class="search"><input id="q" type="text" placeholder="Buscar juego..."></div>
@@ -89,12 +90,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="cta"><a class="btn" href="/nintendo-nuevo-checkout?game=${encodeURIComponent(it.slug)}" onclick="event.stopPropagation()">Comprar</a></div>
+                    <div class="cta"><a class="btn" href="/nintendo-checkout?game=${encodeURIComponent(it.slug)}" onclick="event.stopPropagation()">Comprar</a></div>
                 </article>
             `).join('');
         }
         window.goDetail = function(slug){
-            window.location.href = `/nintendo-nuevo-preview/${slug}`;
+            window.location.href = `/nintendo/${slug}`;
         };
         async function load(){
             const r = await fetch('/api/nintendo-mirror-catalog');

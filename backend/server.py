@@ -1226,7 +1226,7 @@ def _build_nintendo_mirror_payload(items):
         payload.append({
             "id": item.get("id"),
             "title": item.get("display_name_es") or item.get("title_source") or "Juego",
-            "slug": f"{_slugify_text(item.get('display_name_es') or item.get('title_source') or 'juego')}-amz-{item.get('id')}",
+            "slug": _slugify_text(item.get('display_name_es') or item.get('title_source') or 'juego'),
             "asin": item.get("asin"),
             "amazon_url": item.get("amazon_url"),
             "image_url": image_url,
@@ -1261,7 +1261,7 @@ def _build_nintendo_mirror_custom_payload(items):
         payload.append({
             "id": item.get("id"),
             "title": item.get("title"),
-            "slug": f"{_slugify_text(item.get('title') or 'juego')}-man-{item.get('id')}",
+            "slug": _slugify_text(item.get('title') or 'juego'),
             "asin": "manual",
             "amazon_url": None,
             "image_url": image_url,
@@ -1712,8 +1712,16 @@ def serve_static(path=''):
     if not path or path == 'index' or path == 'index.html':
         return get_html(os.path.join(UI_DIR, 'index.html'))
 
-    # Separate platform catalogs
+    # Nintendo mirror (new public)
     if path == 'nintendo':
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
+    if path.startswith('nintendo/') and path != 'nintendo':
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-juego.html'))
+    if path == 'nintendo-checkout':
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-checkout.html'))
+
+    # Old Nintendo paths kept hidden for fallback
+    if path == 'nintendo-clasico':
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
     if path == 'nintendo-nuevo-preview':
         return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
