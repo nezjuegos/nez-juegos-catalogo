@@ -79,12 +79,12 @@
                             <h3 class="title ${((it.title||'').length>46)?'xlong':((it.title||'').length>34?'long':'')}">${esc(it.title)}</h3>
                             <div class="prices">
                                 <div class="price-row">
-                                    <span class="price-name">Código</span>
-                                    <span class="price-values">${priceValues(it.codigo?.regular_price_ars, it.codigo?.offer_price_ars)}</span>
-                                </div>
-                                <div class="price-row">
                                     <span class="price-name">Primaria</span>
                                     <span class="price-values">${priceValues(it.primaria?.regular_price_ars, it.primaria?.offer_price_ars)}</span>
+                                </div>
+                                <div class="price-row">
+                                    <span class="price-name">Código</span>
+                                    <span class="price-values">${priceValues(it.codigo?.regular_price_ars, it.codigo?.offer_price_ars)}</span>
                                 </div>
                             </div>
                         </div>

@@ -38,8 +38,8 @@
         .desc{font-size:.9rem;color:var(--muted);line-height:1.5}
         .warn{margin-top:.45rem;font-size:.78rem;color:#fca5a5;line-height:1.4}
         
-        .cta-wrap{display:flex;justify-content:flex-end;margin-top:1.25rem}
-        .btn{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.75rem 1.6rem;border-radius:999px;font-weight:800;font-size:.95rem;box-shadow:0 4px 15px rgba(139,92,246,.3)}
+        .cta-wrap{display:flex;justify-content:center;margin-top:1.25rem}
+        .btn{display:inline-flex;align-items:center;justify-content:center;min-width:230px;gap:.5rem;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.8rem 1.8rem;border-radius:999px;font-weight:800;font-size:.95rem;box-shadow:0 4px 15px rgba(139,92,246,.3)}
         .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
         
         @media (max-width:900px){
@@ -91,15 +91,15 @@
             const modes = document.getElementById('modes');
             modes.innerHTML = `
                 <section class="mode">
+                    <h3>${esc(it.primaria.label)}</h3>
+                    <div class="price">${priceLine(it.primaria.regular_price_ars, it.primaria.offer_price_ars)}</div>
+                    <p class="desc">${esc(it.primaria.description)}</p>
+                </section>
+                <section class="mode">
                     <h3>${esc(it.codigo.label)}</h3>
                     <div class="price">${priceLine(it.codigo.regular_price_ars, it.codigo.offer_price_ars)}</div>
                     <p class="desc">${esc(it.codigo.description)}</p>
                     <p class="warn">${esc(it.codigo.disclaimer)}</p>
-                </section>
-                <section class="mode">
-                    <h3>${esc(it.primaria.label)}</h3>
-                    <div class="price">${priceLine(it.primaria.regular_price_ars, it.primaria.offer_price_ars)}</div>
-                    <p class="desc">${esc(it.primaria.description)}</p>
                 </section>
                 <div class="cta-wrap">
                     <a class="btn" href="/nintendo-nuevo-checkout?game=${encodeURIComponent(it.slug)}">Comprar</a>
