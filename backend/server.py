@@ -1231,6 +1231,40 @@ def _build_nintendo_mirror_payload(items):
     return payload
 
 
+def _build_nintendo_mirror_custom_payload(items):
+    payload = []
+    for item in items:
+        image_url = None
+        if item.get('image_filename'):
+            image_url = f"/uploads/{item.get('image_filename')}"
+        elif item.get('image_url'):
+            image_url = item.get('image_url')
+        payload.append({
+            "id": item.get("id"),
+            "title": item.get("title"),
+            "asin": "manual",
+            "amazon_url": None,
+            "image_url": image_url,
+            "source_offer_jpy": None,
+            "source_list_jpy": None,
+            "codigo": {
+                "label": "Codigo Digital (Japon)",
+                "description": "Podes canjearlo en tu cuenta, pero debes cambiar de region a Japon en accounts.nintendo.com; luego podes cambiarla de vuelta si queres.",
+                "regular_price_ars": item.get("codigo_regular_ars"),
+                "offer_price_ars": item.get("codigo_offer_ars"),
+                "disclaimer": "La entrega del codigo puede tardar desde unos pocos minutos hasta 1 hora mientras esperamos la entrega. Por favor tene paciencia con nosotros.",
+            },
+            "primaria": {
+                "label": "Cuenta Primaria Permanente",
+                "description": "Se agrega una cuenta a tu consola donde quedara el juego. La cuenta permanece en tu consola y cualquier usuario de la consola puede jugarlo (no uses la cuenta vendida como principal). Tiene garantia de por vida si la cuenta falla y perdes acceso.",
+                "regular_price_ars": item.get("primaria_regular_ars"),
+                "offer_price_ars": item.get("primaria_offer_ars"),
+            },
+            "source_type": "manual",
+        })
+    return payload
+
+
 def _amazon_job_stale_budget_seconds(status):
     """Amazon refresh uses Playwright per item (~20–60s). Avoid false 'stuck' resets."""
     total = status.get("total") or 0
@@ -1542,9 +1576,59 @@ def api_admin_amazon_jp_mirror_image(item_id):
 
 @app.route('/api/nintendo-mirror-catalog')
 def api_nintendo_mirror_catalog():
-    items = db.get_amazon_jp_items(include_inactive=False)
-    payload = _build_nintendo_mirror_payload(items)
+    amazon_items = db.get_amazon_jp_items(include_inactive=False)
+    custom_items = db.get_nintendo_mirror_custom_items(include_inactive=False)
+    payload = _build_nintendo_mirror_payload(amazon_items)
+    payload.extend(_build_nintendo_mirror_custom_payload(custom_items))
     return jsonify({"results": payload})
+
+
+@app.route('/api/admin/nintendo-mirror/custom', methods=['GET', 'POST'])
+@admin_required
+def api_admin_nintendo_mirror_custom():
+    if request.method == 'GET':
+        include_inactive = request.args.get('include_inactive', '1') in ('1', 'true', 'yes')
+        return jsonify({"items": db.get_nintendo_mirror_custom_items(include_inactive=include_inactive)})
+
+    if request.content_type and request.content_type.startswith('multipart/form-data'):
+        data = dict(request.form)
+        file = request.files.get('image')
+        if file and file.filename:
+            filename = f"nintendocustom_{int(time.time())}_{file.filename}"
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            data['image_filename'] = filename
+    else:
+        data = request.json or {}
+
+    def _num(v):
+        try:
+            return float(v) if v not in (None, '') else None
+        except (TypeError, ValueError):
+            return None
+
+    clean = {
+        "title": data.get("title"),
+        "image_url": data.get("image_url"),
+        "image_filename": data.get("image_filename"),
+        "codigo_regular_ars": _num(data.get("codigo_regular_ars")),
+        "codigo_offer_ars": _num(data.get("codigo_offer_ars")),
+        "primaria_regular_ars": _num(data.get("primaria_regular_ars")),
+        "primaria_offer_ars": _num(data.get("primaria_offer_ars")),
+        "is_active": 1,
+    }
+    item_id, err = db.add_nintendo_mirror_custom_item(clean)
+    if err:
+        return jsonify({"error": err}), 400
+    return jsonify({"ok": True, "id": item_id})
+
+
+@app.route('/api/admin/nintendo-mirror/custom/<int:item_id>', methods=['DELETE'])
+@admin_required
+def api_admin_nintendo_mirror_custom_delete(item_id):
+    ok = db.delete_nintendo_mirror_custom_item(item_id)
+    if not ok:
+        return jsonify({"error": "No encontrado"}), 404
+    return jsonify({"ok": True})
 
 
 # --- Static Fallback ---

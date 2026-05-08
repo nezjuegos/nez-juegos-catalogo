@@ -297,6 +297,23 @@ class Database:
             )
             ''')
 
+            # Table: nintendo_mirror_custom (manual entries for private Nintendo preview)
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS nintendo_mirror_custom (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                image_url TEXT,
+                image_filename TEXT,
+                codigo_regular_ars REAL,
+                codigo_offer_ars REAL,
+                primaria_regular_ars REAL,
+                primaria_offer_ars REAL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+
             # Migration: manual price override columns
             for col_sql in [
                 "ALTER TABLE amazon_jp_tracker ADD COLUMN price_manual_jpy REAL",
@@ -1525,5 +1542,51 @@ class Database:
                 ''',
                 (mirror_image_url, mirror_image_filename, item_id)
             )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # --- NINTENDO MIRROR CUSTOM CRUD ---
+    def get_nintendo_mirror_custom_items(self, include_inactive=False):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if include_inactive:
+                cursor.execute('SELECT * FROM nintendo_mirror_custom ORDER BY updated_at DESC, id DESC')
+            else:
+                cursor.execute('SELECT * FROM nintendo_mirror_custom WHERE is_active = 1 ORDER BY updated_at DESC, id DESC')
+            return [dict(r) for r in cursor.fetchall()]
+
+    def add_nintendo_mirror_custom_item(self, data):
+        title = (data.get('title') or '').strip()
+        if not title:
+            return None, 'title requerido'
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                INSERT INTO nintendo_mirror_custom (
+                    title, image_url, image_filename,
+                    codigo_regular_ars, codigo_offer_ars,
+                    primaria_regular_ars, primaria_offer_ars,
+                    is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    title,
+                    (data.get('image_url') or '').strip() or None,
+                    data.get('image_filename'),
+                    data.get('codigo_regular_ars'),
+                    data.get('codigo_offer_ars'),
+                    data.get('primaria_regular_ars'),
+                    data.get('primaria_offer_ars'),
+                    1 if data.get('is_active', 1) else 0,
+                )
+            )
+            conn.commit()
+            return cursor.lastrowid, None
+
+    def delete_nintendo_mirror_custom_item(self, item_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM nintendo_mirror_custom WHERE id = ?', (item_id,))
             conn.commit()
             return cursor.rowcount > 0
