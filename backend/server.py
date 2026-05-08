@@ -1179,6 +1179,58 @@ def _convert_jpy_to_usdt_ars(price_jpy):
     return price_usdt, price_ars
 
 
+def _round_up_100(value):
+    if value is None:
+        return None
+    return int(math.ceil(float(value) / 100.0) * 100)
+
+
+def _build_nintendo_mirror_payload(items):
+    payload = []
+    for item in items:
+        list_jpy = item.get('list_price_jpy')
+        offer_jpy = item.get('price_jpy')
+        if offer_jpy is None:
+            continue
+
+        codigo_regular = _round_up_100(float(list_jpy or offer_jpy) * 1.45)
+        codigo_offer = _round_up_100(float(offer_jpy) * 1.45)
+        primaria_regular = _round_up_100(float(list_jpy or offer_jpy) * 1.25)
+        primaria_offer = _round_up_100(float(offer_jpy) * 1.25)
+
+        image_url = None
+        if item.get('mirror_image_filename'):
+            image_url = f"/uploads/{item.get('mirror_image_filename')}"
+        elif item.get('mirror_image_url'):
+            image_url = item.get('mirror_image_url')
+        elif item.get('image_url'):
+            image_url = item.get('image_url')
+
+        payload.append({
+            "id": item.get("id"),
+            "title": item.get("display_name_es") or item.get("title_source") or "Juego",
+            "asin": item.get("asin"),
+            "amazon_url": item.get("amazon_url"),
+            "image_url": image_url,
+            "source_offer_jpy": offer_jpy,
+            "source_list_jpy": list_jpy,
+            "codigo": {
+                "label": "Codigo Digital (Japon)",
+                "description": "Podes canjearlo en tu cuenta, pero debes cambiar de region a Japon en accounts.nintendo.com; luego podes cambiarla de vuelta si queres.",
+                "regular_price_ars": codigo_regular,
+                "offer_price_ars": codigo_offer,
+                "disclaimer": "La entrega del codigo puede tardar desde unos pocos minutos hasta 1 hora mientras esperamos la entrega. Por favor tene paciencia con nosotros.",
+            },
+            "primaria": {
+                "label": "Cuenta Primaria Permanente",
+                "description": "Se agrega una cuenta a tu consola donde quedara el juego. La cuenta permanece en tu consola y cualquier usuario de la consola puede jugarlo (no uses la cuenta vendida como principal). Tiene garantia de por vida si la cuenta falla y perdes acceso.",
+                "regular_price_ars": primaria_regular,
+                "offer_price_ars": primaria_offer,
+            },
+        })
+    return payload
+
+
 def _amazon_job_stale_budget_seconds(status):
     """Amazon refresh uses Playwright per item (~20–60s). Avoid false 'stuck' resets."""
     total = status.get("total") or 0
@@ -1465,6 +1517,36 @@ def api_admin_amazon_jp_manual_price(item_id):
     return jsonify({"ok": True, "item": item})
 
 
+@app.route('/api/admin/amazon-jp-tracker/<int:item_id>/mirror-image', methods=['POST'])
+@admin_required
+def api_admin_amazon_jp_mirror_image(item_id):
+    mirror_image_url = None
+    mirror_image_filename = None
+
+    if request.content_type and request.content_type.startswith('multipart/form-data'):
+        mirror_image_url = (request.form.get('mirror_image_url') or '').strip() or None
+        file = request.files.get('image')
+        if file and file.filename:
+            filename = f"amzmirror_{item_id}_{int(time.time())}_{file.filename}"
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            mirror_image_filename = filename
+    else:
+        payload = request.json or {}
+        mirror_image_url = (payload.get('mirror_image_url') or '').strip() or None
+
+    ok = db.set_amazon_jp_mirror_image(item_id, mirror_image_url, mirror_image_filename)
+    if not ok:
+        return jsonify({"error": "No encontrado"}), 404
+    return jsonify({"ok": True, "item": db.get_amazon_jp_item(item_id)})
+
+
+@app.route('/api/nintendo-mirror-catalog')
+def api_nintendo_mirror_catalog():
+    items = db.get_amazon_jp_items(include_inactive=False)
+    payload = _build_nintendo_mirror_payload(items)
+    return jsonify({"results": payload})
+
+
 # --- Static Fallback ---
 
 SITE_URL = os.getenv('SITE_URL', 'https://nezjuegos.com')
@@ -1518,6 +1600,11 @@ def serve_static(path=''):
     # Separate platform catalogs
     if path == 'nintendo':
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
+    if path == 'nintendo-nuevo-preview':
+        html = get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
+        resp = make_response(html)
+        resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+        return resp
     if path in ('playstation', 'juegos'):
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
 

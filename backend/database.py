@@ -302,6 +302,8 @@ class Database:
                 "ALTER TABLE amazon_jp_tracker ADD COLUMN price_manual_jpy REAL",
                 "ALTER TABLE amazon_jp_tracker ADD COLUMN list_manual_jpy REAL",
                 "ALTER TABLE amazon_jp_tracker ADD COLUMN price_manual_override INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE amazon_jp_tracker ADD COLUMN mirror_image_url TEXT",
+                "ALTER TABLE amazon_jp_tracker ADD COLUMN mirror_image_filename TEXT",
             ]:
                 try:
                     cursor.execute(col_sql)
@@ -1506,6 +1508,22 @@ class Database:
                     1 if has_override else 0, price_jpy, list_price_jpy,
                     item_id
                 )
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def set_amazon_jp_mirror_image(self, item_id, mirror_image_url=None, mirror_image_filename=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                UPDATE amazon_jp_tracker
+                SET mirror_image_url = ?,
+                    mirror_image_filename = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                ''',
+                (mirror_image_url, mirror_image_filename, item_id)
             )
             conn.commit()
             return cursor.rowcount > 0

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <title>Nintendo Preview (Privado)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#0a0a0c; --card:#131318; --primary:#8b5cf6; --text:#f8fafc; --muted:#94a3b8; --border:#27272a; --ok:#22c55e; --warn:#facc15; }
+        * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+        body { background:var(--bg); color:var(--text); min-height:100vh; }
+        header { position:sticky; top:0; z-index:10; background:rgba(10,10,12,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:1rem 1.2rem; }
+        .head-wrap { max-width:1300px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+        .tag { font-size:.72rem; color:#0b0f19; background:var(--warn); border-radius:999px; font-weight:800; padding:.25rem .6rem; }
+        main { max-width:1300px; margin:0 auto; padding:1.2rem; }
+        .info { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1rem; margin-bottom:1rem; color:var(--muted); line-height:1.45; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+        .card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+        .cover { width:100%; height:150px; object-fit:cover; background:#111; }
+        .body { padding:.9rem; }
+        .title { font-family:'Outfit',sans-serif; font-size:1.02rem; line-height:1.2; min-height:2.4em; margin-bottom:.55rem; }
+        .src { font-size:.75rem; color:var(--muted); margin-bottom:.6rem; }
+        .mode { border:1px solid var(--border); border-radius:10px; padding:.55rem; margin-bottom:.55rem; background:rgba(255,255,255,.02); }
+        .mode h4 { font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; margin-bottom:.25rem; color:#ddd6fe; }
+        .price { display:flex; gap:.4rem; align-items:baseline; margin:.28rem 0; }
+        .price .old { color:var(--muted); text-decoration:line-through; font-size:.84rem; }
+        .price .new { color:var(--ok); font-weight:800; font-size:1.05rem; font-family:'Outfit',sans-serif; }
+        .desc { color:var(--muted); font-size:.73rem; line-height:1.35; }
+        .disclaimer { margin-top:.3rem; color:#fca5a5; font-size:.7rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="head-wrap">
+            <div>
+                <h1 style="font-family:'Outfit',sans-serif; font-size:1.35rem;">Catalogo Nintendo Nuevo (Preview)</h1>
+                <div style="color:var(--muted); font-size:.84rem;">URL privada temporal para validar antes del reemplazo final</div>
+            </div>
+            <span class="tag">NO INDEX</span>
+        </div>
+    </header>
+    <main>
+        <div class="info">
+            Precios construidos desde Amazon JP tracker: <strong>precio base = precio de lista</strong> y <strong>precio en descuento = precio actual</strong>.
+            Formula publica: Codigo = costo x 1.45, Primaria = costo x 1.25, ambos redondeados al siguiente multiplo de 100.
+        </div>
+        <div id="grid" class="grid"></div>
+    </main>
+    <script>
+        function ars(v){ return v ? '$' + Number(v).toLocaleString('es-AR') : '—'; }
+        function safe(t){ return String(t || '').replace(/[&<"]/g, m => ({'&':'&amp;','<':'&lt;','"':'&quot;'}[m])); }
+        async function load(){
+            const r = await fetch('/api/nintendo-mirror-catalog');
+            const d = await r.json();
+            const list = d.results || [];
+            const grid = document.getElementById('grid');
+            if (!list.length) {
+                grid.innerHTML = '<div class="info">No hay items activos con precio en el tracker.</div>';
+                return;
+            }
+            grid.innerHTML = list.map(it => `
+                <article class="card">
+                    <img class="cover" src="${safe(it.image_url || '')}" onerror="this.style.display='none'" alt="">
+                    <div class="body">
+                        <h3 class="title">${safe(it.title)}</h3>
+                        <div class="src">ASIN ${safe(it.asin || '—')} · Fuente JPY: ${it.source_offer_jpy || '—'} / ${it.source_list_jpy || '—'}</div>
+                        <div class="mode">
+                            <h4>${safe(it.codigo.label)}</h4>
+                            <div class="price"><span class="old">${ars(it.codigo.regular_price_ars)}</span> <span class="new">${ars(it.codigo.offer_price_ars)}</span></div>
+                            <div class="desc">${safe(it.codigo.description)}</div>
+                            <div class="disclaimer">${safe(it.codigo.disclaimer)}</div>
+                        </div>
+                        <div class="mode">
+                            <h4>${safe(it.primaria.label)}</h4>
+                            <div class="price"><span class="old">${ars(it.primaria.regular_price_ars)}</span> <span class="new">${ars(it.primaria.offer_price_ars)}</span></div>
+                            <div class="desc">${safe(it.primaria.description)}</div>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+        }
+        load().catch(() => { document.getElementById('grid').innerHTML = '<div class="info">Error cargando preview.</div>'; });
+    </script>
+</body>
+</html>
