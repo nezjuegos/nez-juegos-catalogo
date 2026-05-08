@@ -1185,18 +1185,35 @@ def _round_up_100(value):
     return int(math.ceil(float(value) / 100.0) * 100)
 
 
+def _slugify_text(text):
+    s = (text or '').strip().lower()
+    s = s.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('ñ', 'n')
+    out = []
+    prev_dash = False
+    for ch in s:
+        if ('a' <= ch <= 'z') or ('0' <= ch <= '9'):
+            out.append(ch)
+            prev_dash = False
+        else:
+            if not prev_dash:
+                out.append('-')
+                prev_dash = True
+    slug = ''.join(out).strip('-')
+    return slug or 'juego'
+
+
 def _build_nintendo_mirror_payload(items):
     payload = []
     for item in items:
-        list_jpy = item.get('list_price_jpy')
-        offer_jpy = item.get('price_jpy')
-        if offer_jpy is None:
+        offer_ars = item.get('price_ars')
+        if offer_ars is None:
             continue
+        base_ars = item.get('list_price_ars') or offer_ars
 
-        codigo_regular = _round_up_100(float(list_jpy or offer_jpy) * 1.45)
-        codigo_offer = _round_up_100(float(offer_jpy) * 1.45)
-        primaria_regular = _round_up_100(float(list_jpy or offer_jpy) * 1.25)
-        primaria_offer = _round_up_100(float(offer_jpy) * 1.25)
+        codigo_regular = _round_up_100(float(base_ars) * 1.45)
+        codigo_offer = _round_up_100(float(offer_ars) * 1.45)
+        primaria_regular = _round_up_100(float(base_ars) * 1.25)
+        primaria_offer = _round_up_100(float(offer_ars) * 1.25)
 
         image_url = None
         if item.get('mirror_image_filename'):
@@ -1209,11 +1226,12 @@ def _build_nintendo_mirror_payload(items):
         payload.append({
             "id": item.get("id"),
             "title": item.get("display_name_es") or item.get("title_source") or "Juego",
+            "slug": f"{_slugify_text(item.get('display_name_es') or item.get('title_source') or 'juego')}-amz-{item.get('id')}",
             "asin": item.get("asin"),
             "amazon_url": item.get("amazon_url"),
             "image_url": image_url,
-            "source_offer_jpy": offer_jpy,
-            "source_list_jpy": list_jpy,
+            "source_offer_ars": offer_ars,
+            "source_list_ars": item.get('list_price_ars') or offer_ars,
             "codigo": {
                 "label": "Codigo Digital (Japon)",
                 "description": "Podes canjearlo en tu cuenta, pero debes cambiar de region a Japon en accounts.nintendo.com; luego podes cambiarla de vuelta si queres.",
@@ -1227,6 +1245,7 @@ def _build_nintendo_mirror_payload(items):
                 "regular_price_ars": primaria_regular,
                 "offer_price_ars": primaria_offer,
             },
+            "source_type": "amazon",
         })
     return payload
 
@@ -1242,11 +1261,12 @@ def _build_nintendo_mirror_custom_payload(items):
         payload.append({
             "id": item.get("id"),
             "title": item.get("title"),
+            "slug": f"{_slugify_text(item.get('title') or 'juego')}-man-{item.get('id')}",
             "asin": "manual",
             "amazon_url": None,
             "image_url": image_url,
-            "source_offer_jpy": None,
-            "source_list_jpy": None,
+            "source_offer_ars": item.get("codigo_offer_ars"),
+            "source_list_ars": item.get("codigo_regular_ars"),
             "codigo": {
                 "label": "Codigo Digital (Japon)",
                 "description": "Podes canjearlo en tu cuenta, pero debes cambiar de region a Japon en accounts.nintendo.com; luego podes cambiarla de vuelta si queres.",
@@ -1583,6 +1603,17 @@ def api_nintendo_mirror_catalog():
     return jsonify({"results": payload})
 
 
+@app.route('/api/nintendo-mirror-item/<slug>')
+def api_nintendo_mirror_item(slug):
+    amazon_items = _build_nintendo_mirror_payload(db.get_amazon_jp_items(include_inactive=False))
+    custom_items = _build_nintendo_mirror_custom_payload(db.get_nintendo_mirror_custom_items(include_inactive=False))
+    all_items = amazon_items + custom_items
+    item = next((x for x in all_items if x.get('slug') == slug), None)
+    if not item:
+        return jsonify({"error": "No encontrado"}), 404
+    return jsonify({"item": item})
+
+
 @app.route('/api/admin/nintendo-mirror/custom', methods=['GET', 'POST'])
 @admin_required
 def api_admin_nintendo_mirror_custom():
@@ -1685,10 +1716,9 @@ def serve_static(path=''):
     if path == 'nintendo':
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
     if path == 'nintendo-nuevo-preview':
-        html = get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
-        resp = make_response(html)
-        resp.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
-        return resp
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
+    if path.startswith('nintendo-nuevo-preview/'):
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-juego.html'))
     if path in ('playstation', 'juegos'):
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
 
