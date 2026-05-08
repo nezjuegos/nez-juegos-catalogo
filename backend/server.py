@@ -1210,10 +1210,10 @@ def _build_nintendo_mirror_payload(items):
             continue
         base_ars = item.get('list_price_ars') or offer_ars
 
-        codigo_regular = _round_up_100(float(base_ars) * 1.45)
-        codigo_offer = _round_up_100(float(offer_ars) * 1.45)
-        primaria_regular = _round_up_100(float(base_ars) * 1.25)
-        primaria_offer = _round_up_100(float(offer_ars) * 1.25)
+        codigo_regular = _round_up_100(float(base_ars) * 1.35)
+        codigo_offer = _round_up_100(float(offer_ars) * 1.35)
+        primaria_regular = _round_up_100(float(base_ars) * 1.20)
+        primaria_offer = _round_up_100(float(offer_ars) * 1.20)
 
         image_url = None
         if item.get('mirror_image_filename'):
