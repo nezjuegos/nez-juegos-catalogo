@@ -514,6 +514,8 @@ class AmazonJpPriceScraper:
         self._pw_sync = None
         self._browser_sync = None
         self._context_sync = None
+        self._sync_lock = threading.RLock()
+        self._owner_thread_id = None
 
     @staticmethod
     def extract_asin(url):
@@ -567,22 +569,33 @@ class AmazonJpPriceScraper:
 
     def batch_begin(self):
         """Reuse one Chromium instance across many listings (caller should pair with batch_end)."""
-        self._batch_depth += 1
-        if self._batch_depth == 1:
-            self._ensure_playwright_sync()
+        with self._sync_lock:
+            self._batch_depth += 1
+            if self._batch_depth == 1:
+                self._ensure_playwright_sync()
 
     def batch_end(self):
-        if self._batch_depth <= 0:
-            self._shutdown_playwright_sync()
-            self._batch_depth = 0
-            return
-        self._batch_depth -= 1
-        if self._batch_depth == 0:
-            self._shutdown_playwright_sync()
+        with self._sync_lock:
+            if self._batch_depth <= 0:
+                self._shutdown_playwright_sync()
+                self._batch_depth = 0
+                return
+            self._batch_depth -= 1
+            if self._batch_depth == 0:
+                self._shutdown_playwright_sync()
 
     def _ensure_playwright_sync(self):
+        curr_thread = threading.get_ident()
         if self._context_sync is not None:
-            return
+            if self._owner_thread_id == curr_thread:
+                return
+            # Sync Playwright internals are thread-bound (greenlet). Reset if thread changed.
+            logging.warning(
+                "AmazonJP Playwright thread mismatch (owner=%s current=%s). Resetting.",
+                self._owner_thread_id,
+                curr_thread,
+            )
+            self._shutdown_playwright_sync()
         is_server = bool(os.getenv("RAILWAY_VOLUME_MOUNT_PATH"))
         base_args = [
             "--disable-blink-features=AutomationControlled",
@@ -597,6 +610,7 @@ class AmazonJpPriceScraper:
             user_agent=self._CHROME_UA,
             viewport={"width": 1366, "height": 768},
         )
+        self._owner_thread_id = curr_thread
         # Manual stealth: mask automation signals that Amazon detects
         # (replaces playwright-stealth library which has Python 3.12 compatibility issues)
         self._context_sync.add_init_script("""
@@ -623,6 +637,7 @@ class AmazonJpPriceScraper:
         self._context_sync = None
         self._browser_sync = None
         self._pw_sync = None
+        self._owner_thread_id = None
         for obj in (ctx, br):
             if obj:
                 try:
@@ -875,7 +890,10 @@ class AmazonJpPriceScraper:
                     continue
             return last_html, last_dom_offer, last_dom_list, last_error
         finally:
-            page.close()
+            try:
+                page.close()
+            except Exception:
+                pass
 
     def _pick_prices(self, html):
         MIN_VALID_JPY = 1000  # Nintendo digital games are never below ¥1000
@@ -1093,143 +1111,152 @@ class AmazonJpPriceScraper:
         return raw
 
     def scrape_listing(self, url, timeout=12, usd_jpy_rate=150.0):
-        input_url = (url or "").strip()
-        resolved_url = self._resolve_short_amazon_url(input_url, timeout=min(timeout, 8))
-        asin = self.extract_asin(resolved_url) or self.extract_asin(input_url)
-        if not asin:
-            raise ValueError("No se pudo detectar ASIN en la URL")
+        with self._sync_lock:
+            input_url = (url or "").strip()
+            resolved_url = self._resolve_short_amazon_url(input_url, timeout=min(timeout, 8))
+            asin = self.extract_asin(resolved_url) or self.extract_asin(input_url)
+            if not asin:
+                raise ValueError("No se pudo detectar ASIN en la URL")
 
-        standalone = self._batch_depth == 0
-        if standalone:
-            self.batch_begin()
-
-        try:
-            # Always use Japanese URLs — -/en/ variants cause USD pricing on non-JP IPs
-            try_urls = [
-                f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
-                f"https://www.amazon.co.jp/gp/product/{asin}",
-                resolved_url,
-                input_url,
-            ]
-
-            # Try lightweight HTTP first; Amazon usually blocks it, so Playwright is the real path.
-            html = ""
-            last_status = None
-            for candidate in try_urls:
-                try:
-                    resp = self.session.get(candidate, timeout=timeout, allow_redirects=True)
-                    last_status = resp.status_code
-                except requests.RequestException:
-                    continue
-                if resp.status_code < 400 and resp.text and self._html_usable(resp.text):
-                    html = resp.text
-                    break
-
-            dom_offer = dom_list = pw_error = None
-            if not self._html_usable(html):
-                # HTTP was blocked (CAPTCHA etc.) — use Playwright
-                pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
-                if self._html_usable(pw_html):
-                    html = pw_html
-            else:
-                # HTTP worked — still read DOM prices via Playwright for accuracy
-                pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
-                if self._html_usable(pw_html):
-                    html = pw_html
-
-            if not self._html_usable(html):
-                logging.warning("Amazon JP unusable HTML for ASIN %s http=%s pw_err=%s html_len=%d",
-                                asin, last_status, pw_error, len(html))
-                raise RuntimeError(
-                    "Amazon no devolvió la página del producto (CAPTCHA o bloqueo). "
-                    f"HTTP: {last_status}. PW: {pw_error or 'sin detalle'}"
-                )
-
-            offer_price, list_price = self._pick_prices(html)
-            logging.info("AmazonJP after _pick_prices: offer=%s list=%s", offer_price, list_price)
-            
-            # Force visible buy-box value when available (user-facing price).
-            if dom_offer and dom_offer >= 300:
-                logging.info("AmazonJP using dom_offer=%s (override from JS)", dom_offer)
-                offer_price = dom_offer
-                if dom_list and dom_list > dom_offer:
-                    list_price = dom_list
-
-            if offer_price and not list_price:
-                inferred_list = self._infer_list_price_from_yen_context(html, offer_price)
-                if inferred_list:
-                    list_price = inferred_list
-                    logging.info("AmazonJP inferred list price=%s for offer=%s", list_price, offer_price)
-
-            if offer_price is None and list_price is None:
-                loose = self._pick_yen_loose(html)
-                if loose:
-                    logging.info("AmazonJP loose yen fallback=%s", loose)
-                    offer_price = loose
-
-            if offer_price is None and list_price is None:
-                usd_price = None
-                usd_list_price = None
-                if pw_error and str(pw_error).startswith("USD_BUYBOX:"):
-                    payload = str(pw_error).split(":", 1)[1]
-                    parts = payload.split("|")
-                    usd_price = self._normalize_price(parts[0] if len(parts) > 0 else None)
-                    usd_list_price = self._normalize_price(parts[1] if len(parts) > 1 else None)
-                    discount_pct = self._normalize_price(parts[2] if len(parts) > 2 else None)
-                    if (not usd_list_price) and usd_price and discount_pct and 1 <= discount_pct <= 95:
-                        # Infer list from displayed discount (e.g. -12% and current USD).
-                        usd_list_price = round(float(usd_price) / (1.0 - float(discount_pct) / 100.0), 2)
-                if usd_price is None:
-                    usd_price = self._pick_usd_loose(html)
-                if usd_list_price is None:
-                    usd_list_price = self._pick_usd_list_loose(html)
-                usd_confident = bool(
-                    usd_price and (
-                        usd_list_price
-                        or (discount_pct and 1 <= discount_pct <= 95)
-                        or usd_price >= 25  # avoid tiny mis-parsed USD values
-                    )
-                )
-                if usd_price and usd_jpy_rate and usd_jpy_rate > 0 and usd_confident:
-                    converted = round(float(usd_price) * float(usd_jpy_rate), 2)
-                    logging.info(
-                        "AmazonJP USD fallback usd=%s list_usd=%s rate=%s -> jpy=%s",
-                        usd_price, usd_list_price, usd_jpy_rate, converted
-                    )
-                    offer_price = converted
-                    if usd_list_price and usd_list_price > usd_price:
-                        list_price = round(float(usd_list_price) * float(usd_jpy_rate), 2)
-                elif usd_price and not usd_confident:
-                    logging.warning(
-                        "AmazonJP rejected low-confidence USD fallback usd=%s list_usd=%s discount=%s",
-                        usd_price, usd_list_price, discount_pct
-                    )
-
-            if offer_price is None and list_price is None:
-                for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
-                    idx = html.lower().find(marker)
-                    if idx >= 0:
-                        logging.info("AmazonJP price snippet [%s] at %d: ...%s...",
-                                     marker, idx, html[max(0, idx-80):idx+200].replace("\n", " "))
-                        break
-                else:
-                    logging.warning("AmazonJP no price markers in HTML (len=%d)", len(html))
-                raise RuntimeError("No se pudo extraer precio de la publicación")
-
-            price_jpy = offer_price or list_price
-            is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
-
-            logging.info("AmazonJP final result: asin=%s offer=%s list=%s price=%s image=%s title=%s",
-                        asin, offer_price, list_price, price_jpy, bool(self._pick_image_url(html)), bool(self._pick_title(html)))
-
-            return {
-                "asin": asin,
-                "title_source": self._pick_title(html),
-                "image_url": self._pick_image_url(html),
-                "price_jpy": price_jpy,
-                "list_price_jpy": list_price,
-                "is_on_sale": is_on_sale,
-            }
-        finally:
+            standalone = self._batch_depth == 0
             if standalone:
-                self.batch_end()
+                self.batch_begin()
+
+            try:
+                # Always use Japanese URLs — -/en/ variants cause USD pricing on non-JP IPs
+                try_urls = [
+                    f"https://www.amazon.co.jp/dp/{asin}?th=1&psc=1",
+                    f"https://www.amazon.co.jp/gp/product/{asin}",
+                    resolved_url,
+                    input_url,
+                ]
+
+                # Try lightweight HTTP first; Amazon usually blocks it, so Playwright is the real path.
+                html = ""
+                last_status = None
+                for candidate in try_urls:
+                    try:
+                        resp = self.session.get(candidate, timeout=timeout, allow_redirects=True)
+                        last_status = resp.status_code
+                    except requests.RequestException:
+                        continue
+                    if resp.status_code < 400 and resp.text and self._html_usable(resp.text):
+                        html = resp.text
+                        break
+
+                dom_offer = dom_list = pw_error = None
+                if not self._html_usable(html):
+                    # HTTP was blocked (CAPTCHA etc.) — use Playwright
+                    pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                    if pw_error and "cannot switch to a different thread" in str(pw_error).lower():
+                        logging.warning("AmazonJP thread-bound Playwright error, resetting and retrying once.")
+                        self._shutdown_playwright_sync()
+                        pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                    if self._html_usable(pw_html):
+                        html = pw_html
+                else:
+                    # HTTP worked — still read DOM prices via Playwright for accuracy
+                    pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                    if pw_error and "cannot switch to a different thread" in str(pw_error).lower():
+                        logging.warning("AmazonJP thread-bound Playwright error, resetting and retrying once.")
+                        self._shutdown_playwright_sync()
+                        pw_html, dom_offer, dom_list, pw_error = self._fetch_with_playwright(try_urls)
+                    if self._html_usable(pw_html):
+                        html = pw_html
+
+                if not self._html_usable(html):
+                    logging.warning("Amazon JP unusable HTML for ASIN %s http=%s pw_err=%s html_len=%d",
+                                    asin, last_status, pw_error, len(html))
+                    raise RuntimeError(
+                        "Amazon no devolvió la página del producto (CAPTCHA o bloqueo). "
+                        f"HTTP: {last_status}. PW: {pw_error or 'sin detalle'}"
+                    )
+
+                offer_price, list_price = self._pick_prices(html)
+                logging.info("AmazonJP after _pick_prices: offer=%s list=%s", offer_price, list_price)
+
+                # Force visible buy-box value when available (user-facing price).
+                if dom_offer and dom_offer >= 300:
+                    logging.info("AmazonJP using dom_offer=%s (override from JS)", dom_offer)
+                    offer_price = dom_offer
+                    if dom_list and dom_list > dom_offer:
+                        list_price = dom_list
+
+                if offer_price and not list_price:
+                    inferred_list = self._infer_list_price_from_yen_context(html, offer_price)
+                    if inferred_list:
+                        list_price = inferred_list
+                        logging.info("AmazonJP inferred list price=%s for offer=%s", list_price, offer_price)
+
+                if offer_price is None and list_price is None:
+                    loose = self._pick_yen_loose(html)
+                    if loose:
+                        logging.info("AmazonJP loose yen fallback=%s", loose)
+                        offer_price = loose
+
+                if offer_price is None and list_price is None:
+                    usd_price = None
+                    usd_list_price = None
+                    discount_pct = None
+                    if pw_error and str(pw_error).startswith("USD_BUYBOX:"):
+                        payload = str(pw_error).split(":", 1)[1]
+                        parts = payload.split("|")
+                        usd_price = self._normalize_price(parts[0] if len(parts) > 0 else None)
+                        usd_list_price = self._normalize_price(parts[1] if len(parts) > 1 else None)
+                        discount_pct = self._normalize_price(parts[2] if len(parts) > 2 else None)
+                        if (not usd_list_price) and usd_price and discount_pct and 1 <= discount_pct <= 95:
+                            usd_list_price = round(float(usd_price) / (1.0 - float(discount_pct) / 100.0), 2)
+                    if usd_price is None:
+                        usd_price = self._pick_usd_loose(html)
+                    if usd_list_price is None:
+                        usd_list_price = self._pick_usd_list_loose(html)
+                    usd_confident = bool(
+                        usd_price and (
+                            usd_list_price
+                            or (discount_pct and 1 <= discount_pct <= 95)
+                            or usd_price >= 25
+                        )
+                    )
+                    if usd_price and usd_jpy_rate and usd_jpy_rate > 0 and usd_confident:
+                        converted = round(float(usd_price) * float(usd_jpy_rate), 2)
+                        logging.info(
+                            "AmazonJP USD fallback usd=%s list_usd=%s rate=%s -> jpy=%s",
+                            usd_price, usd_list_price, usd_jpy_rate, converted
+                        )
+                        offer_price = converted
+                        if usd_list_price and usd_list_price > usd_price:
+                            list_price = round(float(usd_list_price) * float(usd_jpy_rate), 2)
+                    elif usd_price and not usd_confident:
+                        logging.warning(
+                            "AmazonJP rejected low-confidence USD fallback usd=%s list_usd=%s discount=%s",
+                            usd_price, usd_list_price, discount_pct
+                        )
+
+                if offer_price is None and list_price is None:
+                    for marker in ("a-price-whole", "a-offscreen", "priceblock", "apex_desktop", "pricetopay"):
+                        idx = html.lower().find(marker)
+                        if idx >= 0:
+                            logging.info("AmazonJP price snippet [%s] at %d: ...%s...",
+                                         marker, idx, html[max(0, idx-80):idx+200].replace("\n", " "))
+                            break
+                    else:
+                        logging.warning("AmazonJP no price markers in HTML (len=%d)", len(html))
+                    raise RuntimeError("No se pudo extraer precio de la publicación")
+
+                price_jpy = offer_price or list_price
+                is_on_sale = bool(list_price and price_jpy and list_price > price_jpy)
+
+                logging.info("AmazonJP final result: asin=%s offer=%s list=%s price=%s image=%s title=%s",
+                            asin, offer_price, list_price, price_jpy, bool(self._pick_image_url(html)), bool(self._pick_title(html)))
+
+                return {
+                    "asin": asin,
+                    "title_source": self._pick_title(html),
+                    "image_url": self._pick_image_url(html),
+                    "price_jpy": price_jpy,
+                    "list_price_jpy": list_price,
+                    "is_on_sale": is_on_sale,
+                }
+            finally:
+                if standalone:
+                    self.batch_end()
