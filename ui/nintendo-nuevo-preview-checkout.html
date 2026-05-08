@@ -19,12 +19,15 @@
     .mode{border:1px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:.2s;background:rgba(255,255,255,.02)}
     .mode.sel{border-color:var(--primary);background:rgba(139,92,246,.08)}
     .mode h3{font-size:.86rem;text-transform:uppercase;letter-spacing:.04em;color:#ddd6fe}
+    .mode .chip{display:inline-block;font-size:.7rem;padding:.15rem .45rem;border-radius:999px;background:rgba(139,92,246,.15);color:#c4b5fd;margin-bottom:.3rem}
     .price{display:flex;gap:.4rem;align-items:baseline;margin:.35rem 0}
     .old{color:var(--muted);text-decoration:line-through}
     .new{font-family:'Outfit';font-size:1.2rem;font-weight:900}
     .desc{font-size:.86rem;color:var(--muted);line-height:1.45}
     .warn{font-size:.78rem;color:#fca5a5;margin-top:.35rem}
     .btn{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.72rem .8rem;border-radius:999px;font-weight:800;margin-top:.85rem}
+    .summary{margin-top:.75rem;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.02);font-size:.9rem;color:var(--muted)}
+    .summary strong{color:#fff}
     .muted{color:var(--muted);font-size:.84rem}
     @media (max-width:760px){.head{grid-template-columns:1fr}}
   </style>
@@ -43,6 +46,7 @@
     <div class="card">
       <div id="modeCodigo" class="mode" onclick="selectMode('codigo')"></div>
       <div id="modePrimaria" class="mode" style="margin-top:.65rem;" onclick="selectMode('primaria')"></div>
+      <div id="summary" class="summary"></div>
       <a id="buyBtn" class="btn" href="#">Continuar compra</a>
     </div>
   </main>
@@ -53,11 +57,18 @@
     let item = null;
     let selected = 'codigo';
 
+    const priceLine = (reg, off) => {
+      const same = Number(reg || 0) === Number(off || 0) || !reg;
+      if (same) return `<span class="new">${ars(off)}</span>`;
+      return `<span class="old">${ars(reg)}</span><span class="new">${ars(off)}</span>`;
+    };
+
     function renderMode(el, mode){
       const m = item[mode];
       el.innerHTML = `
+        <span class="chip">${mode === 'codigo' ? 'Canjeable' : 'Cuenta'}</span>
         <h3>${esc(m.label)}</h3>
-        <div class="price"><span class="old">${ars(m.regular_price_ars)}</span><span class="new">${ars(m.offer_price_ars)}</span></div>
+        <div class="price">${priceLine(m.regular_price_ars, m.offer_price_ars)}</div>
         <p class="desc">${esc(m.description)}</p>
         ${mode === 'codigo' ? `<p class="warn">${esc(m.disclaimer || '')}</p>` : ''}
       `;
@@ -71,6 +82,8 @@
       const waMsg = encodeURIComponent(`Hola! Quiero comprar ${item.title}\nModalidad: ${txt}\nPrecio: ${ars(price)}`);
       document.getElementById('buyBtn').href = `https://wa.me/5491160120337?text=${waMsg}`;
       document.getElementById('buyBtn').textContent = `Comprar ${txt}`;
+      const summary = document.getElementById('summary');
+      if (summary) summary.innerHTML = `Modalidad seleccionada: <strong>${txt}</strong><br>Total: <strong>${ars(price)}</strong>`;
     }
 
     async function load(){

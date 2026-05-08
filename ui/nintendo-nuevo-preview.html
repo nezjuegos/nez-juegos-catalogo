@@ -34,6 +34,21 @@
         .cta{padding:.65rem .82rem}
         .btn{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.52rem .6rem;border-radius:999px;font-size:.78rem;font-weight:700}
         .muted{color:var(--muted);font-size:.82rem}
+        @media (max-width: 768px){
+            .container{padding:.7rem}
+            .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+            .card{min-height:242px;border-radius:10px}
+            .cover{height:96px}
+            .body{padding:.5rem .55rem .35rem;gap:.28rem}
+            .title{font-size:.86rem}
+            .title.long{font-size:.8rem}
+            .title.xlong{font-size:.75rem}
+            .price-name{font-size:.66rem}
+            .price-old{font-size:.68rem}
+            .price-new{font-size:.86rem}
+            .cta{padding:.45rem .55rem}
+            .btn{font-size:.72rem;padding:.45rem .5rem}
+        }
     </style>
 </head>
 <body>
@@ -48,6 +63,11 @@
         let allItems = [];
         const esc = (s) => String(s || '').replace(/[&<"]/g, m => ({'&':'&amp;','<':'&lt;','"':'&quot;'}[m]));
         const ars = (v) => v ? '$' + Number(v).toLocaleString('es-AR') : 'Consultar';
+        const priceValues = (reg, off) => {
+            const same = Number(reg || 0) === Number(off || 0) || !reg;
+            if (same) return `<span class="price-new">${ars(off)}</span>`;
+            return `<span class="price-old">${ars(reg)}</span><span class="price-new">${ars(off)}</span>`;
+        };
         function render(items){
             const grid = document.getElementById('grid');
             if (!items.length) { grid.innerHTML = '<p class="muted">No se encontraron juegos.</p>'; return; }
@@ -60,17 +80,11 @@
                             <div class="prices">
                                 <div class="price-row">
                                     <span class="price-name">Código</span>
-                                    <span class="price-values">
-                                        <span class="price-old">${ars(it.codigo?.regular_price_ars)}</span>
-                                        <span class="price-new">${ars(it.codigo?.offer_price_ars)}</span>
-                                    </span>
+                                    <span class="price-values">${priceValues(it.codigo?.regular_price_ars, it.codigo?.offer_price_ars)}</span>
                                 </div>
                                 <div class="price-row">
                                     <span class="price-name">Primaria</span>
-                                    <span class="price-values">
-                                        <span class="price-old">${ars(it.primaria?.regular_price_ars)}</span>
-                                        <span class="price-new">${ars(it.primaria?.offer_price_ars)}</span>
-                                    </span>
+                                    <span class="price-values">${priceValues(it.primaria?.regular_price_ars, it.primaria?.offer_price_ars)}</span>
                                 </div>
                             </div>
                         </div>

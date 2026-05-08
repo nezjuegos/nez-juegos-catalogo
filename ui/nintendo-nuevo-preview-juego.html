@@ -26,6 +26,8 @@
         .desc{font-size:.86rem;color:var(--muted);line-height:1.45}
         .warn{margin-top:.35rem;font-size:.78rem;color:#fca5a5}
         .back{display:inline-block;margin-bottom:.75rem;color:var(--muted);text-decoration:none}
+        .cta-wrap{display:flex;justify-content:flex-end;margin-top:.8rem}
+        .btn{display:inline-block;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.62rem 1.1rem;border-radius:999px;font-weight:800;font-size:.86rem}
         @media (max-width:820px){.grid{grid-template-columns:1fr}}
     </style>
 </head>
@@ -44,6 +46,11 @@
     <script>
         const ars = (v) => v ? '$' + Number(v).toLocaleString('es-AR') : 'Consultar';
         const esc = (s) => String(s || '').replace(/[&<"]/g, m => ({'&':'&amp;','<':'&lt;','"':'&quot;'}[m]));
+        const priceLine = (reg, off) => {
+            const same = Number(reg || 0) === Number(off || 0) || !reg;
+            if (same) return `<span class="new">${ars(off)}</span>`;
+            return `<span class="old">${ars(reg)}</span><span class="new">${ars(off)}</span>`;
+        };
         const slug = decodeURIComponent((location.pathname.split('/').pop() || '').trim());
         async function load(){
             const r = await fetch(`/api/nintendo-mirror-item/${encodeURIComponent(slug)}`);
@@ -59,15 +66,18 @@
             modes.innerHTML = `
                 <section class="mode">
                     <h3>${esc(it.codigo.label)}</h3>
-                    <div class="price"><span class="old">${ars(it.codigo.regular_price_ars)}</span><span class="new">${ars(it.codigo.offer_price_ars)}</span></div>
+                    <div class="price">${priceLine(it.codigo.regular_price_ars, it.codigo.offer_price_ars)}</div>
                     <p class="desc">${esc(it.codigo.description)}</p>
                     <p class="warn">${esc(it.codigo.disclaimer)}</p>
                 </section>
                 <section class="mode">
                     <h3>${esc(it.primaria.label)}</h3>
-                    <div class="price"><span class="old">${ars(it.primaria.regular_price_ars)}</span><span class="new">${ars(it.primaria.offer_price_ars)}</span></div>
+                    <div class="price">${priceLine(it.primaria.regular_price_ars, it.primaria.offer_price_ars)}</div>
                     <p class="desc">${esc(it.primaria.description)}</p>
                 </section>
+                <div class="cta-wrap">
+                    <a class="btn" href="/nintendo-nuevo-checkout?game=${encodeURIComponent(it.slug)}">Comprar</a>
+                </div>
             `;
         }
         load().catch(() => { document.getElementById('title').textContent = 'Error cargando juego'; });
