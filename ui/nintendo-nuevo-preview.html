@@ -7,7 +7,7 @@
     <title>Nintendo Switch | Nez Juegos</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg:#0a0a0c; --card:#131318; --primary:#8b5cf6; --secondary:#d946ef; --text:#f8fafc; --muted:#94a3b8; --border:#27272a; --ok:#22c55e; }
+        :root { --bg:#0a0a0c; --card:#131318; --primary:#8b5cf6; --secondary:#d946ef; --text:#f8fafc; --muted:#94a3b8; --border:#27272a; }
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
         body{background:var(--bg);color:var(--text)}
         header{position:sticky;top:0;background:rgba(10,10,12,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:1rem 1.25rem;z-index:10}
@@ -17,14 +17,20 @@
         .search{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.8rem 1rem;margin-bottom:1rem}
         .search input{width:100%;border:none;background:transparent;color:#fff;font-size:1rem;outline:none}
         .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
-        .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:.2s}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:.2s;min-height:292px}
         .card:hover{transform:translateY(-4px);border-color:rgba(217,70,239,.4)}
         .cover{height:135px;width:100%;object-fit:cover;background:#111}
-        .body{padding:.82rem}
-        .title{font-family:'Outfit';font-weight:800;line-height:1.2;min-height:2.4em;font-size:1rem}
-        .pricebox{margin-top:.55rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:.4rem .5rem}
-        .price-label{font-size:.66rem;color:#86efac;font-weight:700;text-transform:uppercase}
-        .price-amount{font-family:'Outfit';font-size:1.05rem;font-weight:900;color:var(--ok)}
+        .body{padding:.72rem .82rem .55rem;display:flex;flex-direction:column;gap:.45rem}
+        .title{font-family:'Outfit';font-weight:800;line-height:1.2;font-size:1rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .title.long{font-size:.92rem}
+        .title.xlong{font-size:.84rem}
+        .prices{display:flex;flex-direction:column;gap:.28rem}
+        .price-row{display:flex;justify-content:space-between;align-items:center;padding:.26rem 0;border-top:1px solid rgba(255,255,255,.05)}
+        .price-row:first-child{border-top:none}
+        .price-name{font-size:.72rem;color:var(--muted);font-weight:600}
+        .price-values{display:flex;align-items:baseline;gap:.38rem}
+        .price-old{font-size:.74rem;color:var(--muted);text-decoration:line-through}
+        .price-new{font-family:'Outfit';font-size:.96rem;font-weight:800;color:#fff}
         .cta{padding:.65rem .82rem}
         .btn{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.52rem .6rem;border-radius:999px;font-size:.78rem;font-weight:700}
         .muted{color:var(--muted);font-size:.82rem}
@@ -42,29 +48,40 @@
         let allItems = [];
         const esc = (s) => String(s || '').replace(/[&<"]/g, m => ({'&':'&amp;','<':'&lt;','"':'&quot;'}[m]));
         const ars = (v) => v ? '$' + Number(v).toLocaleString('es-AR') : 'Consultar';
-        function minPrice(it){
-            const a = [it.codigo?.offer_price_ars, it.primaria?.offer_price_ars].filter(Boolean);
-            return a.length ? Math.min(...a) : null;
-        }
         function render(items){
             const grid = document.getElementById('grid');
             if (!items.length) { grid.innerHTML = '<p class="muted">No se encontraron juegos.</p>'; return; }
             grid.innerHTML = items.map(it => `
-                <article class="card">
-                    <a href="/nintendo-nuevo-preview/${encodeURIComponent(it.slug)}" style="color:inherit;text-decoration:none;">
+                <article class="card" onclick="goDetail('${encodeURIComponent(it.slug)}')">
+                    <div style="cursor:pointer;">
                         <img class="cover" src="${esc(it.image_url || '')}" alt="" onerror="this.style.display='none'">
                         <div class="body">
-                            <h3 class="title">${esc(it.title)}</h3>
-                            <div class="pricebox">
-                                <div class="price-label">Desde</div>
-                                <div class="price-amount">${ars(minPrice(it))}</div>
+                            <h3 class="title ${((it.title||'').length>46)?'xlong':((it.title||'').length>34?'long':'')}">${esc(it.title)}</h3>
+                            <div class="prices">
+                                <div class="price-row">
+                                    <span class="price-name">Código</span>
+                                    <span class="price-values">
+                                        <span class="price-old">${ars(it.codigo?.regular_price_ars)}</span>
+                                        <span class="price-new">${ars(it.codigo?.offer_price_ars)}</span>
+                                    </span>
+                                </div>
+                                <div class="price-row">
+                                    <span class="price-name">Primaria</span>
+                                    <span class="price-values">
+                                        <span class="price-old">${ars(it.primaria?.regular_price_ars)}</span>
+                                        <span class="price-new">${ars(it.primaria?.offer_price_ars)}</span>
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </a>
-                    <div class="cta"><a class="btn" href="/nintendo-nuevo-preview/${encodeURIComponent(it.slug)}">Ver juego</a></div>
+                    </div>
+                    <div class="cta"><a class="btn" href="/nintendo-nuevo-checkout?game=${encodeURIComponent(it.slug)}" onclick="event.stopPropagation()">Comprar</a></div>
                 </article>
             `).join('');
         }
+        window.goDetail = function(slug){
+            window.location.href = `/nintendo-nuevo-preview/${slug}`;
+        };
         async function load(){
             const r = await fetch('/api/nintendo-mirror-catalog');
             const d = await r.json();

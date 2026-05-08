@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Checkout Nintendo | Nez Juegos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0a0c;--card:#131318;--primary:#8b5cf6;--secondary:#d946ef;--text:#f8fafc;--muted:#94a3b8;--border:#27272a}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+    body{background:var(--bg);color:var(--text)}
+    .container{max-width:860px;margin:0 auto;padding:1.2rem}
+    .back{display:inline-block;margin-bottom:.8rem;color:var(--muted);text-decoration:none}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.9rem}
+    .head{display:grid;grid-template-columns:180px 1fr;gap:1rem}
+    .cover{width:100%;height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--border);background:#111}
+    .title{font-family:'Outfit';font-size:1.45rem;line-height:1.2}
+    .mode{border:1px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:.2s;background:rgba(255,255,255,.02)}
+    .mode.sel{border-color:var(--primary);background:rgba(139,92,246,.08)}
+    .mode h3{font-size:.86rem;text-transform:uppercase;letter-spacing:.04em;color:#ddd6fe}
+    .price{display:flex;gap:.4rem;align-items:baseline;margin:.35rem 0}
+    .old{color:var(--muted);text-decoration:line-through}
+    .new{font-family:'Outfit';font-size:1.2rem;font-weight:900}
+    .desc{font-size:.86rem;color:var(--muted);line-height:1.45}
+    .warn{font-size:.78rem;color:#fca5a5;margin-top:.35rem}
+    .btn{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:.72rem .8rem;border-radius:999px;font-weight:800;margin-top:.85rem}
+    .muted{color:var(--muted);font-size:.84rem}
+    @media (max-width:760px){.head{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <a class="back" href="javascript:history.back()">← Volver</a>
+    <div class="card head">
+      <img id="cover" class="cover" alt="">
+      <div>
+        <h1 id="title" class="title">Cargando...</h1>
+        <p class="muted">Elegí una modalidad para continuar.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="modeCodigo" class="mode" onclick="selectMode('codigo')"></div>
+      <div id="modePrimaria" class="mode" style="margin-top:.65rem;" onclick="selectMode('primaria')"></div>
+      <a id="buyBtn" class="btn" href="#">Continuar compra</a>
+    </div>
+  </main>
+  <script>
+    const ars = (v) => v ? '$' + Number(v).toLocaleString('es-AR') : 'Consultar';
+    const esc = (s) => String(s || '').replace(/[&<"]/g, m => ({'&':'&amp;','<':'&lt;','"':'&quot;'}[m]));
+    const slug = new URLSearchParams(location.search).get('game');
+    let item = null;
+    let selected = 'codigo';
+
+    function renderMode(el, mode){
+      const m = item[mode];
+      el.innerHTML = `
+        <h3>${esc(m.label)}</h3>
+        <div class="price"><span class="old">${ars(m.regular_price_ars)}</span><span class="new">${ars(m.offer_price_ars)}</span></div>
+        <p class="desc">${esc(m.description)}</p>
+        ${mode === 'codigo' ? `<p class="warn">${esc(m.disclaimer || '')}</p>` : ''}
+      `;
+    }
+    function selectMode(mode){
+      selected = mode;
+      document.getElementById('modeCodigo').classList.toggle('sel', mode === 'codigo');
+      document.getElementById('modePrimaria').classList.toggle('sel', mode === 'primaria');
+      const price = mode === 'codigo' ? item.codigo.offer_price_ars : item.primaria.offer_price_ars;
+      const txt = mode === 'codigo' ? 'Código Digital (Japón)' : 'Cuenta Primaria Permanente';
+      const waMsg = encodeURIComponent(`Hola! Quiero comprar ${item.title}\nModalidad: ${txt}\nPrecio: ${ars(price)}`);
+      document.getElementById('buyBtn').href = `https://wa.me/5491160120337?text=${waMsg}`;
+      document.getElementById('buyBtn').textContent = `Comprar ${txt}`;
+    }
+
+    async function load(){
+      if (!slug) { document.getElementById('title').textContent = 'Checkout inválido'; return; }
+      const r = await fetch(`/api/nintendo-mirror-item/${encodeURIComponent(slug)}`);
+      const d = await r.json();
+      if (!r.ok || !d.item) { document.getElementById('title').textContent = 'Juego no encontrado'; return; }
+      item = d.item;
+      document.title = `Checkout | ${item.title}`;
+      document.getElementById('title').textContent = item.title;
+      const cover = document.getElementById('cover');
+      cover.src = item.image_url || '';
+      cover.onerror = () => { cover.style.display = 'none'; };
+      renderMode(document.getElementById('modeCodigo'), 'codigo');
+      renderMode(document.getElementById('modePrimaria'), 'primaria');
+      selectMode('codigo');
+    }
+    load().catch(() => { document.getElementById('title').textContent = 'Error cargando checkout'; });
+  </script>
+</body>
+</html>

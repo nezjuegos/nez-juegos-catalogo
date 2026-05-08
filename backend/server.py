@@ -1719,6 +1719,8 @@ def serve_static(path=''):
         return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview.html'))
     if path.startswith('nintendo-nuevo-preview/'):
         return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-juego.html'))
+    if path == 'nintendo-nuevo-checkout':
+        return get_html(os.path.join(UI_DIR, 'nintendo-nuevo-preview-checkout.html'))
     if path in ('playstation', 'juegos'):
         return get_html(os.path.join(UI_DIR, 'juegos.html'))
 
