@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin | Gift Cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0c;--card:#131318;--pri:#8b5cf6;--sec:#d946ef;--mut:#94a3b8;--bor:#27272a;--ok:#22c55e;--warn:#eab308;--err:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+body{background:var(--bg);color:#f8fafc}
+h1,h2,h3{font-family:'Outfit',sans-serif}
+
+.top{background:rgba(10,10,12,.9);border-bottom:1px solid var(--bor);padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.top h1{font-size:1.2rem;display:flex;align-items:center;gap:.5rem}
+.top h1 span{background:linear-gradient(to right,var(--pri),var(--sec));-webkit-background-clip:text;color:transparent}
+.top-right{display:flex;gap:1rem;align-items:center}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;padding:1.5rem 2rem}
+.kpi{background:var(--card);border:1px solid var(--bor);border-radius:14px;padding:1.25rem}
+.kpi-label{font-size:.78rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem}
+.kpi-val{font-family:'Outfit';font-size:1.6rem;font-weight:800}
+.kpi-sub{font-size:.75rem;color:var(--mut);margin-top:.2rem}
+
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:0 2rem 2rem}
+.panel{background:var(--card);border:1px solid var(--bor);border-radius:14px;overflow:hidden}
+.panel-head{padding:1rem 1.25rem;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center}
+.panel-head h2{font-size:1rem;display:flex;align-items:center;gap:.5rem}
+.panel-body{padding:1rem 1.25rem;max-height:500px;overflow-y:auto}
+
+.full{grid-column:1/-1}
+
+/* Config form */
+.form-row{display:flex;gap:1rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+.form-group{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:150px}
+.form-group label{font-size:.75rem;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.form-group input,.form-group select{background:rgba(255,255,255,.05);border:1px solid var(--bor);border-radius:8px;padding:.55rem .75rem;color:#fff;font-size:.9rem;font-family:'Inter'}
+.form-group input:focus{outline:none;border-color:var(--pri)}
+.btn{padding:.55rem 1.2rem;border-radius:8px;border:none;font-weight:700;font-family:'Outfit';font-size:.85rem;cursor:pointer;transition:.15s}
+.btn-pri{background:linear-gradient(135deg,var(--pri),var(--sec));color:#fff}
+.btn-pri:hover{opacity:.9}
+.btn-sm{padding:.4rem .8rem;font-size:.78rem}
+.btn-ghost{background:transparent;border:1px solid var(--bor);color:var(--mut)}
+.btn-ghost:hover{border-color:var(--pri);color:#fff}
+.btn-ok{background:rgba(34,197,94,.15);color:var(--ok);border:1px solid rgba(34,197,94,.3)}
+.btn-err{background:rgba(239,68,68,.1);color:var(--err);border:1px solid rgba(239,68,68,.3)}
+
+/* Product list */
+.prod-item{display:flex;align-items:center;gap:.75rem;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.prod-item:last-child{border-bottom:none}
+.prod-ic{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.prod-info{flex:1;min-width:0}
+.prod-name{font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-meta{font-size:.72rem;color:var(--mut)}
+.toggle{width:40px;height:22px;border-radius:11px;background:var(--bor);position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle.on{background:var(--ok)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.toggle.on::after{left:21px}
+
+/* Orders */
+.order-item{padding:.85rem 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.order-item:last-child{border-bottom:none}
+.order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem}
+.order-id{font-weight:700;font-size:.85rem}
+.order-date{font-size:.72rem;color:var(--mut)}
+.order-detail{display:flex;gap:1.5rem;font-size:.8rem;color:var(--mut);margin-bottom:.5rem;flex-wrap:wrap}
+.order-detail strong{color:#fff}
+.order-actions{display:flex;gap:.5rem}
+.status{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:6px;font-size:.7rem;font-weight:700}
+.s-pending{background:rgba(234,179,8,.12);color:var(--warn)}
+.s-approved{background:rgba(34,197,94,.12);color:var(--ok)}
+.s-rejected{background:rgba(239,68,68,.12);color:var(--err)}
+
+/* Comprobante modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--bor);border-radius:16px;padding:2rem;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:var(--mut);font-size:1.2rem;cursor:pointer}
+.comp-img{width:100%;border-radius:10px;background:rgba(255,255,255,.05);min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:.85rem;margin-bottom:1rem;border:1px dashed var(--bor)}
+
+/* Add product */
+.add-input{display:flex;gap:.5rem;margin-bottom:1rem}
+.add-input input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--bor);border-radius:8px;padding:.5rem .75rem;color:#fff;font-size:.85rem}
+
+@media(max-width:768px){
+  .panels{grid-template-columns:1fr}
+  .kpi-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>🎮 <span>Nez</span> Admin — Gift Cards</h1>
+  <div class="top-right">
+    <span style="font-size:.8rem;color:var(--mut)">Última sync: hace 2h</span>
+    <button class="btn btn-pri btn-sm" onclick="alert('Sync con Bitrefill API...')">🔄 Sync ahora</button>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Balance Bitrefill</div>
+    <div class="kpi-val" style="color:var(--warn)">$0.83</div>
+    <div class="kpi-sub">USD — <a href="https://www.bitrefill.com/account" target="_blank" style="color:var(--pri)">Recargar ↗</a></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Cotización USDT</div>
+    <div class="kpi-val">$1.480</div>
+    <div class="kpi-sub">ARS por USDT</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Markup</div>
+    <div class="kpi-val" style="color:var(--ok)">5%</div>
+    <div class="kpi-sub">Sobre costo Bitrefill</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Pedidos pendientes</div>
+    <div class="kpi-val" style="color:var(--warn)">3</div>
+    <div class="kpi-sub">Esperando aprobación</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Ventas hoy</div>
+    <div class="kpi-val">$47.50</div>
+    <div class="kpi-sub">USD (2 órdenes)</div>
+  </div>
+</div>
+
+<div class="panels">
+
+  <!-- CONFIG -->
+  <div class="panel">
+    <div class="panel-head"><h2>⚙️ Configuración</h2></div>
+    <div class="panel-body">
+      <div class="form-row">
+        <div class="form-group"><label>Cotización USDT (ARS)</label><input type="number" value="1480" id="rateInput"></div>
+        <div class="form-group"><label>Markup %</label><input type="number" value="5" id="markupInput"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>CBU / Alias (transferencia)</label><input type="text" value="nezjuegos.mp" placeholder="Alias de Mercado Pago"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Binance Pay ID</label><input type="text" value="123456789" placeholder="ID de Binance"></div>
+      </div>
+      <button class="btn btn-pri" onclick="alert('Configuración guardada')">Guardar cambios</button>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="panel">
+    <div class="panel-head">
+      <h2>🎁 Productos (16 activos)</h2>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addProductArea').style.display='block'">+ Agregar</button>
+    </div>
+    <div class="panel-body">
+      <div id="addProductArea" style="display:none;margin-bottom:1rem;padding:1rem;background:rgba(139,92,246,.06);border-radius:10px;border:1px solid rgba(139,92,246,.2)">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">Agregar producto de Bitrefill</div>
+        <div class="add-input">
+          <input type="text" placeholder="Pegar product_id o URL de Bitrefill" id="newProductInput">
+          <button class="btn btn-pri btn-sm" onclick="alert('Buscando producto: '+document.getElementById('newProductInput').value)">Agregar</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--mut)">Ejemplo: playstation-argentina o https://www.bitrefill.com/buy/playstation-argentina/</div>
+      </div>
+      <div id="productList"></div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="panel full">
+    <div class="panel-head">
+      <h2>📋 Pedidos Gift Cards</h2>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-sm fil-btn" onclick="filterOrders('all',this)" style="border-color:var(--pri);color:#fff">Todos</button>
+        <button class="btn btn-ghost btn-sm fil-btn" onclick="filterOrders('pending',this)">Pendientes</button>
+        <button class="btn btn-ghost btn-sm fil-btn" onclick="filterOrders('approved',this)">Aprobados</button>
+      </div>
+    </div>
+    <div class="panel-body" id="orderList"></div>
+  </div>
+
+</div>
+
+<!-- Comprobante Modal -->
+<div class="modal-overlay" id="comprobanteModal">
+  <div class="modal">
+    <h3>Verificar comprobante <button class="modal-close" onclick="closeModal()">✕</button></h3>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;font-size:.85rem">
+      <div><span style="color:var(--mut)">Pedido:</span> <strong id="m-order">GC-001</strong></div>
+      <div><span style="color:var(--mut)">Monto:</span> <strong id="m-amount">ARS 78,085</strong></div>
+      <div><span style="color:var(--mut)">Producto:</span> <strong id="m-product">PS Store USA $50</strong></div>
+    </div>
+    <div class="comp-img" id="m-img">📎 Comprobante de pago del cliente<br><small style="margin-top:.5rem;display:block">La imagen del comprobante se mostrará aquí</small></div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-ok" style="flex:1" onclick="approveOrder()">✅ Aprobar y comprar en Bitrefill</button>
+      <button class="btn btn-err" onclick="rejectOrder()">❌ Rechazar</button>
+    </div>
+    <div style="margin-top:1rem;padding:.75rem;background:rgba(139,92,246,.06);border-radius:8px;border:1px solid rgba(139,92,246,.15)">
+      <div style="font-size:.75rem;font-weight:700;color:var(--pri);margin-bottom:.3rem">🤖 Verificación IA (próximamente)</div>
+      <div style="font-size:.72rem;color:var(--mut)">Gemini Flash analizará automáticamente el comprobante verificando monto, fecha y destino.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const prods=[
+  {id:'sony-playstation-usa',name:'PlayStation Store USA',icon:'🎮',bg:'#0070d1',region:'🇺🇸',enabled:true},
+  {id:'playstation-argentina',name:'PlayStation Store AR',icon:'🎮',bg:'#0070d1',region:'🇦🇷',enabled:true},
+  {id:'psn-japan',name:'PlayStation Store JP',icon:'🎮',bg:'#0070d1',region:'🇯🇵',enabled:true},
+  {id:'playstation-brazil',name:'PlayStation Store BR',icon:'🎮',bg:'#0070d1',region:'🇧🇷',enabled:true},
+  {id:'playstation-store-mexico',name:'PlayStation Store MX',icon:'🎮',bg:'#0070d1',region:'🇲🇽',enabled:true},
+  {id:'nintendo-usa',name:'Nintendo eShop USA',icon:'🔴',bg:'#e60012',region:'🇺🇸',enabled:true},
+  {id:'nintendo-japan',name:'Nintendo eShop JP',icon:'🔴',bg:'#e60012',region:'🇯🇵',enabled:true},
+  {id:'nintendo-brazil',name:'Nintendo eShop BR',icon:'🔴',bg:'#e60012',region:'🇧🇷',enabled:true},
+  {id:'nintendo-mexico',name:'Nintendo eShop MX',icon:'🔴',bg:'#e60012',region:'🇲🇽',enabled:true},
+  {id:'nintendo-eu',name:'Nintendo eShop EU',icon:'🔴',bg:'#e60012',region:'🇪🇺',enabled:true},
+  {id:'nintendo-hong-kong',name:'Nintendo eShop HK',icon:'🔴',bg:'#e60012',region:'🇭🇰',enabled:true},
+  {id:'steam-usa',name:'Steam USD',icon:'💻',bg:'#1b2838',region:'🇺🇸',enabled:true},
+  {id:'eneba-gift-card-usa',name:'Eneba USD',icon:'🛒',bg:'#ea580c',region:'💵',enabled:true},
+  {id:'eneba-gift-card-ars-international',name:'Eneba ARS',icon:'🛒',bg:'#ea580c',region:'🇦🇷',enabled:true},
+  {id:'eneba-gift-card-eu',name:'Eneba EUR',icon:'🛒',bg:'#ea580c',region:'🇪🇺',enabled:true},
+  {id:'eneba-gift-card-cad-international',name:'Eneba CAD',icon:'🛒',bg:'#ea580c',region:'🇨🇦',enabled:true},
+];
+
+document.getElementById('productList').innerHTML=prods.map(p=>`
+  <div class="prod-item">
+    <div class="prod-ic" style="background:${p.bg}">${p.icon}</div>
+    <div class="prod-info">
+      <div class="prod-name">${p.region} ${p.name}</div>
+      <div class="prod-meta">${p.id}</div>
+    </div>
+    <div class="toggle${p.enabled?' on':''}" onclick="this.classList.toggle('on')"></div>
+  </div>`).join('');
+
+const orders=[
+  {id:'GC-007',date:'18/05 22:10',client:'Martin G.',product:'PS Store USA $50',amount:'ARS 78,085',method:'Transferencia',status:'pending'},
+  {id:'GC-006',date:'18/05 21:45',client:'Lucas P.',product:'Nintendo eShop JP ¥5,000',amount:'33.80 USDT',method:'Binance',status:'pending'},
+  {id:'GC-005',date:'18/05 20:30',client:'Sofia R.',product:'Steam USA $20',amount:'ARS 31,080',method:'Transferencia',status:'pending'},
+  {id:'GC-004',date:'18/05 18:15',client:'Diego M.',product:'PS Store AR PSN 25',amount:'ARS 58,934',method:'Transferencia',status:'approved',code:'XXXX-YYYY-ZZZZ'},
+  {id:'GC-003',date:'18/05 16:00',client:'Camila T.',product:'Eneba USD $10',amount:'10.76 USDT',method:'Binance',status:'approved',code:'ABCD-EFGH-1234'},
+  {id:'GC-002',date:'17/05 22:30',client:'Juan B.',product:'PS Store USA $100',amount:'ARS 155,785',method:'Transferencia',status:'rejected'},
+];
+
+function renderOrders(filter){
+  const list=filter==='all'?orders:orders.filter(o=>o.status===filter);
+  document.getElementById('orderList').innerHTML=list.map(o=>{
+    const sc=o.status==='pending'?'s-pending':o.status==='approved'?'s-approved':'s-rejected';
+    const sl=o.status==='pending'?'⏳ Pendiente':o.status==='approved'?'✅ Aprobado':'❌ Rechazado';
+    const actions=o.status==='pending'?`<button class="btn btn-ok btn-sm" onclick="openModal('${o.id}','${o.amount}','${o.product}')">Ver comprobante</button>`
+      :o.code?`<span style="font-size:.75rem;color:var(--ok);font-family:monospace">Código: ${o.code}</span>`:'';
+    return `<div class="order-item" data-status="${o.status}">
+      <div class="order-top"><span class="order-id">${o.id}</span><span class="status ${sc}">${sl}</span></div>
+      <div class="order-detail"><span>👤 <strong>${o.client}</strong></span><span>🎁 <strong>${o.product}</strong></span><span>💰 <strong>${o.amount}</strong></span><span>💳 ${o.method}</span><span class="order-date">📅 ${o.date}</span></div>
+      <div class="order-actions">${actions}</div>
+    </div>`;
+  }).join('')||'<div style="text-align:center;padding:2rem;color:var(--mut)">Sin pedidos</div>';
+}
+renderOrders('all');
+
+function filterOrders(f,btn){
+  document.querySelectorAll('.fil-btn').forEach(b=>{b.style.borderColor='var(--bor)';b.style.color='var(--mut)'});
+  btn.style.borderColor='var(--pri)';btn.style.color='#fff';
+  renderOrders(f);
+}
+
+function openModal(oid,amount,product){
+  document.getElementById('m-order').textContent=oid;
+  document.getElementById('m-amount').textContent=amount;
+  document.getElementById('m-product').textContent=product;
+  document.getElementById('comprobanteModal').classList.add('show');
+}
+function closeModal(){document.getElementById('comprobanteModal').classList.remove('show')}
+function approveOrder(){alert('✅ Orden aprobada. Comprando en Bitrefill...');closeModal()}
+function rejectOrder(){alert('❌ Orden rechazada.');closeModal()}
+</script>
+</body>
+</html>

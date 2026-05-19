@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nez Juegos | Gift Cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0c;--card:#131318;--primary:#8b5cf6;--secondary:#d946ef;--muted:#94a3b8;--border:#27272a;--r:16px}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+body{background:var(--bg);color:#f8fafc;overflow-x:hidden;background-image:radial-gradient(circle at 0% 0%,rgba(139,92,246,.1) 0%,transparent 40%),radial-gradient(circle at 100% 100%,rgba(217,70,239,.05) 0%,transparent 40%);background-attachment:fixed}
+h1,h2,h3,h4{font-family:'Outfit',sans-serif}
+a{text-decoration:none;color:inherit}
+
+header{position:fixed;top:0;width:100%;height:70px;background:rgba(10,10,12,.8);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05);z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 3rem}
+.logo{font-family:'Outfit';font-weight:800;font-size:1.4rem;display:flex;align-items:center;gap:8px}
+.logo span{background:linear-gradient(to right,var(--primary),var(--secondary));-webkit-background-clip:text;color:transparent}
+nav{display:flex;gap:2rem}
+nav a{font-weight:500;color:var(--muted);transition:.2s}
+nav a:hover{color:#fff}
+nav a.active{color:var(--primary)}
+
+.hero{padding:110px 3rem 2rem;max-width:1200px;margin:0 auto;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);border-radius:50px;padding:.4rem 1rem;font-size:.85rem;color:var(--primary);margin-bottom:1.5rem}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,#fff 0%,#a1a1aa 100%);-webkit-background-clip:text;color:transparent}
+.hero p{color:var(--muted);font-size:1.05rem;max-width:520px;margin:0 auto;line-height:1.6}
+
+.how-it-works{display:flex;justify-content:center;gap:2.5rem;padding:2rem 3rem;flex-wrap:wrap;max-width:900px;margin:0 auto}
+.step{text-align:center;flex:1;min-width:140px}
+.step-num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:inline-flex;align-items:center;justify-content:center;font-family:'Outfit';font-weight:800;font-size:.95rem;margin-bottom:.5rem}
+.step-title{font-weight:700;font-size:.9rem;margin-bottom:.2rem}
+.step-desc{font-size:.78rem;color:var(--muted)}
+
+.filters{display:flex;justify-content:center;gap:.6rem;padding:1.5rem 3rem 0;flex-wrap:wrap}
+.fbtn{display:flex;align-items:center;gap:.4rem;padding:.55rem 1.2rem;border-radius:50px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s;font-family:'Inter'}
+.fbtn:hover{border-color:var(--primary);color:#fff}
+.fbtn.on{background:linear-gradient(135deg,var(--primary),var(--secondary));border-color:transparent;color:#fff;box-shadow:0 4px 20px rgba(139,92,246,.35)}
+
+.catalog{max-width:1200px;margin:0 auto;padding:1.5rem 3rem 3rem}
+.sec-label{font-family:'Outfit';font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:2rem 0 1rem;display:flex;align-items:center;gap:.6rem}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem}
+
+/* CARD */
+.gc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:.25s;position:relative}
+.gc:hover{transform:translateY(-4px);border-color:rgba(139,92,246,.4);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.gc-head{padding:1.25rem 1.25rem .75rem;display:flex;align-items:center;gap:.85rem}
+.brand-ic{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem}
+.gc-name{font-family:'Outfit';font-size:1.05rem;font-weight:700}
+.gc-region{font-size:.78rem;color:var(--muted);margin-top:.15rem}
+
+.denoms{display:flex;flex-wrap:wrap;gap:.35rem;padding:0 1.25rem .75rem}
+.dp{padding:.3rem .65rem;border-radius:8px;font-size:.78rem;font-weight:600;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--muted);cursor:pointer;transition:.15s;user-select:none}
+.dp:hover{border-color:rgba(139,92,246,.4);color:#ddd}
+.dp.sel{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.5);color:#fff}
+
+.price-area{background:rgba(255,255,255,.025);border-top:1px solid rgba(255,255,255,.05);padding:1rem 1.25rem}
+.price-row{display:flex;align-items:baseline;justify-content:space-between}
+.p-ars{font-family:'Outfit';font-size:1.35rem;font-weight:800}
+.p-usdt{color:var(--primary);font-size:.82rem;font-weight:600}
+.btn-buy{width:100%;margin-top:.85rem;padding:.7rem;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--secondary));border:none;color:#fff;font-weight:700;font-family:'Outfit';font-size:.9rem;cursor:pointer;transition:.2s}
+.btn-buy:hover{opacity:.9;transform:translateY(-1px)}
+.badge-e{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;color:#22c55e;font-weight:600;margin-top:.6rem}
+.badge-e::before{content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Expandable currency toggle */
+.curr-toggle{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin-bottom:.5rem}
+.ct-btn{flex:1;padding:.35rem;text-align:center;font-size:.72rem;font-weight:700;cursor:pointer;transition:.15s;background:transparent;border:none;color:var(--muted);font-family:'Inter'}
+.ct-btn.on{background:rgba(139,92,246,.2);color:#fff}
+
+.brand-section{display:none}
+.brand-section.visible{display:block}
+
+.cta-bot{text-align:center;padding:3rem;background:rgba(139,92,246,.05);border-top:1px solid var(--border);margin-top:2rem}
+.cta-bot h2{font-size:1.4rem;margin-bottom:.5rem}
+.cta-bot p{color:var(--muted);margin-bottom:1.25rem;font-size:.9rem}
+.wa{display:inline-flex;align-items:center;gap:.5rem;background:#25D366;color:#fff;padding:.75rem 1.8rem;border-radius:50px;font-weight:700;font-family:'Outfit';font-size:.95rem;transition:.2s}
+.wa:hover{background:#22c55e;transform:scale(1.03)}
+
+@media(max-width:768px){
+  header{padding:0 1.25rem;height:60px}
+  nav{display:none}
+  .hero{padding:80px 1.25rem 1.5rem}
+  .hero h1{font-size:1.7rem}
+  .how-it-works{gap:1rem;padding:1rem 1.25rem}
+  .catalog{padding:1rem 1rem 2rem}
+  .filters{padding:1rem 1rem 0}
+  .grid{grid-template-columns:1fr 1fr;gap:.75rem}
+  .gc-head{padding:1rem 1rem .6rem}
+  .denoms{padding:0 1rem .6rem}
+  .price-area{padding:.85rem 1rem}
+  .cta-bot{padding:2rem 1.25rem}
+}
+@media(max-width:480px){
+  .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎮 <span>Nez</span> Juegos</div>
+  <nav>
+    <a href="/playstation">PlayStation</a>
+    <a href="/nintendo">Nintendo Switch</a>
+    <a href="/packs">Packs</a>
+    <a href="/gift-cards" class="active">Gift Cards</a>
+    <a href="/terminos-y-condiciones">T&C</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-badge">🎁 Nuevo catálogo</div>
+  <h1>Gift Cards Digitales<br>al mejor precio</h1>
+  <p>PlayStation, Nintendo, Steam y más. Pagá en pesos argentinos o USDT y recibí tu código por email.</p>
+</section>
+
+<div class="how-it-works">
+  <div class="step"><div class="step-num">1</div><div class="step-title">Elegí tu card</div><div class="step-desc">Seleccioná plataforma, región y monto</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-title">Pagá</div><div class="step-desc">Transferencia en pesos o Binance USDT</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-title">Recibí</div><div class="step-desc">Tu código llega por email tras aprobación</div></div>
+</div>
+
+<div class="filters">
+  <button class="fbtn on" onclick="fil('all',this)">🎁 Todos</button>
+  <button class="fbtn" onclick="fil('ps',this)">🎮 PlayStation</button>
+  <button class="fbtn" onclick="fil('ns',this)">🔴 Nintendo</button>
+  <button class="fbtn" onclick="fil('steam',this)">💻 Steam</button>
+  <button class="fbtn" onclick="fil('eneba',this)">🛒 Eneba</button>
+</div>
+
+<div class="catalog">
+  <div class="brand-section visible" id="sec-ps"><div class="sec-label">🎮 PlayStation Store</div><div class="grid" id="g-ps"></div></div>
+  <div class="brand-section visible" id="sec-ns"><div class="sec-label">🔴 Nintendo eShop</div><div class="grid" id="g-ns"></div></div>
+  <div class="brand-section visible" id="sec-steam"><div class="sec-label">💻 Steam</div><div class="grid" id="g-steam"></div></div>
+  <div class="brand-section visible" id="sec-eneba"><div class="sec-label">🛒 Eneba</div><div class="grid" id="g-eneba"></div></div>
+</div>
+
+<div class="cta-bot">
+  <h2>¿Necesitás ayuda?</h2>
+  <p>Contactanos por WhatsApp para consultas sobre disponibilidad o métodos de pago.</p>
+  <a href="#" class="wa">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+    Consultar por WhatsApp
+  </a>
+</div>
+
+<script>
+const R=1480;
+const P=[
+  {id:'ps-usa',b:'ps',ic:'🎮',bg:'linear-gradient(135deg,#001f5c,#0070d1)',n:'PlayStation Store',reg:'🇺🇸 USA',d:[{l:'$50',c:50.25},{l:'$100',c:100.25},{l:'$150',c:150.25},{l:'$200',c:200.25},{l:'$250',c:250.25}]},
+  {id:'ps-ar',b:'ps',ic:'🎮',bg:'linear-gradient(135deg,#001f5c,#0070d1)',n:'PlayStation Store',reg:'🇦🇷 Argentina',d:[{l:'PSN 10',c:15.16},{l:'PSN 25',c:37.92},{l:'PSN 50',c:75.76},{l:'PSN 75',c:113.60},{l:'PSN 100',c:151.44}]},
+  {id:'ps-jp',b:'ps',ic:'🎮',bg:'linear-gradient(135deg,#001f5c,#0070d1)',n:'PlayStation Store',reg:'🇯🇵 Japan',d:[{l:'¥1,100',c:7.09},{l:'¥3,000',c:19.32},{l:'¥5,000',c:32.19},{l:'¥10,000',c:64.38},{l:'¥15,000',c:96.57}]},
+  {id:'ps-br',b:'ps',ic:'🎮',bg:'linear-gradient(135deg,#001f5c,#0070d1)',n:'PlayStation Store',reg:'🇧🇷 Brazil',d:[{l:'R$35',c:7.00},{l:'R$60',c:11.99},{l:'R$100',c:19.98},{l:'R$150',c:29.97},{l:'R$250',c:49.95}]},
+  {id:'ps-mx',b:'ps',ic:'🎮',bg:'linear-gradient(135deg,#001f5c,#0070d1)',n:'PlayStation Store',reg:'🇲🇽 México',d:[{l:'$190',c:9.50},{l:'$475',c:23.75},{l:'$950',c:47.50},{l:'$1,425',c:71.25}]},
+  {id:'ns-usa',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇺🇸 USA',d:[{l:'$10',c:10.25},{l:'$20',c:20.25},{l:'$35',c:35.25},{l:'$50',c:50.25}]},
+  {id:'ns-jp',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇯🇵 Japan',d:[{l:'¥1,500',c:9.66},{l:'¥3,000',c:19.32},{l:'¥5,000',c:32.19},{l:'¥9,000',c:57.95}]},
+  {id:'ns-br',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇧🇷 Brazil',d:[{l:'R$50',c:8.79},{l:'R$100',c:17.57},{l:'R$150',c:26.36},{l:'R$250',c:43.93}]},
+  {id:'ns-mx',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇲🇽 México',d:[{l:'$100',c:5.00},{l:'$200',c:10.00},{l:'$500',c:25.00},{l:'$1,000',c:50.00}]},
+  {id:'ns-eu',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇪🇺 Europa',d:[{l:'€25',c:27.50},{l:'€50',c:55.00},{l:'€75',c:82.50},{l:'€100',c:110.00}]},
+  {id:'ns-hk',b:'ns',ic:'🔴',bg:'linear-gradient(135deg,#8b0000,#e60012)',n:'Nintendo eShop',reg:'🇭🇰 Hong Kong',d:[{l:'HK$100',c:12.85},{l:'HK$300',c:38.55},{l:'HK$500',c:64.25}]},
+  {id:'steam-usa',b:'steam',ic:'💻',bg:'linear-gradient(135deg,#0d1b2a,#1b2838)',n:'Steam',reg:'🇺🇸 USA (USD)',d:[{l:'$5',c:5.00},{l:'$20',c:20.00},{l:'$30',c:30.00},{l:'$50',c:50.00},{l:'$200',c:200.00}]},
+  {id:'eneba-usd',b:'eneba',ic:'🛒',bg:'linear-gradient(135deg,#7c2d12,#ea580c)',n:'Eneba',reg:'💵 USD',d:[{l:'$10',c:10.25},{l:'$20',c:20.25},{l:'$50',c:50.25},{l:'$100',c:100.25}]},
+  {id:'eneba-ars',b:'eneba',ic:'🛒',bg:'linear-gradient(135deg,#7c2d12,#ea580c)',n:'Eneba',reg:'🇦🇷 ARS',d:[{l:'$5.000',c:3.38},{l:'$10.000',c:6.76},{l:'$20.000',c:13.51},{l:'$50.000',c:33.78}]},
+  {id:'eneba-eur',b:'eneba',ic:'🛒',bg:'linear-gradient(135deg,#7c2d12,#ea580c)',n:'Eneba',reg:'🇪🇺 EUR',d:[{l:'€5',c:5.50},{l:'€10',c:11.00},{l:'€20',c:22.00},{l:'€50',c:55.00}]},
+  {id:'eneba-cad',b:'eneba',ic:'🛒',bg:'linear-gradient(135deg,#7c2d12,#ea580c)',n:'Eneba',reg:'🇨🇦 CAD',d:[{l:'C$5',c:3.65},{l:'C$10',c:7.30},{l:'C$20',c:14.60},{l:'C$40',c:29.20}]},
+];
+
+const f=n=>Math.round(n).toLocaleString('es-AR');
+const state={};
+P.forEach(p=>{state[p.id]={di:0,cur:'ars'}});
+
+function price(c){return{usdt:(c*1.05).toFixed(2),ars:f(c*1.05*R)}}
+
+function render(p){
+  const s=state[p.id],d=p.d[s.di],pr=price(d.c);
+  const pills=p.d.map((x,i)=>`<span class="dp${i===s.di?' sel':''}" data-pid="${p.id}" data-di="${i}">${x.l}</span>`).join('');
+  return `<div class="gc" id="c-${p.id}">
+    <div class="gc-head"><div class="brand-ic" style="background:${p.bg}">${p.ic}</div><div><div class="gc-name">${p.n}</div><div class="gc-region">${p.reg}</div></div></div>
+    <div class="denoms">${pills}</div>
+    <div class="price-area">
+      <div class="curr-toggle"><button class="ct-btn${s.cur==='ars'?' on':''}" data-pid="${p.id}" data-c="ars">ARS $</button><button class="ct-btn${s.cur==='usdt'?' on':''}" data-pid="${p.id}" data-c="usdt">USDT</button></div>
+      <div class="price-row"><span class="p-ars" id="pa-${p.id}">${s.cur==='ars'?'ARS '+pr.ars:pr.usdt+' USDT'}</span></div>
+      <button class="btn-buy">Comprar</button>
+      <div class="badge-e">Entrega por email</div>
+    </div>
+  </div>`;
+}
+
+function mount(){
+  const gs={ps:'g-ps',ns:'g-ns',steam:'g-steam',eneba:'g-eneba'};
+  Object.keys(gs).forEach(b=>{document.getElementById(gs[b]).innerHTML=P.filter(p=>p.b===b).map(render).join('')});
+  bindEvents();
+}
+
+function bindEvents(){
+  document.querySelectorAll('.dp').forEach(el=>el.addEventListener('click',function(){
+    const pid=this.dataset.pid,di=+this.dataset.di;
+    state[pid].di=di;
+    rerender(pid);
+  }));
+  document.querySelectorAll('.ct-btn').forEach(el=>el.addEventListener('click',function(){
+    const pid=this.dataset.pid;
+    state[pid].cur=this.dataset.c;
+    rerender(pid);
+  }));
+}
+
+function rerender(pid){
+  const p=P.find(x=>x.id===pid),card=document.getElementById('c-'+pid);
+  card.outerHTML=render(p);
+  bindEvents();
+}
+
+mount();
+
+function fil(brand,btn){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.brand-section').forEach(s=>{
+    s.classList.toggle('visible',brand==='all'||s.id==='sec-'+brand);
+  });
+}
+</script>
+</body>
+</html>
